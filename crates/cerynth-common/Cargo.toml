@@ -1,0 +1,12 @@
+[package]
+name = "cerynth-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

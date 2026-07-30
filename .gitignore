@@ -1,0 +1,54 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Upstream source trees
+/third_party/linux/
+/third_party/scx/
+
+# Kernel outputs
+/kernel/build/
+/kernel/dist/
+*.ko
+*.o
+*.a
+*.cmd
+*.mod
+*.mod.c
+*.symvers
+Module.symvers
+modules.order
+vmlinux
+System.map
+bzImage
+
+# Distribution images
+/dist/
+*.iso
+*.img
+*.qcow2
+*.raw
+
+# Generated telemetry and models
+/data/*
+!/data/samples/
+!/data/samples/.gitkeep
+/models/checkpoints/
+*.parquet
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Editors
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs and secrets
+*.log
+.env
+.env.*
+!.env.example
