@@ -52,3 +52,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Local terminal logs — may contain secrets
+terminal-history*.txt
+terminal-session*.log
