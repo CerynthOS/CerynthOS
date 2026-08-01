@@ -29,7 +29,13 @@ version = "0.1.0"
 [[package]]
 name = "cerynthctl"
 version = "0.1.0"
+dependencies = [
+ "cerynth-ipc",
+]
 
 [[package]]
 name = "cerynthd"
 version = "0.1.0"
+dependencies = [
+ "cerynth-ipc",
+]
