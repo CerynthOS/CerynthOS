@@ -56,3 +56,11 @@ __pycache__/
 # Local terminal logs — may contain secrets
 terminal-history*.txt
 terminal-session*.log
+
+# CerynthOS VM artifacts
+vm/images/*.qcow2
+vm/images/*.raw
+vm/overlays/*.qcow2
+vm/logs/*
+artifacts/boot-report/*
+!artifacts/boot-report/.gitkeep
