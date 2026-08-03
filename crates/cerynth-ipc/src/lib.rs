@@ -1,5 +1,7 @@
 //! Core library module for this `CerynthOS` component.
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Profile {
     Balanced,
     Interactive,
@@ -7,19 +9,19 @@ pub enum Profile {
     Background,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SchedulerBackend {
     Mock,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchedulerStatus {
     pub profile: Profile,
     pub adaptation_enabled: bool,
     pub backend: SchedulerBackend,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     Status,
     GetProfile,
@@ -28,7 +30,7 @@ pub enum Request {
     ResumeAdaptation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     Status(SchedulerStatus),
     Profile(Profile),
