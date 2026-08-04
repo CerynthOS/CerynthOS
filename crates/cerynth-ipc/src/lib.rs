@@ -1,39 +1,25 @@
-//! Core library module for this `CerynthOS` component.
-use serde::{Deserialize, Serialize};
+//! Shared IPC types used by both the CerynthOS daemon and CLI.
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Profile {
-    Balanced,
-    Interactive,
-    Performance,
-    Background,
-}
+pub mod backend;
+pub mod profile;
+pub mod protocol;
+pub mod request;
+pub mod response;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SchedulerBackend {
-    Mock,
-}
+// Re-export the public API.
+pub use backend::{SchedulerBackend, SchedulerStatus};
+pub use profile::Profile;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SchedulerStatus {
-    pub profile: Profile,
-    pub adaptation_enabled: bool,
-    pub backend: SchedulerBackend,
-}
+pub use protocol::{
+    Frame,
+    RequestEnvelope,
+    ResponseEnvelope,
+    VersionError,
+    DEFAULT_SOCKET_PATH,
+    MAX_MESSAGE_SIZE,
+    MIN_PROTOCOL_VERSION,
+    PROTOCOL_VERSION,
+};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Request {
-    Status,
-    GetProfile,
-    SetProfile(Profile),
-    PauseAdaptation,
-    ResumeAdaptation,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Response {
-    Status(SchedulerStatus),
-    Profile(Profile),
-    Success,
-    Error(String),
-}
+pub use request::{Request, SocketRequest};
+pub use response::{Response, SocketResponse};

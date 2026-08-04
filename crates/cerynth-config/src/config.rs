@@ -4,28 +4,25 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-/// Runtime state persisted by the daemon.
-///
-/// Unlike `Config`, this represents the current runtime state that
-/// should survive daemon restarts.
+/// Persistent configuration loaded from a TOML file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RuntimeState {
-    pub profile: Profile,
+pub struct Config {
+    pub default_profile: Profile,
     pub adaptation_enabled: bool,
     pub scheduler_backend: SchedulerBackend,
 }
 
-impl Default for RuntimeState {
+impl Default for Config {
     fn default() -> Self {
         Self {
-            profile: Profile::Balanced,
+            default_profile: Profile::Balanced,
             adaptation_enabled: false,
             scheduler_backend: SchedulerBackend::Mock,
         }
     }
 }
 
-impl RuntimeState {
+impl Config {
     pub fn load(path: &str) -> Self {
         if !Path::new(path).exists() {
             return Self::default();
@@ -33,7 +30,7 @@ impl RuntimeState {
 
         let contents = fs::read_to_string(path).unwrap_or_default();
 
-        serde_json::from_str(&contents).unwrap_or_default()
+        toml::from_str(&contents).unwrap_or_default()
     }
 
     pub fn save(&self, path: &str) {
@@ -41,8 +38,8 @@ impl RuntimeState {
             let _ = fs::create_dir_all(parent);
         }
 
-        let json = serde_json::to_string_pretty(self).unwrap();
+        let contents = toml::to_string_pretty(self).unwrap();
 
-        fs::write(path, json).unwrap();
+        fs::write(path, contents).unwrap();
     }
 }

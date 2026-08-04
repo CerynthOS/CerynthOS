@@ -157,7 +157,10 @@ pub trait Frame: Serialize + for<'de> Deserialize<'de> {
     /// Parses a frame from a line (newline-delimited JSON).
     fn from_line(line: &[u8]) -> Result<Self, serde_json::Error> {
         // Trim trailing newline
-        let trimmed = line.trim_end_matches(&[b'\n', b'\r'][..]);
+	let trimmed = line
+            .strip_suffix(b"\n")
+            .or_else(|| line.strip_suffix(b"\r\n"))
+            .unwrap_or(line);
         Self::from_json_bytes(trimmed)
     }
 }
