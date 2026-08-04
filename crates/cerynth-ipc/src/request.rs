@@ -25,9 +25,7 @@ pub enum SocketRequest {
 
     GetProfile,
 
-    SetProfile {
-        profile: Profile,
-    },
+    SetProfile { profile: Profile },
 
     PauseAdaptation,
 
@@ -45,21 +43,13 @@ impl From<SocketRequest> for Request {
 
             SocketRequest::GetProfile => Request::GetProfile,
 
-            SocketRequest::SetProfile { profile } => {
-                Request::SetProfile(profile)
-            }
+            SocketRequest::SetProfile { profile } => Request::SetProfile(profile),
 
-            SocketRequest::PauseAdaptation => {
-                Request::PauseAdaptation
-            }
+            SocketRequest::PauseAdaptation => Request::PauseAdaptation,
 
-            SocketRequest::ResumeAdaptation => {
-                Request::ResumeAdaptation
-            }
+            SocketRequest::ResumeAdaptation => Request::ResumeAdaptation,
 
-            SocketRequest::Shutdown | SocketRequest::Ping => {
-                Request::Status
-            }
+            SocketRequest::Shutdown | SocketRequest::Ping => Request::Status,
         }
     }
 }

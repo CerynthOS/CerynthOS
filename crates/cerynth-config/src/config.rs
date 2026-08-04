@@ -43,3 +43,53 @@ impl Config {
         fs::write(path, contents).unwrap();
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_FILE: &str = "target/test-config.toml";
+
+    #[test]
+    fn save_and_load_config() {
+        let config = Config {
+            default_profile: Profile::Performance,
+            adaptation_enabled: true,
+            scheduler_backend: SchedulerBackend::Mock,
+        };
+
+        config.save(TEST_FILE);
+
+        let loaded = Config::load(TEST_FILE);
+
+        assert_eq!(loaded.default_profile, Profile::Performance);
+        assert!(loaded.adaptation_enabled);
+        assert_eq!(loaded.scheduler_backend, SchedulerBackend::Mock);
+
+        let _ = std::fs::remove_file(TEST_FILE);
+    }
+
+    #[test]
+    fn missing_config_returns_default() {
+        let _ = std::fs::remove_file(TEST_FILE);
+
+        let config = Config::load(TEST_FILE);
+
+        assert_eq!(config.default_profile, Profile::Balanced);
+        assert!(!config.adaptation_enabled);
+    }
+
+    #[test]
+    fn corrupt_config_returns_default() {
+    	if let Some(parent) = std::path::Path::new(TEST_FILE).parent() {
+    	    let _ = std::fs::create_dir_all(parent);
+	}
+
+        std::fs::write(TEST_FILE, "this is not toml").unwrap();
+        let config = Config::load(TEST_FILE);
+
+        assert_eq!(config.default_profile, Profile::Balanced);
+        assert!(!config.adaptation_enabled);
+
+        let _ = std::fs::remove_file(TEST_FILE);
+    }
+}

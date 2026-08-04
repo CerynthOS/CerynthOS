@@ -11,14 +11,8 @@ pub use backend::{SchedulerBackend, SchedulerStatus};
 pub use profile::Profile;
 
 pub use protocol::{
-    Frame,
-    RequestEnvelope,
-    ResponseEnvelope,
-    VersionError,
-    DEFAULT_SOCKET_PATH,
-    MAX_MESSAGE_SIZE,
-    MIN_PROTOCOL_VERSION,
-    PROTOCOL_VERSION,
+    DEFAULT_SOCKET_PATH, Frame, MAX_MESSAGE_SIZE, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION,
+    RequestEnvelope, ResponseEnvelope, VersionError,
 };
 
 pub use request::{Request, SocketRequest};

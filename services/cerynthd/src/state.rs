@@ -21,3 +21,12 @@ impl From<RuntimeState> for DaemonState {
         }
     }
 }
+impl From<&DaemonState> for cerynth_config::RuntimeState {
+    fn from(state: &DaemonState) -> Self {
+        Self {
+            profile: state.profile.clone(),
+            adaptation_enabled: state.adaptation_enabled,
+            scheduler_backend: state.scheduler_backend.clone(),
+        }
+    }
+}

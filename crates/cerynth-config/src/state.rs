@@ -46,3 +46,49 @@ impl RuntimeState {
         fs::write(path, json).unwrap();
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_FILE: &str = "target/test-state.json";
+
+    #[test]
+    fn save_and_load_state() {
+        let state = RuntimeState {
+            profile: Profile::Interactive,
+            adaptation_enabled: true,
+            scheduler_backend: SchedulerBackend::Mock,
+        };
+
+        state.save(TEST_FILE);
+
+        let loaded = RuntimeState::load(TEST_FILE);
+
+        assert_eq!(loaded.profile, Profile::Interactive);
+        assert!(loaded.adaptation_enabled);
+
+        let _ = std::fs::remove_file(TEST_FILE);
+    }
+
+    #[test]
+    fn missing_state_returns_default() {
+        let _ = std::fs::remove_file(TEST_FILE);
+
+        let state = RuntimeState::load(TEST_FILE);
+
+        assert_eq!(state.profile, Profile::Balanced);
+        assert!(!state.adaptation_enabled);
+    }
+
+    #[test]
+    fn corrupt_state_returns_default() {
+        std::fs::write(TEST_FILE, "not json").unwrap();
+
+        let state = RuntimeState::load(TEST_FILE);
+
+        assert_eq!(state.profile, Profile::Balanced);
+        assert!(!state.adaptation_enabled);
+
+        let _ = std::fs::remove_file(TEST_FILE);
+    }
+}

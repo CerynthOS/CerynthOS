@@ -79,9 +79,18 @@ mod tests {
     #[test]
     fn profile_from_str() {
         assert_eq!("balanced".parse::<Profile>().unwrap(), Profile::Balanced);
-        assert_eq!("interactive".parse::<Profile>().unwrap(), Profile::Interactive);
-        assert_eq!("performance".parse::<Profile>().unwrap(), Profile::Performance);
-        assert_eq!("background".parse::<Profile>().unwrap(), Profile::Background);
+        assert_eq!(
+            "interactive".parse::<Profile>().unwrap(),
+            Profile::Interactive
+        );
+        assert_eq!(
+            "performance".parse::<Profile>().unwrap(),
+            Profile::Performance
+        );
+        assert_eq!(
+            "background".parse::<Profile>().unwrap(),
+            Profile::Background
+        );
         assert!("invalid".parse::<Profile>().is_err());
     }
 

@@ -47,7 +47,10 @@ impl RequestEnvelope {
     }
 
     /// Creates a new request envelope with a correlation ID.
-    pub fn with_correlation_id(request: crate::request::SocketRequest, correlation_id: String) -> Self {
+    pub fn with_correlation_id(
+        request: crate::request::SocketRequest,
+        correlation_id: String,
+    ) -> Self {
         Self {
             version: PROTOCOL_VERSION,
             correlation_id: Some(correlation_id),
@@ -89,7 +92,10 @@ pub struct ResponseEnvelope {
 
 impl ResponseEnvelope {
     /// Creates a new response envelope for the given request envelope.
-    pub fn for_request(request: &RequestEnvelope, response: crate::response::SocketResponse) -> Self {
+    pub fn for_request(
+        request: &RequestEnvelope,
+        response: crate::response::SocketResponse,
+    ) -> Self {
         Self {
             version: PROTOCOL_VERSION,
             correlation_id: request.correlation_id.clone(),
@@ -98,7 +104,10 @@ impl ResponseEnvelope {
     }
 
     /// Creates a new response envelope with an explicit correlation ID.
-    pub fn with_correlation_id(response: crate::response::SocketResponse, correlation_id: String) -> Self {
+    pub fn with_correlation_id(
+        response: crate::response::SocketResponse,
+        correlation_id: String,
+    ) -> Self {
         Self {
             version: PROTOCOL_VERSION,
             correlation_id: Some(correlation_id),
@@ -157,7 +166,7 @@ pub trait Frame: Serialize + for<'de> Deserialize<'de> {
     /// Parses a frame from a line (newline-delimited JSON).
     fn from_line(line: &[u8]) -> Result<Self, serde_json::Error> {
         // Trim trailing newline
-	let trimmed = line
+        let trimmed = line
             .strip_suffix(b"\n")
             .or_else(|| line.strip_suffix(b"\r\n"))
             .unwrap_or(line);
@@ -218,7 +227,8 @@ mod tests {
 
     #[test]
     fn response_envelope_for_request() {
-        let req = RequestEnvelope::with_correlation_id(SocketRequest::Status, "req-123".to_string());
+        let req =
+            RequestEnvelope::with_correlation_id(SocketRequest::Status, "req-123".to_string());
         let resp = SocketResponse::Success;
         let envelope = ResponseEnvelope::for_request(&req, resp);
 

@@ -21,19 +21,13 @@ pub enum Response {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum SocketResponse {
-    Status {
-        status: SchedulerStatus,
-    },
+    Status { status: SchedulerStatus },
 
-    Profile {
-        profile: Profile,
-    },
+    Profile { profile: Profile },
 
     Success,
 
-    Error {
-        message: String,
-    },
+    Error { message: String },
 
     Pong,
 }
@@ -41,21 +35,13 @@ pub enum SocketResponse {
 impl From<Response> for SocketResponse {
     fn from(response: Response) -> Self {
         match response {
-            Response::Status(status) => {
-                SocketResponse::Status { status }
-            }
+            Response::Status(status) => SocketResponse::Status { status },
 
-            Response::Profile(profile) => {
-                SocketResponse::Profile { profile }
-            }
+            Response::Profile(profile) => SocketResponse::Profile { profile },
 
-            Response::Success => {
-                SocketResponse::Success
-            }
+            Response::Success => SocketResponse::Success,
 
-            Response::Error(message) => {
-                SocketResponse::Error { message }
-            }
+            Response::Error(message) => SocketResponse::Error { message },
         }
     }
 }

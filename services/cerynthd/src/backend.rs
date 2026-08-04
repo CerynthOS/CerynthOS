@@ -1,5 +1,12 @@
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
+
 use crate::state::DaemonState;
-use cerynth_ipc::{Profile, SchedulerBackend, SchedulerStatus};
+use cerynth_ipc::{Profile, SchedulerStatus};
+
+/// Shared backend type used by the daemon.
+pub type SharedBackend = Arc<Mutex<MockBackend>>;
 
 /// Every scheduler backend (Mock, SCX, etc.) must implement this.
 pub trait Backend {
@@ -14,7 +21,8 @@ pub trait Backend {
     fn resume_adaptation(&mut self);
 }
 
-/// Temporary backend until the real SCX backend is available.
+/// Temporary backend until the real SCX backend is implemented.
+#[derive(Debug)]
 pub struct MockBackend {
     state: DaemonState,
 }
@@ -22,6 +30,9 @@ pub struct MockBackend {
 impl MockBackend {
     pub fn new(state: DaemonState) -> Self {
         Self { state }
+    }
+    pub fn state(&self) -> &DaemonState {
+        &self.state
     }
 }
 

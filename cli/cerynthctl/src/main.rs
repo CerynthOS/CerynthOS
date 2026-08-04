@@ -1,11 +1,12 @@
+mod client;
 mod commands;
+mod output;
+mod transport;
+mod timeout;
+mod error;
 
 use commands::parse_command;
-use cerynth_ipc::Request;
-use serde_json::json;
-
-use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::UnixStream;
+use output::print_response;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -23,47 +24,15 @@ fn main() {
         }
     };
 
-    let json_request = match request {
-
-        Request::Status =>
-            json!({"command":"status"}),
-
-        Request::GetProfile =>
-            json!({"command":"get-profile"}),
-
-        Request::PauseAdaptation =>
-            json!({"command":"pause-adaptation"}),
-
-        Request::ResumeAdaptation =>
-            json!({"command":"resume-adaptation"}),
-
-        Request::SetProfile(profile) => {
-
-            let profile = format!("{:?}", profile).to_lowercase();
-
-            json!({
-                "command":"set-profile",
-                "profile":profile
-            })
+    let envelope = match client::execute(request) {
+        Ok(response) => response,
+        Err(_) => {
+            eprintln!("Error: Could not connect to cerynthd.");
+            eprintln!("Is the daemon running?");
+            std::process::exit(1);
         }
     };
 
-    let mut stream =
-        UnixStream::connect("/tmp/cerynthd.sock")
-            .expect("Failed to connect to daemon");
+    print_response(envelope);
 
-    writeln!(
-        stream,
-        "{}",
-        serde_json::to_string(&json_request).unwrap()
-    )
-    .unwrap();
-
-    let mut reader = BufReader::new(stream);
-
-    let mut response = String::new();
-
-    reader.read_line(&mut response).unwrap();
-
-    println!("{}", response);
 }
