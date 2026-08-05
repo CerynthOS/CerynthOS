@@ -1,0 +1,178 @@
+use crate::backend::MockBackend;
+use crate::handlers::handle_request;
+use crate::protocol::{SocketRequest, SocketResponse};
+use crate::state::DaemonState;
+
+use cerynth_config::state::RuntimeState;
+use cerynth_ipc::{Profile, Request, Response, SchedulerBackend};
+
+use std::fs;
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixListener;
+
+pub fn start_server() {
+    let socket_path = "/tmp/cerynthd.sock";
+
+    let _ = fs::remove_file(socket_path);
+
+    let listener =
+        UnixListener::bind(socket_path)
+            .expect("Failed to create socket");
+
+    println!("Cerynth daemon listening on {}", socket_path);
+
+    let state = DaemonState {
+        profile: Profile::Balanced,
+        adaptation_enabled: false,
+        scheduler_backend: SchedulerBackend::Mock,
+    };
+
+    let mut backend = MockBackend::new(state);
+    let state_path = "/tmp/cerynth-state.json";
+    let mut runtime_state = RuntimeState::load(state_path);
+
+    for stream in listener.incoming() {
+        match stream {
+
+            Ok(mut stream) => {
+
+                let mut reader =
+                    BufReader::new(stream.try_clone().unwrap());
+
+                let mut line = String::new();
+
+                reader.read_line(&mut line).unwrap();
+
+                let socket_request: SocketRequest =
+                    serde_json::from_str(&line)
+                        .expect("Invalid JSON");
+
+                let request = match socket_request.command.as_str() {
+
+                    "status" => Request::Status,
+
+                    "get-profile" => Request::GetProfile,
+
+                    "pause-adaptation" => Request::PauseAdaptation,
+
+                    "resume-adaptation" => Request::ResumeAdaptation,
+
+                    "set-profile" => {
+
+                        let profile =
+                            match socket_request.profile.as_deref() {
+
+                                Some("balanced") =>
+                                    Profile::Balanced,
+
+                                Some("interactive") =>
+                                    Profile::Interactive,
+
+                                Some("performance") =>
+                                    Profile::Performance,
+
+                                Some("background") =>
+                                    Profile::Background,
+                                _ =>
+                                    continue,
+                            };
+
+                        Request::SetProfile(profile)
+                    }
+
+                    _ => continue,
+                };
+
+                let response =
+                    handle_request(&mut backend, request);
+
+                let socket_response =
+                    match response {
+
+                        Response::Status(status) => {
+
+                            SocketResponse {
+
+                                status: "ok".into(),
+
+                                scheduler:
+                                    Some("mock".into()),
+
+                                profile:
+                                    Some(format!("{:?}", status.profile)
+                                        .to_lowercase()),
+
+                                adaptation_enabled:
+                                    Some(status.adaptation_enabled),
+
+                                message: None,
+                            }
+                        }
+
+                        Response::Profile(profile) => {
+
+                            SocketResponse {
+
+                                status: "ok".into(),
+
+                                scheduler: None,
+
+                                profile: er() { Some(format!("{:?}", profile) - 
+println!("Starting IPC server..."); .to_lowercase()), + let socket_path = "/tmp/cerynthd.sock"; 
++ adaptation_enabled: None, + let _ = fs::remove_file(socket_path); + message: None, + let 
+listener = } + UnixListener::bind(socket_path) } + .expect("Failed to create socket"); + + 
+println!("Cerynth daemon listening on {}", socket_path); Response::Success => { + + let state = 
+DaemonState { runtime_state.profile = + profile: Profile::Balanced, match request { + 
+adaptation_enabled: false, + scheduler_backend: SchedulerBackend::Mock, 
+Request::SetProfile(Profile::Balanced) => + }; "balanced".into(), + + let mut backend = 
+MockBackend::new(state); Request::SetProfile(Profile::Interactive) => + let state_path = 
+"/tmp/cerynth-state.json"; "interactive".into(), + let mut runtime_state = 
+RuntimeState::load(state_path); + Request::SetProfile(Profile::Performance) => + for stream in 
+listener.incoming() { "performance".into(), + match stream { + 
+Request::SetProfile(Profile::Background) => + Ok(mut stream) => { "background".into(), + + let 
+mut reader = _ => runtime_state.profile.clone(), + BufReader::new(stream.try_clone().unwrap()); 
+};
++ runtime_state.save(state_path); + let mut line = String::new();
+:    		SocketResponse {
+diff --git a/services/cerynthd/src/server.rs b/services/cerynthd/src/server.rs status: 
+        		"ok".into(),
+index d51cf8c..c866d3c 100644 scheduler: None, --- a/services/cerynthd/src/server.rs +++ 
+b/services/cerynthd/src/server.rs profile: None, @@ -1,3 +1,180 @@ +use 
+crate::backend::MockBackend; adaptation_enabled: None, +use crate::handlers::handle_request; 
++use crate::protocol::{SocketRequest, SocketResponse}; message: Some("success".into()), +use 
+crate::state::DaemonState; } + } +use cerynth_config::state::RuntimeState; +use 
+cerynth_ipc::{Profile, Request, Response, SchedulerBackend}; let json = + 
+serde_json::to_string(&socket_response) +use std::fs; .unwrap(); +use std::io::{BufRead, 
+BufReader, Write}; +use std::os::unix::net::UnixListener; writeln!(stream, "{}", json).unwrap(); 
++ }
+ pub fn start_server() { Err(e) => { - println!("Starting IPC server..."); eprintln!("{}", e); + 
+let socket_path = "/tmp/cerynthd.sock"; } + } + let _ = fs::remove_file(socket_path); } +} + let 
+listener =
++        UnixListener::bind(socket_path)
++            .expect("Failed to create socket");
++
++    println!("Cerynth daemon listening on {}", socket_path);
++
++    let state = DaemonState {
++        profile: Profile::Balanced,
++        adaptation_enabled: false,
++        scheduler_backend: SchedulerBackend::Mock,
++    };
++
++    let mut backend = MockBackend::new(state);
++    let state_path = "/tmp/cerynth-state.json";
++    let mut runtime_state = RuntimeState::load(state_path);
++
++    for stream in listener.incoming() {
++        match stream {
++
++            Ok(mut stream) => {
++
++                let mut reader =
++                    BufReader::new(stream.try_clone().unwrap());
++
++                let mut line = String::new();
++
+:
+
+
