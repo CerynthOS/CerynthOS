@@ -1,0 +1,14 @@
+[Unit]
+Description=CerynthOS successful boot marker
+After=multi-user.target
+ConditionPathIsReadWrite=/run
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mkdir -p /run/cerynth
+ExecStart=/usr/bin/sh -c 'printf "kernel=%s\ntimestamp=%s\n" "$$(uname -r)" "$$(date -u +%%FT%%TZ)" > /run/cerynth/boot-ok'
+ExecStart=/usr/bin/sh -c 'echo CERYNTH_BOOT_OK > /dev/console'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
