@@ -29,6 +29,9 @@ bzImage
 *.qcow2
 *.raw
 
+# Generated benchmark artifacts
+/artifacts/
+
 # Generated telemetry and models
 /data/*
 !/data/samples/
@@ -56,3 +59,28 @@ __pycache__/
 # Local terminal logs — may contain secrets
 terminal-history*.txt
 terminal-session*.log
+
+# CerynthOS VM artifacts
+vm/images/*.qcow2
+vm/images/*.raw
+vm/overlays/*.qcow2
+vm/logs/*
+artifacts/boot-report/*
+!artifacts/boot-report/.gitkeep
+
+# CerynthOS VM files
+vm/images/*.img
+vm/images/*.qcow2
+vm/overlays/*.qcow2
+vm/cloud-init/*.iso
+vm/initramfs/initrd.img-*
+vm/logs/*
+vm/modules/*
+artifacts/boot-report/*
+
+!vm/images/.gitkeep
+!vm/overlays/.gitkeep
+!vm/initramfs/.gitkeep
+!vm/logs/.gitkeep
+!vm/modules/.gitkeep
+!artifacts/boot-report/.gitkeep
