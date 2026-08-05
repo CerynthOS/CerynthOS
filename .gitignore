@@ -29,6 +29,9 @@ bzImage
 *.qcow2
 *.raw
 
+# Generated benchmark artifacts
+/artifacts/
+
 # Generated telemetry and models
 /data/*
 !/data/samples/
