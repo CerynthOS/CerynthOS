@@ -1,0 +1,27 @@
+[Unit]
+Description=CerynthOS Control Plane Daemon
+After=network.target
+
+[Service]
+Type=simple
+
+ExecStart=/usr/local/bin/cerynthd
+
+Restart=on-failure
+RestartSec=5
+
+RuntimeDirectory=cerynth
+StateDirectory=cerynth
+
+WorkingDirectory=/var/lib/cerynth
+
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
