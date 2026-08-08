@@ -15,20 +15,20 @@ use std::mem::MaybeUninit;
 
 use anyhow::Result;
 use bpf::*;
-use libbpf_rs::OpenObject;
-use scx_utils::libbpf_clap_opts::LibbpfOpts;
-use scx_utils::UserExitInfo;
 use clap::Parser;
+use libbpf_rs::OpenObject;
+use scx_utils::UserExitInfo;
+use scx_utils::libbpf_clap_opts::LibbpfOpts;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-enum Profile{
+enum Profile {
     Balanced,
     Interactive,
 }
 
-#[derive(Parser,Debug)]
+#[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
-struct Cli{
+struct Cli {
     /// Which schedulinh profile to run.
     #[arg(long, value_enum, default_value_t = Profile::Balanced)]
     profile: Profile,
@@ -53,6 +53,7 @@ impl<'a> Scheduler<'a> {
             false,
             false,
             true,
+            false,
             slice_ns,
             "cerynth_scx",
         )?;
