@@ -1,9 +1,9 @@
 mod client;
 mod commands;
-mod output;
-mod transport;
-mod timeout;
 mod error;
+mod output;
+mod timeout;
+mod transport;
 
 use commands::parse_command;
 use output::print_response;
@@ -16,6 +16,9 @@ fn main() {
         None => {
             println!("Usage:");
             println!("  cerynthctl status");
+            println!("  cerynthctl start");
+            println!("  cerynthctl stop");
+            println!("  cerynthctl restart");
             println!("  cerynthctl profile get");
             println!("  cerynthctl profile set <balanced|interactive|performance|background>");
             println!("  cerynthctl adaptation pause");
@@ -34,5 +37,4 @@ fn main() {
     };
 
     print_response(envelope);
-
 }
