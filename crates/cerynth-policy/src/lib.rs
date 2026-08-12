@@ -202,11 +202,14 @@ impl Policy for RulesBasedPolicy {
         }
 
         // Generate the raw workload recommendation first.
-        let candidate = if input.cpu_usage_percent >= 90.0 && input.runnable_tasks >= 4 {
+        let candidate = if input.cpu_usage_percent >= 90.0
+            && input.runnable_tasks >= 4
+            && input.context_switch_rate < 200.0
+        {
             self.decision(
                 Profile::Performance,
                 0.85,
-                "Very high CPU utilisation with a sustained runnable queue",
+                "Very high CPU utilisation with sustained runnable pressure and limited context switching",
             )
         } else if input.cpu_usage_percent >= 60.0
             && input.runnable_tasks >= 4
@@ -297,10 +300,10 @@ mod tests {
     }
 
     #[test]
-    fn performance_takes_priority_over_interactive() {
+    fn performance_dominates_when_context_switching_is_low() {
         let mut policy = RulesBasedPolicy::new();
 
-        let workload = input(98.0, 1.0, 5, 200.0, 0.0);
+        let workload = input(98.0, 1.0, 5, 150.0, 0.0);
 
         policy.evaluate(&workload);
         policy.evaluate(&workload);
