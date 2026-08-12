@@ -57,7 +57,7 @@ impl SchedulerStatus {
             let mut file = fs::File::create(&tmp_path)?;
             file.write_all(json.as_bytes())?;
             file.sync_all()?;
-        }   
+        }
         fs::rename(&tmp_path, STATUS_PATH)?;
         Ok(())
     }

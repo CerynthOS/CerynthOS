@@ -80,9 +80,9 @@ mod tests {
 
     #[test]
     fn corrupt_config_returns_default() {
-    	if let Some(parent) = std::path::Path::new(TEST_FILE).parent() {
-    	    let _ = std::fs::create_dir_all(parent);
-	}
+        if let Some(parent) = std::path::Path::new(TEST_FILE).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
 
         std::fs::write(TEST_FILE, "this is not toml").unwrap();
         let config = Config::load(TEST_FILE);

@@ -1,15 +1,8 @@
-use cerynth_ipc::{
-    Request,
-    RequestEnvelope,
-    ResponseEnvelope,
-    SocketRequest,
-};
+use cerynth_ipc::{Request, RequestEnvelope, ResponseEnvelope, SocketRequest};
 
 use crate::transport::send_request;
 
-pub fn execute(
-    request: Request,
-) -> std::io::Result<ResponseEnvelope> {
+pub fn execute(request: Request) -> std::io::Result<ResponseEnvelope> {
     let socket_request = match request {
         Request::Status => SocketRequest::Status,
 
@@ -19,9 +12,7 @@ pub fn execute(
 
         Request::ResumeAdaptation => SocketRequest::ResumeAdaptation,
 
-        Request::SetProfile(profile) => {
-            SocketRequest::SetProfile { profile }
-        }
+        Request::SetProfile(profile) => SocketRequest::SetProfile { profile },
     };
 
     let envelope = RequestEnvelope::new(socket_request);

@@ -365,6 +365,14 @@ dependencies = [
 [[package]]
 name = "cerynth-policy"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cerynth-ipc",
+ "cerynth-telemetry",
+ "clap",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "cerynth-scx"

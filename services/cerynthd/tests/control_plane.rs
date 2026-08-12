@@ -60,7 +60,15 @@ fn cli_set_and_get_profile() {
 
     // Set profile
     let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "set", "interactive"])
+        .args([
+            "run",
+            "-p",
+            "cerynthctl",
+            "--",
+            "profile",
+            "set",
+            "interactive",
+        ])
         .output()
         .expect("failed to set profile");
 
@@ -89,7 +97,15 @@ fn profile_persists_after_restart() {
 
     // Set profile
     let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "set", "performance"])
+        .args([
+            "run",
+            "-p",
+            "cerynthctl",
+            "--",
+            "profile",
+            "set",
+            "performance",
+        ])
         .output()
         .expect("failed to set profile");
 

@@ -38,7 +38,7 @@ pub async fn start_server(backend: SharedBackend) -> std::io::Result<()> {
 
                 if Path::new(DEFAULT_SOCKET_PATH).exists() {
                     let _ = std::fs::remove_file(DEFAULT_SOCKET_PATH);
-                } 
+                }
 
                 break;
             }
@@ -46,5 +46,4 @@ pub async fn start_server(backend: SharedBackend) -> std::io::Result<()> {
     }
 
     Ok(())
-
 }
