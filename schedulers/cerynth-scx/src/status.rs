@@ -8,7 +8,6 @@ use crate::profile::Profile;
 
 const STATUS_DIR: &str = "/run/cerynth";
 const STATUS_PATH: &str = "/run/cerynth/scheduler.json";
-
 #[derive(Serialize)]
 pub struct SchedulerStatus {
     pub running: bool,
@@ -16,8 +15,13 @@ pub struct SchedulerStatus {
     pub profile: String,
     pub healthy: bool,
     pub started_at_ms: u64,
+    pub sched_ext_state: String,
 }
-
+fn read_sched_ext_state() -> String {
+    fs::read_to_string("/sys/kernel/sched_ext/state")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "unavailable".to_string())
+}
 impl SchedulerStatus {
     pub fn running(profile: Profile) -> Self {
         let started_at_ms = SystemTime::now()
@@ -30,6 +34,7 @@ impl SchedulerStatus {
             profile: format!("{profile:?}"),
             healthy: true,
             started_at_ms,
+            sched_ext_state: read_sched_ext_state(),
         }
     }
 
@@ -40,6 +45,7 @@ impl SchedulerStatus {
             profile: String::new(),
             healthy: false,
             started_at_ms: 0,
+            sched_ext_state: read_sched_ext_state(),
         }
     }
 
