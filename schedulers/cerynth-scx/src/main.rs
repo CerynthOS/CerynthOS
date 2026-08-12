@@ -15,23 +15,23 @@ use std::mem::MaybeUninit;
 
 use anyhow::Result;
 use bpf::*;
-use libbpf_rs::OpenObject;
-use scx_utils::libbpf_clap_opts::LibbpfOpts;
-use scx_utils::UserExitInfo;
 use clap::Parser;
+use libbpf_rs::OpenObject;
+use scx_utils::UserExitInfo;
+use scx_utils::libbpf_clap_opts::LibbpfOpts;
 
 mod profile;
 use profile::Profile;
 
-mod policy;
 mod error;
+mod policy;
 mod status;
 
 const MAX_BATCH: usize = 64;
 
-#[derive(Parser,Debug)]
+#[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
-struct Cli{
+struct Cli {
     /// Which schedulinh profile to run.
     #[arg(long, value_enum, default_value_t = Profile::Balanced)]
     profile: Profile,
@@ -56,23 +56,23 @@ impl<'a> Scheduler<'a> {
             false,
             false,
             true,
-	    false,
+            false,
             slice_ns,
             "cerynth_scx",
         )?;
         Ok(Self { bpf, profile })
     }
 
-    fn dispatch_tasks(&mut self){
+    fn dispatch_tasks(&mut self) {
         let mut tasks = Vec::new();
         loop {
-            if tasks.len()>=MAX_BATCH {
+            if tasks.len() >= MAX_BATCH {
                 break;
             }
             match self.bpf.dequeue_task() {
                 Ok(Some(task)) => tasks.push(task),
                 Ok(None) => break,
-                Err(errno) =>{
+                Err(errno) => {
                     eprintln!("cerynth-scx: {}", error::SchedError::Dequeue(errno));
                     break;
                 }
@@ -81,7 +81,7 @@ impl<'a> Scheduler<'a> {
         for task in policy::order_tasks(self.profile, tasks) {
             let dispatched_task = DispatchedTask::new(&task);
             if let Err(e) = self.bpf.dispatch_task(&dispatched_task) {
-                eprintln!("cerynth-scx: {}",error::SchedError::Dispatch(e));
+                eprintln!("cerynth-scx: {}", error::SchedError::Dispatch(e));
             }
         }
         self.bpf.notify_complete(0);

@@ -1,9 +1,9 @@
 mod client;
 mod commands;
-mod output;
-mod transport;
-mod timeout;
 mod error;
+mod output;
+mod timeout;
+mod transport;
 
 use commands::parse_command;
 use output::print_response;
@@ -34,5 +34,4 @@ fn main() {
     };
 
     print_response(envelope);
-
 }

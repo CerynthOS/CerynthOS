@@ -5,17 +5,9 @@ use tokio::{
 
 use cerynth_config::RuntimeState;
 
-use cerynth_ipc::{
-    MAX_MESSAGE_SIZE,
-    Request,
-    ResponseEnvelope,
-    SocketResponse,
-};
+use cerynth_ipc::{MAX_MESSAGE_SIZE, Request, ResponseEnvelope, SocketResponse};
 
-use crate::{
-    backend::SharedBackend,
-    handlers::handle_request,
-};
+use crate::{backend::SharedBackend, handlers::handle_request};
 
 use super::codec::{decode_request, encode_response};
 
@@ -60,8 +52,7 @@ pub async fn handle_connection(
 
     let socket_response: SocketResponse = response.into();
 
-    let response =
-        ResponseEnvelope::for_request(&envelope, socket_response);
+    let response = ResponseEnvelope::for_request(&envelope, socket_response);
 
     let bytes = encode_response(&response).unwrap();
 

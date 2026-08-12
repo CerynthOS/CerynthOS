@@ -5,9 +5,7 @@ use cerynth_ipc::{Frame, RequestEnvelope, ResponseEnvelope};
 
 const SOCKET_PATH: &str = "/tmp/cerynthd.sock";
 
-pub fn send_request(
-    request: RequestEnvelope,
-) -> std::io::Result<ResponseEnvelope> {
+pub fn send_request(request: RequestEnvelope) -> std::io::Result<ResponseEnvelope> {
     let mut stream = UnixStream::connect(SOCKET_PATH)?;
 
     let bytes = request.to_line().unwrap();
