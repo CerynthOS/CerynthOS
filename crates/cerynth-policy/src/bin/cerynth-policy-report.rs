@@ -35,17 +35,15 @@ fn profile_name(profile: Profile) -> String {
 }
 
 fn analyze(path: &Path) -> Result<Report> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("reading {}", path.display()))?;
+    let content =
+        fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
 
     let mut report = Report::default();
     let mut previous: Option<Profile> = None;
 
     for line in content.lines().filter(|line| !line.trim().is_empty()) {
-        let record: PolicyRecord =
-            serde_json::from_str(line).with_context(|| {
-                format!("parsing policy decision in {}", path.display())
-            })?;
+        let record: PolicyRecord = serde_json::from_str(line)
+            .with_context(|| format!("parsing policy decision in {}", path.display()))?;
 
         report.samples += 1;
 
@@ -117,7 +115,7 @@ fn print_report(path: &Path, report: &Report) {
     }
 
     println!();
-    println!("Transitions:");
+    println!("Recommendation transitions:");
 
     if report.transitions.is_empty() {
         println!("  none");
@@ -135,25 +133,22 @@ fn print_report(path: &Path, report: &Report) {
 }
 
 fn main() -> Result<()> {
-    let artifacts = PathBuf::from("artifacts");
+    let replay_dir = PathBuf::from("artifacts/policy-replay/full");
 
-    let mut files: Vec<PathBuf> = fs::read_dir(&artifacts)
-        .with_context(|| format!("reading {}", artifacts.display()))?
+    let mut files: Vec<PathBuf> = fs::read_dir(&replay_dir)
+        .with_context(|| format!("reading {}", replay_dir.display()))?
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
         .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| {
-                    name.starts_with("policy-decisions-")
-                        && name.ends_with(".jsonl")
-                })
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext == "jsonl")
         })
         .collect();
 
     files.sort();
 
     if files.is_empty() {
-        println!("No policy replay files found in artifacts/");
+        println!("No policy replay files found in artifacts/policy-replay/full/");
         return Ok(());
     }
 
