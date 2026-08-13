@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Increment this when making breaking changes to the message format.
 /// The daemon and client should negotiate version on connection.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// Minimum supported protocol version for backward compatibility.
 pub const MIN_PROTOCOL_VERSION: u32 = 1;
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn protocol_version_constants() {
-        assert_eq!(PROTOCOL_VERSION, 1);
+        assert_eq!(PROTOCOL_VERSION, 2);
         assert_eq!(MIN_PROTOCOL_VERSION, 1);
         assert_eq!(MAX_MESSAGE_SIZE, 64 * 1024);
         assert_eq!(DEFAULT_SOCKET_PATH, "/tmp/cerynthd.sock");

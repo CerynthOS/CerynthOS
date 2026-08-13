@@ -16,6 +16,9 @@ fn main() {
         None => {
             println!("Usage:");
             println!("  cerynthctl status");
+            println!("  cerynthctl start");
+            println!("  cerynthctl stop");
+            println!("  cerynthctl restart");
             println!("  cerynthctl profile get");
             println!("  cerynthctl profile set <balanced|interactive|performance|background>");
             println!("  cerynthctl adaptation pause");

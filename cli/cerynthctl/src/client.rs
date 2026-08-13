@@ -13,6 +13,11 @@ pub fn execute(request: Request) -> std::io::Result<ResponseEnvelope> {
         Request::ResumeAdaptation => SocketRequest::ResumeAdaptation,
 
         Request::SetProfile(profile) => SocketRequest::SetProfile { profile },
+        Request::Start => SocketRequest::Start,
+
+        Request::Stop => SocketRequest::Stop,
+
+        Request::Restart => SocketRequest::Restart,
     };
 
     let envelope = RequestEnvelope::new(socket_request);

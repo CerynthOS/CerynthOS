@@ -2,7 +2,17 @@ use cerynth_ipc::{Profile, SchedulerBackend};
 use serde::{Deserialize, Serialize};
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Default path of the SCX scheduler binary.
+fn default_scheduler_binary() -> PathBuf {
+    PathBuf::from("/usr/bin/cerynth-scx")
+}
+
+/// Helper so `auto_start` defaults to true when omitted from config.
+fn default_true() -> bool {
+    true
+}
 
 /// Persistent configuration loaded from a TOML file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,6 +20,14 @@ pub struct Config {
     pub default_profile: Profile,
     pub adaptation_enabled: bool,
     pub scheduler_backend: SchedulerBackend,
+
+    /// Path to the scheduler binary the daemon launches.
+    #[serde(default = "default_scheduler_binary")]
+    pub scheduler_binary: PathBuf,
+
+    /// Whether the daemon starts the scheduler automatically at boot.
+    #[serde(default = "default_true")]
+    pub auto_start: bool,
 }
 
 impl Default for Config {
@@ -18,6 +36,8 @@ impl Default for Config {
             default_profile: Profile::Balanced,
             adaptation_enabled: false,
             scheduler_backend: SchedulerBackend::Mock,
+            scheduler_binary: default_scheduler_binary(),
+            auto_start: true,
         }
     }
 }
@@ -59,6 +79,8 @@ mod tests {
             default_profile: Profile::Performance,
             adaptation_enabled: true,
             scheduler_backend: SchedulerBackend::Mock,
+            scheduler_binary: PathBuf::from("/opt/cerynth/cerynth-scx"),
+            auto_start: true,
         };
 
         config.save(TEST_FILE);
@@ -68,6 +90,11 @@ mod tests {
         assert_eq!(loaded.default_profile, Profile::Performance);
         assert!(loaded.adaptation_enabled);
         assert_eq!(loaded.scheduler_backend, SchedulerBackend::Mock);
+        assert_eq!(
+            loaded.scheduler_binary,
+            PathBuf::from("/opt/cerynth/cerynth-scx")
+        );
+        assert!(loaded.auto_start);
 
         let _ = std::fs::remove_file(TEST_FILE);
     }
@@ -87,7 +114,6 @@ mod tests {
     #[test]
     fn corrupt_config_returns_default() {
         const TEST_FILE: &str = "target/test-config-corrupt.toml";
-
         if let Some(parent) = std::path::Path::new(TEST_FILE).parent() {
             let _ = std::fs::create_dir_all(parent);
         }

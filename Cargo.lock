@@ -431,6 +431,7 @@ version = "0.1.0"
 dependencies = [
  "cerynth-config",
  "cerynth-ipc",
+ "libc",
  "serde",
  "serde_json",
  "tokio",
