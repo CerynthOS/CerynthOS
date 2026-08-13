@@ -11,9 +11,13 @@ require_tool stress-ng "sudo apt install -y stress-ng"
 
 cpus="$(nproc)"
 end=$(( $(date +%s) + DURATION ))
+bursts=0
 
 echo "burst: alternating stress-ng --cpu ${cpus} bursts and idle pauses for ${DURATION}s"
 while [ "$(date +%s)" -lt "${end}" ]; do
   stress-ng --cpu "${cpus}" --timeout 3s >/dev/null 2>&1 || true
+  bursts=$((bursts + 1))
   sleep 2
 done
+
+echo "completed_bursts=${bursts}"

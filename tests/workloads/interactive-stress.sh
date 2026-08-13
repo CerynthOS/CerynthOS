@@ -17,9 +17,14 @@ stress-ng --cpu "${background_load}" --timeout "${DURATION}s" &
 bg_pid=$!
 
 end=$(( $(date +%s) + DURATION ))
+iterations=0
+
 while [ "$(date +%s)" -lt "${end}" ]; do
   /bin/true
+  iterations=$((iterations + 1))
   sleep 0.2
 done
 
 wait "${bg_pid}"
+
+echo "interactive_iterations=${iterations}"
