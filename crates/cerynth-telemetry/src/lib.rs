@@ -30,6 +30,8 @@ pub struct SystemSnapshot {
     pub runnable_tasks: u64,
     pub total_tasks: u64,
     pub context_switches: u64,
+    pub context_switch_rate: f64,
+    pub short_lived_process_rate: f64,
     pub interrupts: u64,
     pub memory_used_bytes: u64,
     pub memory_total_bytes: u64,
@@ -105,6 +107,9 @@ impl CpuTimes {
 pub struct ProcTelemetrySource {
     prev_cpu: Option<CpuTimes>,
     prev_proc_cpu: HashMap<i32, u64>,
+    pid_first_seen: HashMap<i32, Instant>,
+    prev_context_switches: Option<u64>,
+    prev_processes: Option<u64>,
     prev_sample_at: Option<Instant>,
     clk_tck: f64,
 }
@@ -125,6 +130,9 @@ impl ProcTelemetrySource {
         Self {
             prev_cpu: None,
             prev_proc_cpu: HashMap::new(),
+            pid_first_seen: HashMap::new(),
+            prev_context_switches: None,
+            prev_processes: None,
             prev_sample_at: None,
             clk_tck: if clk_tck > 0 { clk_tck as f64 } else { 100.0 },
         }
@@ -226,6 +234,7 @@ impl TelemetrySource for ProcTelemetrySource {
         let stat = fs::read_to_string("/proc/stat").context("reading /proc/stat")?;
         let mut context_switches = 0u64;
         let mut interrupts = 0u64;
+        let mut processes_created = 0u64;
         let mut runnable_tasks = 0u64;
         let mut cpu_cur = None;
         for line in stat.lines() {
@@ -237,6 +246,8 @@ impl TelemetrySource for ProcTelemetrySource {
                 cpu_cur = Some(CpuTimes::from_fields(&fields));
             } else if let Some(rest) = line.strip_prefix("ctxt ") {
                 context_switches = rest.trim().parse().unwrap_or(0);
+            } else if let Some(rest) = line.strip_prefix("processes ") {
+                processes_created = rest.trim().parse().unwrap_or(0);
             } else if let Some(rest) = line.strip_prefix("intr ") {
                 interrupts = rest
                     .split_whitespace()
@@ -253,6 +264,24 @@ impl TelemetrySource for ProcTelemetrySource {
             _ => 0.0,
         };
         self.prev_cpu = cpu_cur;
+
+        let context_switch_rate = match self.prev_context_switches {
+            Some(prev) if elapsed_secs > 0.0 => {
+                context_switches.saturating_sub(prev) as f64 / elapsed_secs
+            }
+            _ => 0.0,
+        };
+
+        self.prev_context_switches = Some(context_switches);
+
+        let process_creation_rate = match self.prev_processes {
+            Some(prev) if elapsed_secs > 0.0 => {
+                processes_created.saturating_sub(prev) as f64 / elapsed_secs
+            }
+            _ => 0.0,
+        };
+
+        self.prev_processes = Some(processes_created);
 
         let loadavg = fs::read_to_string("/proc/loadavg").context("reading /proc/loadavg")?;
         let load_parts: Vec<&str> = loadavg.split_whitespace().collect();
@@ -287,6 +316,58 @@ impl TelemetrySource for ProcTelemetrySource {
             .unwrap_or_else(|_| "unavailable".to_string());
 
         let top_processes = self.top_processes(elapsed_secs);
+
+        // Track process lifetimes so that normal process churn is not
+        // incorrectly classified as short-lived workload activity.
+        //
+        // A process contributes to the metric only when it disappears
+        // within the short-lived threshold.
+        const SHORT_LIVED_THRESHOLD_SECS: f64 = 5.0;
+
+        let current_pids: std::collections::HashSet<i32> = fs::read_dir("/proc")
+            .ok()
+            .into_iter()
+            .flat_map(|entries| entries.flatten())
+            .filter_map(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .and_then(|name| name.parse::<i32>().ok())
+            })
+            .collect();
+
+        // Record first-seen time for newly observed processes.
+        for &pid in &current_pids {
+            self.pid_first_seen.entry(pid).or_insert(now);
+        }
+
+        // Processes missing from the current snapshot have exited.
+        // Count only those whose observed lifetime was short.
+        let exited_pids: Vec<i32> = self
+            .pid_first_seen
+            .keys()
+            .copied()
+            .filter(|pid| !current_pids.contains(pid))
+            .collect();
+
+        let mut short_lived_processes = 0.0;
+
+        for pid in exited_pids {
+            if let Some(first_seen) = self.pid_first_seen.remove(&pid) {
+                let lifetime_secs = now.duration_since(first_seen).as_secs_f64();
+
+                if lifetime_secs < SHORT_LIVED_THRESHOLD_SECS {
+                    short_lived_processes += 1.0;
+                }
+            }
+        }
+
+        let short_lived_process_rate = if elapsed_secs > 0.0 {
+            short_lived_processes / elapsed_secs
+        } else {
+            0.0
+        };
+
         self.prev_sample_at = Some(now);
 
         Ok(SystemSnapshot {
@@ -298,6 +379,8 @@ impl TelemetrySource for ProcTelemetrySource {
             runnable_tasks,
             total_tasks,
             context_switches,
+            context_switch_rate,
+            short_lived_process_rate,
             interrupts,
             memory_used_bytes,
             memory_total_bytes,
