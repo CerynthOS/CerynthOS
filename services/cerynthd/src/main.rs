@@ -1,6 +1,7 @@
 mod backend;
 mod backends;
 mod handlers;
+mod paths;
 mod server;
 mod state;
 
@@ -13,29 +14,20 @@ use cerynth_config::{Config, RuntimeState};
 use state::DaemonState;
 use tokio::sync::Mutex;
 
-const CONFIG_PATH: &str = "/etc/cerynth/cerynth.toml";
-const STATE_PATH: &str = "runtime_state.json";
-
-/// Absolute path to the daemon's persisted runtime-state file.
-///
-/// Overridable via `CERYNTH_STATE_PATH` so that each integration test can run
-/// against an isolated state file instead of sharing the default one. Falls
-/// back to `STATE_PATH` (in the daemon's working directory) when unset.
-pub fn state_path() -> String {
-    std::env::var_os("CERYNTH_STATE_PATH")
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|| STATE_PATH.to_string())
-}
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting Cerynth daemon...\n");
 
+    // Resolved once, in `paths`, so load and save can never disagree.
+    let config_path = paths::config_path();
+    let state_path = paths::state_path();
+
     // Load configuration.
-    let config = Config::load(CONFIG_PATH);
+    let config = Config::load(config_path);
 
     // Load persisted runtime state.
-    let runtime_state = RuntimeState::load(&state_path());
+    let runtime_state = RuntimeState::load(state_path);
 
     // Convert persisted state into daemon state.
     let daemon_state: DaemonState = runtime_state.into();
@@ -46,8 +38,11 @@ async fn main() -> std::io::Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|| config.scheduler_binary.clone());
 
+    println!("Config file          : {config_path}");
+    println!("State file           : {state_path}");
     println!("Default profile      : {:?}", config.default_profile);
     println!("Scheduler backend    : {:?}", config.scheduler_backend);
+    println!("Scheduler binary     : {}", config.scheduler_binary.display());
     println!("Adaptation enabled   : {}", config.adaptation_enabled);
     println!("Scheduler binary     : {}", scheduler_binary.display());
     println!("Auto-start           : {}", config.auto_start);

@@ -37,8 +37,8 @@ fn start_daemon(tag: &str, extra: &[(&str, &str)]) -> (Child, PathBuf, PathBuf) 
     cmd.stdout(Stdio::null())
         .stderr(Stdio::null())
         .env("CERYNTH_SCX_BINARY", fake_scheduler())
-        .env("CERYNTH_SOCKET_PATH", &socket)
-        .env("CERYNTH_STATE_PATH", &state);
+        .env("CERYNTH_SOCKET", &socket)
+        .env("CERYNTH_STATE", &state);
     for (key, value) in extra {
         cmd.env(key, value);
     }
@@ -55,7 +55,7 @@ fn ctl(socket: &Path, args: &[&str]) -> Output {
     Command::new("cargo")
         .args(["run", "-p", "cerynthctl", "--"])
         .args(args)
-        .env("CERYNTH_SOCKET_PATH", socket)
+        .env("CERYNTH_SOCKET", socket)
         .output()
         .expect("failed to run cerynthctl")
 }
@@ -154,8 +154,8 @@ fn profile_persists_after_restart() {
     cmd.stdout(Stdio::null())
         .stderr(Stdio::null())
         .env("CERYNTH_SCX_BINARY", fake_scheduler())
-        .env("CERYNTH_SOCKET_PATH", &socket)
-        .env("CERYNTH_STATE_PATH", &state);
+        .env("CERYNTH_SOCKET", &socket)
+        .env("CERYNTH_STATE", &state);
     let mut daemon = cmd.spawn().expect("failed to restart daemon");
 
     thread::sleep(Duration::from_secs(1));

@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Write the CerynthOS boot marker.
+#
+# Run once per boot by cerynth-boot-marker.service. The marker records that
+# userspace reached multi-user.target on this kernel, and smoke tests use its
+# presence as proof that the boot completed rather than hung.
+#
+# This deliberately lives in a script rather than inline in the unit file:
+# systemd interprets '%' as a specifier, so a printf format string inside
+# ExecStart silently corrupts itself ('%s' expands to the user's shell).
+
+set -eu
+
+MARKER_DIR="${CERYNTH_RUNTIME_DIR:-/run/cerynth}"
+MARKER="$MARKER_DIR/boot-ok"
+
+mkdir -p "$MARKER_DIR"
+
+# Written to a temporary file and renamed so readers never observe a
+# half-written marker.
+TMP="$MARKER.tmp.$$"
+
+{
+    printf 'kernel=%s\n' "$(uname -r)"
+    printf 'timestamp=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'boot_id=%s\n' "$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo unknown)"
+} >"$TMP"
+
+mv "$TMP" "$MARKER"
+chmod 0644 "$MARKER"
+
+# Also announce on the console so host-side boot log capture can see it.
+if [ -w /dev/console ]; then
+    echo "CERYNTH_BOOT_OK $(uname -r)" >/dev/console 2>/dev/null || true
+fi
+
+exit 0

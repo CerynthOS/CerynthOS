@@ -1,27 +1,38 @@
 [Unit]
-Description=CerynthOS Control Plane Daemon
-After=network.target
+Description=CerynthOS Runtime Daemon
+Documentation=https://github.com/CerynthOS/CerynthOS
+After=local-fs.target
+Wants=local-fs.target
 
 [Service]
 Type=simple
 
-ExecStart=/usr/local/bin/cerynthd
+ExecStart=/usr/lib/cerynth/cerynthd
 
 Restart=on-failure
-RestartSec=5
+RestartSec=2
 
+# /run/cerynth holds the IPC socket, the scheduler status file, and the
+# boot marker. RuntimeDirectoryPreserve is required: without it systemd
+# removes the whole directory whenever this unit stops, which would delete
+# the boot marker written by cerynth-boot-marker.service.
 RuntimeDirectory=cerynth
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+
 StateDirectory=cerynth
+StateDirectoryMode=0755
 
-WorkingDirectory=/var/lib/cerynth
-
-ProtectSystem=strict
-ProtectHome=true
-PrivateTmp=true
-NoNewPrivileges=true
+ConfigurationDirectory=cerynth
+ConfigurationDirectoryMode=0755
 
 StandardOutput=journal
 StandardError=journal
+
+# The daemon launches cerynth-scx, which needs privileges to attach a
+# sched_ext scheduler, so this unit deliberately runs unconfined as root.
+# Tighten only alongside the capabilities cerynth-scx actually requires.
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
