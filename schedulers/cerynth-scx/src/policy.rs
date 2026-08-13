@@ -12,7 +12,7 @@ pub fn order_tasks(profile: Profile, mut tasks: Vec<QueuedTask>) -> Vec<QueuedTa
             tasks.sort_by_key(|task| task.exec_runtime);
             tasks
         }
-        Profile::Performance => tasks,  // FIFO: fewer, longer slices do the work
+        Profile::Performance => tasks, // FIFO: fewer, longer slices do the work
         Profile::Background => tasks,  // FIFO: latency doesn't matter here
     }
 }
@@ -57,9 +57,15 @@ mod tests {
         let tasks = vec![fake_task(1, 500), fake_task(2, 10)];
 
         let ordered = order_tasks(Profile::Performance, tasks.clone());
-        assert_eq!(ordered.iter().map(|t| t.pid).collect::<Vec<_>>(), vec![1, 2]);
+        assert_eq!(
+            ordered.iter().map(|t| t.pid).collect::<Vec<_>>(),
+            vec![1, 2]
+        );
 
         let ordered = order_tasks(Profile::Background, tasks);
-        assert_eq!(ordered.iter().map(|t| t.pid).collect::<Vec<_>>(), vec![1, 2]);
+        assert_eq!(
+            ordered.iter().map(|t| t.pid).collect::<Vec<_>>(),
+            vec![1, 2]
+        );
     }
 }

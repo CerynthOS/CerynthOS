@@ -1,32 +1,53 @@
 use crate::backend::Backend;
 use cerynth_ipc::{Request, Response};
 
-pub fn handle_request<B: Backend>(backend: &mut B, request: Request) -> Response {
+pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) -> Response {
     match request {
-        Request::Status => Response::Status(backend.status()),
+        Request::Status => match backend.status() {
+            Ok(status) => Response::Status(status),
+            Err(e) => Response::Error(e),
+        },
 
-        Request::GetProfile => Response::Profile(backend.get_profile()),
+        Request::GetProfile => match backend.get_profile() {
+            Ok(profile) => Response::Profile(profile),
+            Err(e) => Response::Error(e),
+        },
 
-        Request::SetProfile(profile) => {
-            backend.set_profile(profile);
-            Response::Success
-        }
+        Request::SetProfile(profile) => match backend.set_profile(profile) {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
 
-        Request::PauseAdaptation => {
-            backend.pause_adaptation();
-            Response::Success
-        }
+        Request::PauseAdaptation => match backend.pause_adaptation() {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
 
-        Request::ResumeAdaptation => {
-            backend.resume_adaptation();
-            Response::Success
-        }
+        Request::ResumeAdaptation => match backend.resume_adaptation() {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
+
+        Request::Start => match backend.start() {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
+
+        Request::Stop => match backend.stop() {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
+
+        Request::Restart => match backend.restart() {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{backend::MockBackend, state::DaemonState};
+    use crate::{backends::mock::MockBackend, state::DaemonState};
 
     use cerynth_ipc::{Profile, SchedulerBackend};
 
@@ -60,7 +81,7 @@ mod tests {
 
         assert_eq!(response, Response::Success);
 
-        assert_eq!(backend.get_profile(), Profile::Performance);
+        assert_eq!(backend.get_profile().unwrap(), Profile::Performance);
     }
 
     #[test]
@@ -69,10 +90,28 @@ mod tests {
 
         handle_request(&mut backend, Request::PauseAdaptation);
 
-        assert!(!backend.status().adaptation_enabled);
+        assert!(!backend.status().unwrap().adaptation_enabled);
 
         handle_request(&mut backend, Request::ResumeAdaptation);
 
-        assert!(backend.status().adaptation_enabled);
+        assert!(backend.status().unwrap().adaptation_enabled);
+    }
+
+    #[test]
+    fn lifecycle_requests() {
+        let mut backend = backend();
+
+        assert_eq!(
+            handle_request(&mut backend, Request::Start),
+            Response::Success
+        );
+        assert_eq!(
+            handle_request(&mut backend, Request::Restart),
+            Response::Success
+        );
+        assert_eq!(
+            handle_request(&mut backend, Request::Stop),
+            Response::Success
+        );
     }
 }
