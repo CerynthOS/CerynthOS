@@ -47,10 +47,14 @@ impl Config {
 mod tests {
     use super::*;
 
-    const TEST_FILE: &str = "target/test-config.toml";
+    // Each test uses its own file path. These tests run in parallel by
+    // default, so sharing one path let them race on the same file and
+    // intermittently fail depending on execution order.
 
     #[test]
     fn save_and_load_config() {
+        const TEST_FILE: &str = "target/test-config-save-and-load.toml";
+
         let config = Config {
             default_profile: Profile::Performance,
             adaptation_enabled: true,
@@ -70,6 +74,8 @@ mod tests {
 
     #[test]
     fn missing_config_returns_default() {
+        const TEST_FILE: &str = "target/test-config-missing.toml";
+
         let _ = std::fs::remove_file(TEST_FILE);
 
         let config = Config::load(TEST_FILE);
@@ -80,6 +86,8 @@ mod tests {
 
     #[test]
     fn corrupt_config_returns_default() {
+        const TEST_FILE: &str = "target/test-config-corrupt.toml";
+
         if let Some(parent) = std::path::Path::new(TEST_FILE).parent() {
             let _ = std::fs::create_dir_all(parent);
         }

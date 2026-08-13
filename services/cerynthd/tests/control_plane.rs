@@ -1,8 +1,15 @@
 use std::{
     process::{Child, Command, Stdio},
+    sync::Mutex,
     thread,
     time::Duration,
 };
+
+// All tests in this file drive a real cerynthd daemon bound to a single,
+// fixed, non-configurable Unix socket path. Running them in parallel (the
+// default) lets multiple daemons/clients race on that one socket, so this
+// lock forces the tests in this file to run one at a time.
+static DAEMON_LOCK: Mutex<()> = Mutex::new(());
 
 fn start_daemon() -> Child {
     let daemon = Command::new("cargo")
@@ -19,6 +26,9 @@ fn start_daemon() -> Child {
 
 #[test]
 fn daemon_starts() {
+    let _guard = DAEMON_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut daemon = start_daemon();
 
     assert!(daemon.try_wait().unwrap().is_none());
@@ -28,6 +38,9 @@ fn daemon_starts() {
 }
 #[test]
 fn cli_status_command() {
+    let _guard = DAEMON_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut daemon = start_daemon();
 
     let output = Command::new("cargo")
@@ -56,6 +69,9 @@ fn cli_status_command() {
 
 #[test]
 fn cli_set_and_get_profile() {
+    let _guard = DAEMON_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut daemon = start_daemon();
 
     // Set profile
@@ -92,6 +108,9 @@ fn cli_set_and_get_profile() {
 
 #[test]
 fn profile_persists_after_restart() {
+    let _guard = DAEMON_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     // Start daemon
     let mut daemon = start_daemon();
 
