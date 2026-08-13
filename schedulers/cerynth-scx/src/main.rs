@@ -24,8 +24,8 @@ use scx_utils::libbpf_clap_opts::LibbpfOpts;
 mod profile;
 use profile::Profile;
 
-mod policy;
 mod error;
+mod policy;
 mod status;
 
 const MAX_BATCH: usize = 64;
@@ -63,16 +63,16 @@ impl<'a> Scheduler<'a> {
         Ok(Self { bpf, profile })
     }
 
-    fn dispatch_tasks(&mut self){
+    fn dispatch_tasks(&mut self) {
         let mut tasks = Vec::new();
         loop {
-            if tasks.len()>=MAX_BATCH {
+            if tasks.len() >= MAX_BATCH {
                 break;
             }
             match self.bpf.dequeue_task() {
                 Ok(Some(task)) => tasks.push(task),
                 Ok(None) => break,
-                Err(errno) =>{
+                Err(errno) => {
                     eprintln!("cerynth-scx: {}", error::SchedError::Dequeue(errno));
                     break;
                 }
@@ -81,7 +81,7 @@ impl<'a> Scheduler<'a> {
         for task in policy::order_tasks(self.profile, tasks) {
             let dispatched_task = DispatchedTask::new(&task);
             if let Err(e) = self.bpf.dispatch_task(&dispatched_task) {
-                eprintln!("cerynth-scx: {}",error::SchedError::Dispatch(e));
+                eprintln!("cerynth-scx: {}", error::SchedError::Dispatch(e));
             }
         }
         self.bpf.notify_complete(0);

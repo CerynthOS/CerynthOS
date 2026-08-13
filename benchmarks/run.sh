@@ -34,6 +34,16 @@ if [ -z "${PROFILE}" ] || [ -z "${WORKLOAD}" ]; then
   exit 1
 fi
 
+case "${PROFILE}" in
+  linux-default|scx-rustland)
+    ;;
+  *)
+    echo "error: unsupported benchmark profile: ${PROFILE}" >&2
+    echo "supported profiles: linux-default, scx-rustland" >&2
+    exit 1
+    ;;
+esac
+
 WORKLOAD_SCRIPT="${WORKLOAD_DIR}/${WORKLOAD}.sh"
 if [ ! -x "${WORKLOAD_SCRIPT}" ]; then
   echo "error: no workload script at ${WORKLOAD_SCRIPT}" >&2
@@ -46,7 +56,33 @@ DATE_DIR="$(date +%Y-%m-%d)"
 OUT_DIR="${REPO_ROOT}/artifacts/benchmarks/${DATE_DIR}/${PROFILE}/${WORKLOAD}"
 mkdir -p "${OUT_DIR}"
 
+# Each invocation represents one benchmark run. Remove previous generated
+# artifacts so telemetry and summaries never accumulate across runs.
+rm -f   "${OUT_DIR}/metadata.json"   "${OUT_DIR}/telemetry.jsonl"   "${OUT_DIR}/telemetry.log"   "${OUT_DIR}/workload.log"   "${OUT_DIR}/summary.json"   "${OUT_DIR}/summary.md"
+
 echo "==> writing artifacts to ${OUT_DIR}"
+
+# Enforce the scheduler state requested by the benchmark profile.
+# Never silently benchmark the wrong scheduler.
+if [ "${PROFILE}" = "linux-default" ]; then
+  echo "==> ensuring sched_ext is disabled"
+  "${REPO_ROOT}/scripts/scx/stop-scheduler.sh"
+  EXPECTED_SCHED_EXT_STATE="disabled"
+else
+  echo "==> ensuring scx-rustland is running"
+  "${REPO_ROOT}/scripts/scx/stop-scheduler.sh"
+  "${REPO_ROOT}/scripts/scx/run-upstream.sh" scx_rustland
+  EXPECTED_SCHED_EXT_STATE="enabled"
+fi
+
+ACTUAL_SCHED_EXT_STATE="$(cat /sys/kernel/sched_ext/state 2>/dev/null || echo unavailable)"
+
+if [ "${ACTUAL_SCHED_EXT_STATE}" != "${EXPECTED_SCHED_EXT_STATE}" ]; then
+  echo "ERROR: requested profile '${PROFILE}' requires sched_ext=${EXPECTED_SCHED_EXT_STATE}, but got '${ACTUAL_SCHED_EXT_STATE}'." >&2
+  exit 1
+fi
+
+echo "==> scheduler state verified: ${ACTUAL_SCHED_EXT_STATE}"
 
 source "${HOME}/.cargo/env" 2>/dev/null || true
 echo "==> building telemetry recorder (release)"
@@ -129,6 +165,59 @@ with open(f"{out_dir}/metadata.json", "w") as f:
     json.dump(metadata, f, indent=2)
     f.write("\n")
 
+workload_log_path = f"{out_dir}/workload.log"
+workload_log = ""
+try:
+    with open(workload_log_path) as f:
+        workload_log = f.read()
+except OSError:
+    pass
+
+workload_metrics = {}
+
+# Workloads that emit explicit machine-readable key=value metrics.
+for line in workload_log.splitlines():
+    line = line.strip()
+    if line.startswith("interactive_iterations="):
+        try:
+            workload_metrics["interactive_iterations"] = int(
+                line.split("=", 1)[1]
+            )
+        except ValueError:
+            pass
+    elif line.startswith("completed_bursts="):
+        try:
+            workload_metrics["completed_bursts"] = int(
+                line.split("=", 1)[1]
+            )
+        except ValueError:
+            pass
+
+# stress-ng --metrics-brief emits a row such as:
+# stress-ng: metrc: [154687] cpu 5089 5.00 18.36 0.00 1017.02 277.15
+for line in workload_log.splitlines():
+    parts = line.split()
+
+    if "cpu" not in parts:
+        continue
+
+    cpu_index = parts.index("cpu")
+    values = parts[cpu_index + 1:]
+
+    if len(values) != 6:
+        continue
+
+    try:
+        workload_metrics["stress_ng_bogo_ops"] = int(values[0])
+        workload_metrics["stress_ng_real_time_seconds"] = float(values[1])
+        workload_metrics["stress_ng_usr_time_seconds"] = float(values[2])
+        workload_metrics["stress_ng_sys_time_seconds"] = float(values[3])
+        workload_metrics["stress_ng_bogo_ops_per_second"] = float(values[4])
+        workload_metrics["stress_ng_bogo_ops_per_cpu_time_second"] = float(values[5])
+    except ValueError:
+        pass
+
+
 if snapshots:
     cpu_values = [s["cpu_usage_percent"] for s in snapshots]
     load_values = [s["load_1m"] for s in snapshots]
@@ -146,6 +235,9 @@ if snapshots:
     }
 else:
     summary = {"error": "no telemetry samples recorded"}
+
+if workload_metrics:
+    summary["workload_metrics"] = workload_metrics
 
 with open(f"{out_dir}/summary.json", "w") as f:
     json.dump(summary, f, indent=2)

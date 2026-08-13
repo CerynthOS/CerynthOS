@@ -16,7 +16,7 @@ fn socket_path() -> String {
 }
 
 pub fn send_request(request: RequestEnvelope) -> std::io::Result<ResponseEnvelope> {
-    let mut stream = UnixStream::connect(socket_path())?;
+    let mut stream = UnixStream::connect(socket_path())?
 
     let bytes = request.to_line().unwrap();
 
