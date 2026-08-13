@@ -4,15 +4,14 @@ use crate::profile::Profile;
 
 /// Represents the scheduler backend implementation in use.
 ///
-/// Currently only a mock backend is available, but this enum is designed
-/// to be extensible for future backends like SCX, BPF-based schedulers, etc.
+/// The mock backend is used when no real scheduler is available; the SCX
+/// backend drives the sched_ext-based `cerynth-scx` scheduler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SchedulerBackend {
     /// In-process stand-in used by tests and by the daemon before the real
     /// backend is wired up.
     Mock,
-
     /// Drives a real `cerynth-scx` child process via sched_ext.
     Scx,
 }
@@ -47,7 +46,10 @@ impl std::str::FromStr for SchedulerBackend {
 
 /// Status information returned by the scheduler daemon.
 ///
-/// Contains the current profile, adaptation state, and active backend.
+/// Contains the current profile, adaptation state, active backend, and
+/// health signals for the scheduler: whether a process is running, what
+/// the sched_ext subsystem reports, and whether the scheduler heartbeat
+/// is fresh.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SchedulerStatus {
     /// The currently active performance profile.
@@ -58,6 +60,19 @@ pub struct SchedulerStatus {
 
     /// The scheduler backend currently in use.
     pub backend: SchedulerBackend,
+
+    /// Whether a scheduler process is currently running.
+    #[serde(default)]
+    pub running: bool,
+
+    /// Name of the scheduler currently loaded in the sched_ext subsystem
+    /// (e.g. "scx_rustland"), or `None` when sched_ext is unavailable.
+    #[serde(default)]
+    pub sched_ext_state: Option<String>,
+
+    /// Whether the scheduler's heartbeat file is present and fresh.
+    #[serde(default)]
+    pub heartbeat_ok: bool,
 }
 
 impl SchedulerStatus {
@@ -73,6 +88,9 @@ impl Default for SchedulerStatus {
             profile: Profile::Balanced,
             adaptation_enabled: false,
             backend: SchedulerBackend::Mock,
+            running: false,
+            sched_ext_state: None,
+            heartbeat_ok: false,
         }
     }
 }
@@ -97,6 +115,9 @@ mod tests {
             profile: Profile::Performance,
             adaptation_enabled: true,
             backend: SchedulerBackend::Mock,
+            running: true,
+            sched_ext_state: Some("scx_rustland".to_string()),
+            heartbeat_ok: true,
         };
 
         let json = serde_json::to_string(&status).unwrap();
@@ -110,5 +131,24 @@ mod tests {
         assert_eq!(status.profile, Profile::Balanced);
         assert!(!status.adaptation_enabled);
         assert_eq!(status.backend, SchedulerBackend::Mock);
+        assert!(!status.running);
+        assert_eq!(status.sched_ext_state, None);
+        assert!(!status.heartbeat_ok);
+    }
+
+    #[test]
+    fn scx_backend_serialization() {
+        let backend = SchedulerBackend::Scx;
+        let json = serde_json::to_string(&backend).unwrap();
+        assert_eq!(json, "\"scx\"");
+
+        let parsed: SchedulerBackend = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, SchedulerBackend::Scx);
+
+        assert_eq!(SchedulerBackend::Scx.to_string(), "scx");
+        assert!(matches!(
+            "scx".parse::<SchedulerBackend>(),
+            Ok(SchedulerBackend::Scx)
+        ));
     }
 }

@@ -1,18 +1,14 @@
 //! Runtime paths used by the daemon.
 //!
-//! These are frozen by `docs/contracts/runtime-v1.md`. They live in one module
-//! and are resolved exactly once, because the daemon previously loaded its
-//! state from one hardcoded path and saved it to a different one.
-//!
-//! Each path may be overridden by an environment variable so the daemon can
-//! run unprivileged during development and tests.
+//! These paths may be overridden through environment variables so the daemon
+//! can run unprivileged during development and integration tests.
 
 use std::sync::OnceLock;
 
-/// Default configuration file. Override with `CERYNTH_CONFIG`.
+/// Default configuration file.
 pub const DEFAULT_CONFIG_PATH: &str = "/etc/cerynth/cerynth.toml";
 
-/// Default persistent state file. Override with `CERYNTH_STATE`.
+/// Default persistent state file.
 pub const DEFAULT_STATE_PATH: &str = "/var/lib/cerynth/state.json";
 
 fn resolve(var: &str, default: &str) -> String {
@@ -20,6 +16,8 @@ fn resolve(var: &str, default: &str) -> String {
 }
 
 /// Path to the configuration file.
+///
+/// `CERYNTH_CONFIG` overrides the system default.
 pub fn config_path() -> &'static str {
     static CONFIG_PATH: OnceLock<String> = OnceLock::new();
 
@@ -27,6 +25,8 @@ pub fn config_path() -> &'static str {
 }
 
 /// Path to the persistent runtime state file.
+///
+/// `CERYNTH_STATE` overrides the system default.
 pub fn state_path() -> &'static str {
     static STATE_PATH: OnceLock<String> = OnceLock::new();
 

@@ -13,6 +13,9 @@ pub enum Request {
     SetProfile(Profile),
     PauseAdaptation,
     ResumeAdaptation,
+    Start,
+    Stop,
+    Restart,
 }
 
 /// Request messages sent over the IPC socket.
@@ -30,6 +33,12 @@ pub enum SocketRequest {
     PauseAdaptation,
 
     ResumeAdaptation,
+
+    Start,
+
+    Stop,
+
+    Restart,
 
     Shutdown,
 
@@ -49,6 +58,12 @@ impl From<SocketRequest> for Request {
 
             SocketRequest::ResumeAdaptation => Request::ResumeAdaptation,
 
+            SocketRequest::Start => Request::Start,
+
+            SocketRequest::Stop => Request::Stop,
+
+            SocketRequest::Restart => Request::Restart,
+
             SocketRequest::Shutdown | SocketRequest::Ping => Request::Status,
         }
     }
@@ -62,6 +77,9 @@ impl SocketRequest {
             SocketRequest::SetProfile { .. } => "set-profile",
             SocketRequest::PauseAdaptation => "pause-adaptation",
             SocketRequest::ResumeAdaptation => "resume-adaptation",
+            SocketRequest::Start => "start",
+            SocketRequest::Stop => "stop",
+            SocketRequest::Restart => "restart",
             SocketRequest::Shutdown => "shutdown",
             SocketRequest::Ping => "ping",
         }

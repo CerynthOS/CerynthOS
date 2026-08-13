@@ -41,11 +41,19 @@ pub async fn handle_connection(
     let response = {
         let mut backend = backend.lock().await;
 
-        let response = handle_request(&mut *backend, request);
+        let response = handle_request(&mut **backend, request);
 
-        let runtime_state = RuntimeState::from(backend.state());
+        // Persist runtime state derived from the backend's own status so
+        // profile/adaptation changes survive a daemon restart.
+        if let Ok(status) = backend.status() {
+            let runtime_state = RuntimeState {
+                profile: status.profile,
+                adaptation_enabled: status.adaptation_enabled,
+                scheduler_backend: status.backend,
+            };
 
-        runtime_state.save(state_path());
+            runtime_state.save(state_path());
+        }
 
         response
     };

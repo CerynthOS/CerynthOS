@@ -76,6 +76,8 @@ mod tests {
 
     #[test]
     fn save_and_load_state() {
+        const TEST_FILE: &str = "target/test-state-save-and-load.json";
+
         let state = RuntimeState {
             profile: Profile::Interactive,
             adaptation_enabled: true,
