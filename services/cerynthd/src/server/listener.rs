@@ -10,14 +10,27 @@ use super::connection::handle_connection;
 
 use super::signals::wait_for_shutdown;
 
+/// Resolves the socket path the daemon binds.
+///
+/// Overridable via `CERYNTH_SOCKET_PATH` so each integration test can run its
+/// own daemon on an isolated socket instead of contending for the default one.
+/// Falls back to the protocol default when unset.
+fn socket_path() -> std::path::PathBuf {
+    std::env::var_os("CERYNTH_SOCKET_PATH")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from(DEFAULT_SOCKET_PATH))
+}
+
 pub async fn start_server(backend: SharedBackend) -> std::io::Result<()> {
-    if Path::new(DEFAULT_SOCKET_PATH).exists() {
-        std::fs::remove_file(DEFAULT_SOCKET_PATH)?;
+    let socket_path = socket_path();
+
+    if Path::new(&socket_path).exists() {
+        std::fs::remove_file(&socket_path)?;
     }
 
-    let listener = UnixListener::bind(DEFAULT_SOCKET_PATH)?;
+    let listener = UnixListener::bind(&socket_path)?;
 
-    println!("✓ Cerynth daemon listening on {}", DEFAULT_SOCKET_PATH);
+    println!("✓ Cerynth daemon listening on {}", socket_path.display());
 
     loop {
         tokio::select! {
@@ -36,9 +49,9 @@ pub async fn start_server(backend: SharedBackend) -> std::io::Result<()> {
             _ = wait_for_shutdown() => {
                 println!("Shutting down daemon...");
 
-                if Path::new(DEFAULT_SOCKET_PATH).exists() {
-                    let _ = std::fs::remove_file(DEFAULT_SOCKET_PATH);
-                } 
+                if Path::new(&socket_path).exists() {
+                    let _ = std::fs::remove_file(&socket_path);
+                }
 
                 break;
             }
@@ -46,5 +59,4 @@ pub async fn start_server(backend: SharedBackend) -> std::io::Result<()> {
     }
 
     Ok(())
-
 }

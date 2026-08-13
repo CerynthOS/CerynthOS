@@ -15,10 +15,11 @@ use std::mem::MaybeUninit;
 
 use anyhow::Result;
 use bpf::*;
-use libbpf_rs::OpenObject;
-use scx_utils::libbpf_clap_opts::LibbpfOpts;
-use scx_utils::UserExitInfo;
 use clap::Parser;
+use libbpf_rs::OpenObject;
+use scx_utils::UserExitInfo;
+use scx_utils::libbpf_clap_opts::LibbpfOpts;
+
 
 mod profile;
 use profile::Profile;
@@ -29,9 +30,9 @@ mod status;
 
 const MAX_BATCH: usize = 64;
 
-#[derive(Parser,Debug)]
+#[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
-struct Cli{
+struct Cli {
     /// Which schedulinh profile to run.
     #[arg(long, value_enum, default_value_t = Profile::Balanced)]
     profile: Profile,

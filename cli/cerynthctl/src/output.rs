@@ -13,6 +13,22 @@ pub fn print_response(envelope: ResponseEnvelope) {
                     "Disabled"
                 }
             );
+            println!(
+                "Running         : {}",
+                if status.running { "Yes" } else { "No" }
+            );
+            println!(
+                "sched_ext state : {}",
+                status.sched_ext_state.as_deref().unwrap_or("not available")
+            );
+            println!(
+                "Heartbeat       : {}",
+                if status.heartbeat_ok {
+                    "OK"
+                } else {
+                    "stale/missing"
+                }
+            );
         }
 
         SocketResponse::Profile { profile } => {

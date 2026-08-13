@@ -5,17 +5,9 @@ use tokio::{
 
 use cerynth_config::RuntimeState;
 
-use cerynth_ipc::{
-    MAX_MESSAGE_SIZE,
-    Request,
-    ResponseEnvelope,
-    SocketResponse,
-};
+use cerynth_ipc::{MAX_MESSAGE_SIZE, Request, ResponseEnvelope, SocketResponse};
 
-use crate::{
-    backend::SharedBackend,
-    handlers::handle_request,
-};
+use crate::{backend::SharedBackend, handlers::handle_request};
 
 use super::codec::{decode_request, encode_response};
 
@@ -49,19 +41,26 @@ pub async fn handle_connection(
     let response = {
         let mut backend = backend.lock().await;
 
-        let response = handle_request(&mut *backend, request);
+        let response = handle_request(&mut **backend, request);
 
-        let runtime_state = RuntimeState::from(backend.state());
+        // Persist runtime state derived from the backend's own status so
+        // profile/adaptation changes survive a daemon restart.
+        if let Ok(status) = backend.status() {
+            let runtime_state = RuntimeState {
+                profile: status.profile,
+                adaptation_enabled: status.adaptation_enabled,
+                scheduler_backend: status.backend,
+            };
 
-        runtime_state.save("runtime_state.json");
+            runtime_state.save(&crate::state_path());
+        }
 
         response
     };
 
     let socket_response: SocketResponse = response.into();
 
-    let response =
-        ResponseEnvelope::for_request(&envelope, socket_response);
+    let response = ResponseEnvelope::for_request(&envelope, socket_response);
 
     let bytes = encode_response(&response).unwrap();
 
