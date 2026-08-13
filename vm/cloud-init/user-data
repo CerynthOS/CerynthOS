@@ -1,0 +1,57 @@
+#cloud-config
+
+hostname: cerynth-vm
+manage_etc_hosts: true
+
+users:
+  - name: cerynth
+    gecos: CerynthOS Developer
+    groups:
+      - sudo
+      - adm
+      - systemd-journal
+    shell: /bin/bash
+    sudo:
+      - ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLeMPkqtKfdL/FW9c9cv475qEsFrwC3gIOQLIebEheB cerynth-vm
+
+ssh_pwauth: false
+disable_root: true
+
+package_update: true
+
+packages:
+  - openssh-server
+  - initramfs-tools
+  - kmod
+  - rsync
+  - jq
+  - curl
+  - git
+  - build-essential
+  - linux-tools-common
+
+growpart:
+  mode: auto
+  devices:
+    - /
+
+resize_rootfs: true
+
+write_files:
+  - path: /etc/motd
+    permissions: '0644'
+    content: |
+      CerynthOS Development VM
+      Custom kernel test environment
+
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh
+  - mkdir -p /opt/cerynth
+  - mkdir -p /run/cerynth
+  - touch /var/log/cerynth-cloud-init-complete
+  - echo "CERYNTH_BASE_VM_READY" > /dev/console
+
+final_message: "CerynthOS base VM initialization complete"
