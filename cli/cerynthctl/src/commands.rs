@@ -8,6 +8,12 @@ pub fn parse_command(args: &[String]) -> Option<Request> {
     match args[1].as_str() {
         "status" => Some(Request::Status),
 
+        "start" => Some(Request::Start),
+
+        "stop" => Some(Request::Stop),
+
+        "restart" => Some(Request::Restart),
+
         "profile" => {
             if args.len() < 3 {
                 return None;
