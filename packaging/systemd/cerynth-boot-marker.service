@@ -1,14 +1,19 @@
 [Unit]
 Description=CerynthOS successful boot marker
+Documentation=https://github.com/CerynthOS/CerynthOS
 After=multi-user.target
 ConditionPathIsReadWrite=/run
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mkdir -p /run/cerynth
-ExecStart=/usr/bin/sh -c 'printf "kernel=%s\ntimestamp=%s\n" "$$(uname -r)" "$$(date -u +%%FT%%TZ)" > /run/cerynth/boot-ok'
-ExecStart=/usr/bin/sh -c 'echo CERYNTH_BOOT_OK > /dev/console'
 RemainAfterExit=yes
+
+# All logic lives in the script: systemd treats '%' as a specifier, so a
+# printf format string written inline here corrupts itself silently.
+ExecStart=/usr/lib/cerynth/cerynth-boot-marker
+
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

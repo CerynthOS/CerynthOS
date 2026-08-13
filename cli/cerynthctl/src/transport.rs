@@ -1,14 +1,11 @@
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 
-use cerynth_ipc::{Frame, RequestEnvelope, ResponseEnvelope};
+use cerynth_ipc::{Frame, RequestEnvelope, ResponseEnvelope, socket_path};
 
-const SOCKET_PATH: &str = "/tmp/cerynthd.sock";
-
-pub fn send_request(
-    request: RequestEnvelope,
-) -> std::io::Result<ResponseEnvelope> {
-    let mut stream = UnixStream::connect(SOCKET_PATH)?;
+pub fn send_request(request: RequestEnvelope) -> std::io::Result<ResponseEnvelope> {
+    // Shared with the daemon via cerynth-ipc so the two can never drift.
+    let mut stream = UnixStream::connect(socket_path())?;
 
     let bytes = request.to_line().unwrap();
 

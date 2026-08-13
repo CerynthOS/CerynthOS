@@ -12,7 +12,7 @@ pub use profile::Profile;
 
 pub use protocol::{
     DEFAULT_SOCKET_PATH, Frame, MAX_MESSAGE_SIZE, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION,
-    RequestEnvelope, ResponseEnvelope, VersionError,
+    RUNTIME_DIR, RequestEnvelope, ResponseEnvelope, SOCKET_PATH_ENV, VersionError, socket_path,
 };
 
 pub use request::{Request, SocketRequest};

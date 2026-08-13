@@ -14,8 +14,27 @@ pub const MIN_PROTOCOL_VERSION: u32 = 1;
 /// Prevents memory exhaustion from malformed or malicious messages.
 pub const MAX_MESSAGE_SIZE: usize = 64 * 1024;
 
+/// Runtime directory shared by every CerynthOS component.
+///
+/// Created by systemd (`RuntimeDirectory=cerynth`) on a real system and by
+/// the daemon itself when run manually.
+pub const RUNTIME_DIR: &str = "/run/cerynth";
+
 /// Default socket path for the daemon.
-pub const DEFAULT_SOCKET_PATH: &str = "/tmp/cerynthd.sock";
+///
+/// Frozen by `docs/contracts/runtime-v1.md`. Override at runtime with the
+/// `CERYNTH_SOCKET` environment variable, which lets the daemon and CLI run
+/// unprivileged during tests.
+pub const DEFAULT_SOCKET_PATH: &str = "/run/cerynth/cerynthd.sock";
+
+/// Environment variable that overrides [`DEFAULT_SOCKET_PATH`].
+pub const SOCKET_PATH_ENV: &str = "CERYNTH_SOCKET";
+
+/// Returns the socket path to use, honouring [`SOCKET_PATH_ENV`].
+#[must_use]
+pub fn socket_path() -> String {
+    std::env::var(SOCKET_PATH_ENV).unwrap_or_else(|_| DEFAULT_SOCKET_PATH.to_string())
+}
 
 /// Request envelope for the wire protocol.
 ///
@@ -191,7 +210,22 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, 1);
         assert_eq!(MIN_PROTOCOL_VERSION, 1);
         assert_eq!(MAX_MESSAGE_SIZE, 64 * 1024);
-        assert_eq!(DEFAULT_SOCKET_PATH, "/tmp/cerynthd.sock");
+        assert_eq!(DEFAULT_SOCKET_PATH, "/run/cerynth/cerynthd.sock");
+    }
+
+    #[test]
+    fn socket_path_uses_default_when_unset() {
+        // Asserted without mutating the environment: touching process-wide
+        // state would race the other tests in this binary.
+        if std::env::var(SOCKET_PATH_ENV).is_err() {
+            assert_eq!(socket_path(), DEFAULT_SOCKET_PATH);
+        }
+    }
+
+    #[test]
+    fn socket_path_env_var_is_the_documented_name() {
+        assert_eq!(SOCKET_PATH_ENV, "CERYNTH_SOCKET");
+        assert_eq!(RUNTIME_DIR, "/run/cerynth");
     }
 
     #[test]

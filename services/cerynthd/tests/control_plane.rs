@@ -1,54 +1,99 @@
 use std::{
+    path::PathBuf,
     process::{Child, Command, Stdio},
     thread,
     time::Duration,
 };
 
-fn start_daemon() -> Child {
-    let daemon = Command::new("cargo")
-        .args(["run", "-p", "cerynthd"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("failed to start daemon");
+/// A daemon under test, with its own socket and state file.
+///
+/// The production paths (`/run/cerynth`, `/var/lib/cerynth`) need root, and a
+/// single shared socket would make these tests race each other, so every test
+/// gets a private pair via the `CERYNTH_SOCKET` / `CERYNTH_STATE` overrides.
+struct Fixture {
+    socket: PathBuf,
+    state: PathBuf,
+}
 
-    thread::sleep(Duration::from_secs(1));
+impl Fixture {
+    fn new(name: &str) -> Self {
+        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
 
-    daemon
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("failed to create fixture dir");
+
+        Self {
+            socket: dir.join("cerynthd.sock"),
+            state: dir.join("state.json"),
+        }
+    }
+
+    fn start_daemon(&self) -> Child {
+        let daemon = Command::new("cargo")
+            .args(["run", "-p", "cerynthd"])
+            .env("CERYNTH_SOCKET", &self.socket)
+            .env("CERYNTH_STATE", &self.state)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("failed to start daemon");
+
+        self.wait_for_socket();
+
+        daemon
+    }
+
+    /// Polls for the socket instead of sleeping a fixed interval, so a slow
+    /// debug build cannot make these tests flaky.
+    fn wait_for_socket(&self) {
+        for _ in 0..100 {
+            if self.socket.exists() {
+                return;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+
+        panic!("daemon did not create socket at {}", self.socket.display());
+    }
+
+    fn ctl(&self, args: &[&str]) -> std::process::Output {
+        Command::new("cargo")
+            .args(["run", "-p", "cerynthctl", "--"])
+            .args(args)
+            .env("CERYNTH_SOCKET", &self.socket)
+            .output()
+            .expect("failed to run cerynthctl")
+    }
 }
 
 #[test]
 fn daemon_starts() {
-    let mut daemon = start_daemon();
+    let fixture = Fixture::new("daemon_starts");
+    let mut daemon = fixture.start_daemon();
 
     assert!(daemon.try_wait().unwrap().is_none());
 
     let _ = daemon.kill();
     let _ = daemon.wait();
 }
+
 #[test]
 fn cli_status_command() {
-    let mut daemon = start_daemon();
+    let fixture = Fixture::new("cli_status_command");
+    let mut daemon = fixture.start_daemon();
 
-    let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "status"])
-        .output()
-        .expect("failed to run cerynthctl");
+    let output = fixture.ctl(&["status"]);
 
-    println!("Exit status: {:?}", output.status);
-    println!("STDOUT:\n{}", String::from_utf8_lossy(&output.stdout));
-    println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
-
-    println!("SET STDOUT:\n{}", String::from_utf8_lossy(&output.stdout));
-    println!("SET STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
-    println!("SET STATUS: {:?}", output.status);
-
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "cerynthctl status failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    assert!(stdout.contains("Current Profile"));
-    assert!(stdout.contains("Backend"));
+    assert!(stdout.contains("Current Profile"), "got: {stdout}");
+    assert!(stdout.contains("Backend"), "got: {stdout}");
 
     let _ = daemon.kill();
     let _ = daemon.wait();
@@ -56,27 +101,24 @@ fn cli_status_command() {
 
 #[test]
 fn cli_set_and_get_profile() {
-    let mut daemon = start_daemon();
+    let fixture = Fixture::new("cli_set_and_get_profile");
+    let mut daemon = fixture.start_daemon();
 
-    // Set profile
-    let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "set", "interactive"])
-        .output()
-        .expect("failed to set profile");
+    let output = fixture.ctl(&["profile", "set", "interactive"]);
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "profile set failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
-    // Read it back
-    let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "get"])
-        .output()
-        .expect("failed to get profile");
+    let output = fixture.ctl(&["profile", "get"]);
 
     assert!(output.status.success());
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    assert!(stdout.contains("Interactive"));
+    assert!(stdout.contains("Interactive"), "got: {stdout}");
 
     let _ = daemon.kill();
     let _ = daemon.wait();
@@ -84,38 +126,32 @@ fn cli_set_and_get_profile() {
 
 #[test]
 fn profile_persists_after_restart() {
-    // Start daemon
-    let mut daemon = start_daemon();
+    let fixture = Fixture::new("profile_persists_after_restart");
+    let mut daemon = fixture.start_daemon();
 
-    // Set profile
-    let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "set", "performance"])
-        .output()
-        .expect("failed to set profile");
+    let output = fixture.ctl(&["profile", "set", "performance"]);
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "profile set failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
-    // Stop daemon
     let _ = daemon.kill();
     let _ = daemon.wait();
 
-    // Give the OS a moment to release the socket
-    thread::sleep(Duration::from_millis(500));
+    // The daemon is killed, so it cannot unlink its own socket.
+    let _ = std::fs::remove_file(&fixture.socket);
 
-    // Restart daemon
-    let mut daemon = start_daemon();
+    let mut daemon = fixture.start_daemon();
 
-    // Read profile
-    let output = Command::new("cargo")
-        .args(["run", "-p", "cerynthctl", "--", "profile", "get"])
-        .output()
-        .expect("failed to get profile");
+    let output = fixture.ctl(&["profile", "get"]);
 
     assert!(output.status.success());
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    assert!(stdout.contains("Performance"));
+    assert!(stdout.contains("Performance"), "got: {stdout}");
 
     let _ = daemon.kill();
     let _ = daemon.wait();

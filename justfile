@@ -41,3 +41,25 @@ scx-build:
 
 doctor:
     ./scripts/doctor.sh
+
+# --- Platform runtime (Person 1) -------------------------------------------
+
+# Install the runtime into a staging root for inspection.
+runtime-stage root="/tmp/cerynth-install-test":
+    ./scripts/install-dev-runtime.sh --root {{root}} --verbose
+    ./scripts/check-runtime-files.sh {{root}}
+
+# Build and install the CerynthOS runtime into the running development VM.
+vm-provision:
+    ./scripts/vm/provision-cerynth-vm.sh
+
+# Run CerynthOS VM integration smoke tests.
+vm-smoke:
+    ./scripts/vm/smoke-test.sh
+
+# Return a wedged VM runtime to a known-good state.
+vm-recover:
+    ./scripts/vm/runtime-recovery.sh
+
+# Provision and smoke test in one step.
+vm-verify: vm-provision vm-smoke
