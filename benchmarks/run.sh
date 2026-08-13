@@ -34,6 +34,16 @@ if [ -z "${PROFILE}" ] || [ -z "${WORKLOAD}" ]; then
   exit 1
 fi
 
+case "${PROFILE}" in
+  linux-default|scx-rustland)
+    ;;
+  *)
+    echo "error: unsupported benchmark profile: ${PROFILE}" >&2
+    echo "supported profiles: linux-default, scx-rustland" >&2
+    exit 1
+    ;;
+esac
+
 WORKLOAD_SCRIPT="${WORKLOAD_DIR}/${WORKLOAD}.sh"
 if [ ! -x "${WORKLOAD_SCRIPT}" ]; then
   echo "error: no workload script at ${WORKLOAD_SCRIPT}" >&2
@@ -51,6 +61,28 @@ mkdir -p "${OUT_DIR}"
 rm -f   "${OUT_DIR}/metadata.json"   "${OUT_DIR}/telemetry.jsonl"   "${OUT_DIR}/telemetry.log"   "${OUT_DIR}/workload.log"   "${OUT_DIR}/summary.json"   "${OUT_DIR}/summary.md"
 
 echo "==> writing artifacts to ${OUT_DIR}"
+
+# Enforce the scheduler state requested by the benchmark profile.
+# Never silently benchmark the wrong scheduler.
+if [ "${PROFILE}" = "linux-default" ]; then
+  echo "==> ensuring sched_ext is disabled"
+  "${REPO_ROOT}/scripts/scx/stop-scheduler.sh"
+  EXPECTED_SCHED_EXT_STATE="disabled"
+else
+  echo "==> ensuring scx-rustland is running"
+  "${REPO_ROOT}/scripts/scx/stop-scheduler.sh"
+  "${REPO_ROOT}/scripts/scx/run-upstream.sh" scx_rustland
+  EXPECTED_SCHED_EXT_STATE="enabled"
+fi
+
+ACTUAL_SCHED_EXT_STATE="$(cat /sys/kernel/sched_ext/state 2>/dev/null || echo unavailable)"
+
+if [ "${ACTUAL_SCHED_EXT_STATE}" != "${EXPECTED_SCHED_EXT_STATE}" ]; then
+  echo "ERROR: requested profile '${PROFILE}' requires sched_ext=${EXPECTED_SCHED_EXT_STATE}, but got '${ACTUAL_SCHED_EXT_STATE}'." >&2
+  exit 1
+fi
+
+echo "==> scheduler state verified: ${ACTUAL_SCHED_EXT_STATE}"
 
 source "${HOME}/.cargo/env" 2>/dev/null || true
 echo "==> building telemetry recorder (release)"
