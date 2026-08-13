@@ -1,0 +1,4 @@
+default_profile = "balanced"
+adaptation_enabled = false
+scheduler_backend = "scx"
+scheduler_binary = "/usr/lib/cerynth/cerynth-scx"

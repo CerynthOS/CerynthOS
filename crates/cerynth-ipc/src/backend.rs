@@ -9,13 +9,18 @@ use crate::profile::Profile;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SchedulerBackend {
+    /// In-process stand-in used by tests and by the daemon before the real
+    /// backend is wired up.
     Mock,
+
+    /// Drives a real `cerynth-scx` child process via sched_ext.
+    Scx,
 }
 
 impl SchedulerBackend {
     /// Returns all available backends.
-    pub fn all() -> [SchedulerBackend; 1] {
-        [SchedulerBackend::Mock]
+    pub fn all() -> [SchedulerBackend; 2] {
+        [SchedulerBackend::Mock, SchedulerBackend::Scx]
     }
 }
 
@@ -23,6 +28,7 @@ impl std::fmt::Display for SchedulerBackend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SchedulerBackend::Mock => write!(f, "mock"),
+            SchedulerBackend::Scx => write!(f, "scx"),
         }
     }
 }
@@ -33,6 +39,7 @@ impl std::str::FromStr for SchedulerBackend {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "mock" => Ok(SchedulerBackend::Mock),
+            "scx" => Ok(SchedulerBackend::Scx),
             _ => Err(format!("unknown scheduler backend: {}", s)),
         }
     }

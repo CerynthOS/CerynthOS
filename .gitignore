@@ -84,3 +84,6 @@ artifacts/boot-report/*
 !vm/logs/.gitkeep
 !vm/modules/.gitkeep
 !artifacts/boot-report/.gitkeep
+
+# Daemon runtime state (written at run time, never committed)
+runtime_state.json
