@@ -9,7 +9,10 @@ use crate::profile::Profile;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SchedulerBackend {
+    /// In-process stand-in used by tests and by the daemon before the real
+    /// backend is wired up.
     Mock,
+    /// Drives a real `cerynth-scx` child process via sched_ext.
     Scx,
 }
 
