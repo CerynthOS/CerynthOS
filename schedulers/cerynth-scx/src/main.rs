@@ -20,11 +20,15 @@ use libbpf_rs::OpenObject;
 use scx_utils::UserExitInfo;
 use scx_utils::libbpf_clap_opts::LibbpfOpts;
 
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum Profile {
-    Balanced,
-    Interactive,
-}
+
+mod profile;
+use profile::Profile;
+
+mod policy;
+mod error;
+mod status;
+
+const MAX_BATCH: usize = 64;
 
 #[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
@@ -60,29 +64,25 @@ impl<'a> Scheduler<'a> {
         Ok(Self { bpf, profile })
     }
 
-    fn dispatch_tasks(&mut self) {
-        match self.profile {
-            Profile::Balanced => {
-                // FIFO: dispatch tasks in whatever order the kernel handed them to us.
-                while let Ok(Some(task)) = self.bpf.dequeue_task() {
-                    let dispatched_task = DispatchedTask::new(&task);
-                    self.bpf.dispatch_task(&dispatched_task).unwrap();
+    fn dispatch_tasks(&mut self){
+        let mut tasks = Vec::new();
+        loop {
+            if tasks.len()>=MAX_BATCH {
+                break;
+            }
+            match self.bpf.dequeue_task() {
+                Ok(Some(task)) => tasks.push(task),
+                Ok(None) => break,
+                Err(errno) =>{
+                    eprintln!("cerynth-scx: {}", error::SchedError::Dequeue(errno));
+                    break;
                 }
             }
-            Profile::Interactive => {
-                // Collect the whole waiting batch first...
-                let mut tasks = Vec::new();
-                while let Ok(Some(task)) = self.bpf.dequeue_task() {
-                    tasks.push(task);
-                }
-                // ...then run short-burst tasks (low exec_runtime = they just
-                // woke up and haven't used much CPU) before long-running ones,
-                // so interactive work stays snappy under load.
-                tasks.sort_by_key(|task| task.exec_runtime);
-                for task in tasks {
-                    let dispatched_task = DispatchedTask::new(&task);
-                    self.bpf.dispatch_task(&dispatched_task).unwrap();
-                }
+        }
+        for task in policy::order_tasks(self.profile, tasks) {
+            let dispatched_task = DispatchedTask::new(&task);
+            if let Err(e) = self.bpf.dispatch_task(&dispatched_task) {
+                eprintln!("cerynth-scx: {}",error::SchedError::Dispatch(e));
             }
         }
         self.bpf.notify_complete(0);
@@ -99,10 +99,7 @@ impl<'a> Scheduler<'a> {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let slice_ns: u64 = match cli.profile {
-        Profile::Balanced => 5_000_000,    // 5ms
-        Profile::Interactive => 2_000_000, // 2ms - shorter, more responsive
-    };
+    let slice_ns: u64 = cli.profile.slice_ns();
 
     println!(
         "cerynth-scx: starting (profile = {:?}, time slice = {} ns)",
@@ -111,10 +108,16 @@ fn main() -> Result<()> {
 
     let mut open_object = MaybeUninit::uninit();
     loop {
-        let mut sched = Scheduler::init(&mut open_object, slice_ns, cli.profile.clone())?;
+        let mut sched = Scheduler::init(&mut open_object, slice_ns, cli.profile)?;
+        if let Err(e) = status::SchedulerStatus::running(cli.profile).write() {
+            eprintln!("cerynth-scx: failed to write status file: {e}");
+        }
         if !sched.run()?.should_restart() {
             break;
         }
+    }
+    if let Err(e) = status::SchedulerStatus::stopped().write() {
+        eprintln!("cerynth-scx: failed to write status file: {e}");
     }
     Ok(())
 }
