@@ -102,6 +102,70 @@ impl RulesBasedPolicy {
         }
     }
 
+    fn workload_confidence(
+        profile: Profile,
+        cpu: f64,
+        load: f64,
+        runnable: u64,
+        ctxt_rate: f64,
+        short_lived: f64,
+    ) -> f64 {
+        match profile {
+            Profile::Performance => {
+                // CPU saturation is the strongest evidence.
+                let cpu_score = ((cpu - 85.0) / 15.0).clamp(0.0, 1.0);
+                let load_score = ((load - 1.0) / 2.0).clamp(0.0, 1.0);
+                let runnable_score =
+                    ((runnable as f64 - 2.0) / 4.0).clamp(0.0, 1.0);
+
+                (0.65 * cpu_score
+                    + 0.20 * load_score
+                    + 0.15 * runnable_score)
+                    .clamp(0.0, 1.0)
+            }
+
+            Profile::Interactive => {
+                // Interactive behaviour is primarily characterised by
+                // runnable pressure, context switching, and process churn.
+                let runnable_score =
+                    ((runnable as f64 - 1.0) / 3.0).clamp(0.0, 1.0);
+                let ctxt_score =
+                    ((ctxt_rate - 150.0) / 850.0).clamp(0.0, 1.0);
+                let process_score =
+                    ((short_lived - 2.0) / 8.0).clamp(0.0, 1.0);
+
+                (0.35 * runnable_score
+                    + 0.40 * ctxt_score
+                    + 0.25 * process_score)
+                    .clamp(0.0, 1.0)
+            }
+
+            Profile::Background => {
+                let cpu_score = (1.0 - cpu / 10.0).clamp(0.0, 1.0);
+                let load_score = (1.0 - load / 0.5).clamp(0.0, 1.0);
+                let runnable_score = if runnable == 0 { 1.0 } else { 0.0 };
+                let process_score =
+                    (1.0 - short_lived).clamp(0.0, 1.0);
+
+                (0.40 * cpu_score
+                    + 0.25 * load_score
+                    + 0.20 * runnable_score
+                    + 0.15 * process_score)
+                    .clamp(0.0, 1.0)
+            }
+
+            Profile::Balanced => {
+                let cpu_distance = (cpu - 50.0).abs() / 50.0;
+                let load_distance = (load - 1.0).abs() / 2.0;
+
+                (1.0
+                    - 0.6 * cpu_distance
+                    - 0.4 * load_distance)
+                    .clamp(0.0, 1.0)
+            }
+        }
+    }
+
     fn decision(
         &self,
         profile: Profile,
@@ -203,22 +267,56 @@ impl Policy for RulesBasedPolicy {
 
         // Generate the raw workload recommendation first.
         let candidate = if input.cpu_usage_percent >= 90.0
-            && input.runnable_tasks >= 4
-            && input.context_switch_rate < 200.0
+            && input.load_1m >= 1.0
+            && input.runnable_tasks >= 2
         {
             self.decision(
                 Profile::Performance,
-                0.85,
-                "Very high CPU utilisation with sustained runnable pressure and limited context switching",
+                Self::workload_confidence(
+                    Profile::Performance,
+                    input.cpu_usage_percent,
+                    input.load_1m,
+                    input.runnable_tasks,
+                    input.context_switch_rate,
+                    input.short_lived_process_rate,
+                ),
+                "Very high CPU utilisation with sustained runnable pressure",
             )
-        } else if input.cpu_usage_percent >= 60.0
-            && input.runnable_tasks >= 4
-            && input.context_switch_rate >= 100.0
+        } else if input.runnable_tasks >= 2
+            && (
+                (input.context_switch_rate >= 500.0
+                    && input.runnable_tasks >= 3)
+                || input.short_lived_process_rate >= 5.0
+            )
         {
             self.decision(
                 Profile::Interactive,
-                0.80,
-                "High runnable load with frequent context switches",
+                Self::workload_confidence(
+                    Profile::Interactive,
+                    input.cpu_usage_percent,
+                    input.load_1m,
+                    input.runnable_tasks,
+                    input.context_switch_rate,
+                    input.short_lived_process_rate,
+                ),
+                "High runnable load with frequent context switches or short-lived process activity",
+            )
+        } else if input.cpu_usage_percent < 10.0
+            && input.load_1m < 0.5
+            && input.runnable_tasks <= 1
+            && input.short_lived_process_rate < 1.0
+        {
+            self.decision(
+                Profile::Background,
+                Self::workload_confidence(
+                    Profile::Background,
+                    input.cpu_usage_percent,
+                    input.load_1m,
+                    input.runnable_tasks,
+                    input.context_switch_rate,
+                    input.short_lived_process_rate,
+                ),
+                "Very low CPU utilisation and runnable pressure with minimal process activity",
             )
         } else if input.cpu_usage_percent < 30.0 && input.runnable_tasks <= 1 {
             self.decision(
@@ -229,10 +327,28 @@ impl Policy for RulesBasedPolicy {
         } else {
             self.decision(
                 Profile::Balanced,
-                0.65,
+                Self::workload_confidence(
+                    Profile::Balanced,
+                    input.cpu_usage_percent,
+                    input.load_1m,
+                    input.runnable_tasks,
+                    input.context_switch_rate,
+                    input.short_lived_process_rate,
+                ),
                 "Workload does not strongly match another profile",
             )
         };
+
+        println!(
+            "POLICY_RAW cpu={:.2} load={:.2} runnable={} ctxt_rate={:.2} short_lived={:.2} => {:?} conf={:.2}",
+            input.cpu_usage_percent,
+            input.load_1m,
+            input.runnable_tasks,
+            input.context_switch_rate,
+            input.short_lived_process_rate,
+            candidate.recommended_profile,
+            candidate.confidence,
+        );
 
         // Apply dwell-time and cooldown protection to the raw
         // recommendation.
@@ -262,6 +378,42 @@ mod tests {
     }
 
     #[test]
+    fn responsive_low_cpu_workload_recommends_interactive() {
+        let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 1, 0);
+
+        // Low CPU usage, but significant runnable/process activity.
+        let workload = input(5.0, 1.2, 3, 500.0, 7.0);
+
+        let decision = policy.evaluate(&workload);
+
+        assert_eq!(decision.recommended_profile, Profile::Interactive);
+    }
+
+    #[test]
+    fn short_lived_process_activity_recommends_interactive() {
+        let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 1, 0);
+
+        let workload = input(70.0, 1.0, 4, 20.0, 5.0);
+
+        let decision = policy.evaluate(&workload);
+
+        assert_eq!(decision.recommended_profile, Profile::Interactive);
+        assert!(decision.reason.contains("short-lived"));
+    }
+
+    #[test]
+    fn idle_workload_recommends_background() {
+        let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 1, 0);
+
+        let workload = input(5.0, 0.1, 0, 10.0, 0.0);
+
+        let decision = policy.evaluate(&workload);
+
+        assert_eq!(decision.recommended_profile, Profile::Background);
+        assert!(decision.reason.contains("Very low CPU"));
+    }
+
+    #[test]
     fn low_load_recommends_balanced() {
         let mut policy = RulesBasedPolicy::new();
 
@@ -275,7 +427,7 @@ mod tests {
     fn cpu_saturation_recommends_performance() {
         let mut policy = RulesBasedPolicy::new();
 
-        let workload = input(100.0, 0.7, 5, 150.0, 0.0);
+        let workload = input(100.0, 1.5, 5, 150.0, 0.0);
 
         policy.evaluate(&workload);
         policy.evaluate(&workload);
@@ -289,7 +441,7 @@ mod tests {
     fn interactive_workload_recommends_interactive() {
         let mut policy = RulesBasedPolicy::new();
 
-        let workload = input(75.0, 1.0, 4, 220.0, 0.0);
+        let workload = input(75.0, 1.0, 4, 600.0, 0.0);
 
         policy.evaluate(&workload);
         policy.evaluate(&workload);
@@ -336,7 +488,7 @@ mod tests {
     fn recommendation_requires_dwell_samples() {
         let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 3, 0);
 
-        let workload = input(100.0, 0.7, 5, 150.0, 0.0);
+        let workload = input(100.0, 1.5, 5, 150.0, 0.0);
 
         let first = policy.evaluate(&workload);
         assert_eq!(first.recommended_profile, Profile::Balanced);
@@ -354,7 +506,7 @@ mod tests {
     fn cooldown_prevents_immediate_oscillation() {
         let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 1, 3);
 
-        let performance = input(100.0, 0.7, 5, 150.0, 0.0);
+        let performance = input(100.0, 1.5, 5, 150.0, 0.0);
 
         let first = policy.evaluate(&performance);
         assert_eq!(first.recommended_profile, Profile::Performance);
@@ -379,8 +531,8 @@ mod tests {
     fn changing_candidate_resets_dwell_counter() {
         let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 3, 0);
 
-        let performance = input(100.0, 0.7, 5, 150.0, 0.0);
-        let interactive = input(75.0, 1.0, 4, 220.0, 0.0);
+        let performance = input(100.0, 1.5, 5, 150.0, 0.0);
+        let interactive = input(75.0, 1.0, 4, 600.0, 0.0);
 
         let first = policy.evaluate(&performance);
         assert_eq!(first.recommended_profile, Profile::Balanced);
@@ -392,6 +544,21 @@ mod tests {
         let third = policy.evaluate(&interactive);
         assert_eq!(third.recommended_profile, Profile::Balanced);
         assert!(third.reason.contains("2/3"));
+    }
+
+
+    #[test]
+    fn low_load_blocks_performance_recommendation() {
+        let mut policy = RulesBasedPolicy::with_stability_controls(0.60, 1, 0);
+
+        // CPU and runnable pressure are high, but 1-minute load is too low
+        // for the Performance rule.
+        let workload = input(100.0, 0.5, 5, 600.0, 0.0);
+
+        let decision = policy.evaluate(&workload);
+
+        assert_ne!(decision.recommended_profile, Profile::Performance);
+        assert_eq!(decision.recommended_profile, Profile::Interactive);
     }
 
     #[test]
