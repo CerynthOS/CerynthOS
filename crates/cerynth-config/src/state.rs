@@ -50,10 +50,14 @@ impl RuntimeState {
 mod tests {
     use super::*;
 
-    const TEST_FILE: &str = "target/test-state.json";
+    // Each test uses its own file path. These tests run in parallel by
+    // default, so sharing one path let them race on the same file and
+    // intermittently fail depending on execution order.
 
     #[test]
     fn save_and_load_state() {
+        const TEST_FILE: &str = "target/test-state-save-and-load.json";
+
         let state = RuntimeState {
             profile: Profile::Interactive,
             adaptation_enabled: true,
@@ -72,6 +76,8 @@ mod tests {
 
     #[test]
     fn missing_state_returns_default() {
+        const TEST_FILE: &str = "target/test-state-missing.json";
+
         let _ = std::fs::remove_file(TEST_FILE);
 
         let state = RuntimeState::load(TEST_FILE);
@@ -82,6 +88,8 @@ mod tests {
 
     #[test]
     fn corrupt_state_returns_default() {
+        const TEST_FILE: &str = "target/test-state-corrupt.json";
+
         std::fs::write(TEST_FILE, "not json").unwrap();
 
         let state = RuntimeState::load(TEST_FILE);
