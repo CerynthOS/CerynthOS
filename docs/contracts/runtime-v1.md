@@ -92,9 +92,16 @@ rename):
   "profile": "interactive",
   "sched_ext_state": "enabled",
   "healthy": true,
-  "started_at_ms": 1785990000000
+  "started_at_ms": 1785990000000,
+  "heartbeat": 1785990010
 }
 ```
+
+`heartbeat` is a Unix timestamp in whole seconds (not milliseconds, unlike
+`started_at_ms`), refreshed by the scheduler roughly once per second while
+running. `cerynthd`'s `ScxBackend` treats the scheduler as unhealthy once
+`heartbeat` is more than `HEARTBEAT_TIMEOUT_SECS` (10s) old, so this field
+existing and staying fresh is load-bearing for health checks, not cosmetic.
 
 ## Policy recommendation schema
 

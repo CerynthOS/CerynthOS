@@ -12,6 +12,7 @@ pub mod bpf_intf;
 #[rustfmt::skip]
 mod bpf;
 use std::mem::MaybeUninit;
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use bpf::*;
@@ -19,7 +20,6 @@ use clap::Parser;
 use libbpf_rs::OpenObject;
 use scx_utils::UserExitInfo;
 use scx_utils::libbpf_clap_opts::LibbpfOpts;
-
 
 mod profile;
 use profile::Profile;
@@ -29,6 +29,11 @@ mod policy;
 mod status;
 
 const MAX_BATCH: usize = 64;
+
+/// How often the dispatch loop refreshes scheduler.json's heartbeat.
+/// cerynthd considers the scheduler unhealthy once the heartbeat is more
+/// than 10 seconds old, so this leaves a comfortable margin.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
@@ -41,6 +46,7 @@ struct Cli {
 struct Scheduler<'a> {
     bpf: BpfScheduler<'a>,
     profile: Profile,
+    started_at_ms: u64,
 }
 
 impl<'a> Scheduler<'a> {
@@ -57,11 +63,15 @@ impl<'a> Scheduler<'a> {
             false,
             false,
             true,
-            false,
             slice_ns,
             "cerynth_scx",
         )?;
-        Ok(Self { bpf, profile })
+        let started_at_ms = status::now_ms();
+        Ok(Self {
+            bpf,
+            profile,
+            started_at_ms,
+        })
     }
 
     fn dispatch_tasks(&mut self) {
@@ -89,8 +99,17 @@ impl<'a> Scheduler<'a> {
     }
 
     fn run(&mut self) -> Result<UserExitInfo> {
+        let mut last_heartbeat = Instant::now();
         while !self.bpf.exited() {
             self.dispatch_tasks();
+            if last_heartbeat.elapsed() >= HEARTBEAT_INTERVAL {
+                if let Err(e) =
+                    status::SchedulerStatus::running(self.profile, self.started_at_ms).write()
+                {
+                    eprintln!("cerynth-scx: failed to refresh status file: {e}");
+                }
+                last_heartbeat = Instant::now();
+            }
         }
         println!("cerynth-scx: shutting down, handing control back to the kernel...");
         self.bpf.shutdown_and_report()
@@ -109,7 +128,7 @@ fn main() -> Result<()> {
     let mut open_object = MaybeUninit::uninit();
     loop {
         let mut sched = Scheduler::init(&mut open_object, slice_ns, cli.profile)?;
-        if let Err(e) = status::SchedulerStatus::running(cli.profile).write() {
+        if let Err(e) = status::SchedulerStatus::running(cli.profile, sched.started_at_ms).write() {
             eprintln!("cerynth-scx: failed to write status file: {e}");
         }
         if !sched.run()?.should_restart() {
