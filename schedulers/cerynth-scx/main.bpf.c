@@ -108,9 +108,6 @@ const volatile bool debug;
 /* Rely on the in-kernel idle CPU selection policy */
 const volatile bool builtin_idle;
 
-/* Enable NUMA-local idle CPU selection */
-const volatile bool numa_local;
-
 /* Allow to use bpf_printk() only when @debug is set */
 #define dbg_msg(_fmt, ...) do {						\
 	if (debug)							\
@@ -355,17 +352,6 @@ static inline bool cpus_share_cache(s32 this_cpu, s32 that_cpu)
 }
 
 /*
- * Return the preferred NUMA node of task @p, or NUMA_NO_NODE if not set.
- */
-static inline s32 get_task_numa_node(const struct task_struct *p)
-{
-	if (bpf_core_field_exists(p->numa_preferred_nid))
-		return p->numa_preferred_nid;
-
-	return NUMA_NO_NODE;
-}
-
-/*
  * Return true if @this_cpu is faster than @that_cpu, false otherwise.
  */
 static inline bool is_cpu_faster(s32 this_cpu, s32 that_cpu)
@@ -450,23 +436,12 @@ static s32 pick_idle_cpu(struct task_struct *p, s32 prev_cpu, u64 wake_flags)
 	}
 
 	/*
-	 * Prefer a NUMA-local idle CPU if the task has a preferred node and
-	 * NUMA-local selection is enabled.
-	 */
-	if (numa_local && bpf_ksym_exists(scx_bpf_pick_idle_cpu_node)) {
-		s32 numa_node = get_task_numa_node(p);
-		if (numa_node != NUMA_NO_NODE)
-			return scx_bpf_pick_idle_cpu_node(p->cpus_ptr, numa_node,
-							  SCX_PICK_IDLE_IN_NODE);
-	}
-
-	/*
 	 * Fallback to the old API if the kernel doesn't support
 	 * scx_bpf_select_cpu_and().
 	 *
 	 * This is required to support kernels <= 6.16.
 	 */
-	if (!__COMPAT_HAS_scx_bpf_select_cpu_and) {
+	if (!bpf_ksym_exists(scx_bpf_select_cpu_and)) {
 		bool is_idle = false;
 
 		if (!wake_flags)
@@ -651,7 +626,7 @@ int rs_select_cpu(struct task_cpu_arg *input)
 	 * ops.select_cpu() and opt.enqueue(), return any idle CPU usable
 	 * by the task in this case.
 	 */
-	if (!__COMPAT_HAS_scx_bpf_select_cpu_and) {
+	if (!bpf_ksym_exists(scx_bpf_select_cpu_and)) {
 		if (!scx_bpf_test_and_clear_cpu_idle(cpu))
 			cpu = scx_bpf_pick_idle_cpu(p->cpus_ptr, 0);
 	} else {
@@ -888,19 +863,19 @@ void BPF_STRUCT_OPS(rustland_dispatch, s32 cpu, struct task_struct *prev)
 	 * to do.
 	 */
 	if (usersched_has_pending_tasks() &&
-	    scx_bpf_dsq_move_to_local(SCHED_DSQ, 0))
+	    scx_bpf_dsq_move_to_local(SCHED_DSQ))
 		return;
 
 	/*
 	 * Consume a task from the per-CPU DSQ.
 	 */
-	if (scx_bpf_dsq_move_to_local(cpu_to_dsq(cpu), 0))
+	if (scx_bpf_dsq_move_to_local(cpu_to_dsq(cpu)))
 		return;
 
 	/*
 	 * Consume a task from the shared DSQ.
 	 */
-	if (scx_bpf_dsq_move_to_local(SHARED_DSQ, 0))
+	if (scx_bpf_dsq_move_to_local(SHARED_DSQ))
 		return;
 
 	/*
@@ -913,7 +888,7 @@ void BPF_STRUCT_OPS(rustland_dispatch, s32 cpu, struct task_struct *prev)
 	 */
 	if (prev && is_queued(prev) &&
 	    (!is_usersched_task(prev) || usersched_has_pending_tasks()))
-		scx_bpf_task_set_slice(prev, slice_ns);
+		prev->scx.slice = slice_ns;
 }
 
 void BPF_STRUCT_OPS(rustland_runnable, struct task_struct *p, u64 enq_flags)
@@ -989,8 +964,8 @@ void BPF_STRUCT_OPS(rustland_stopping, struct task_struct *p, bool runnable)
  */
 void BPF_STRUCT_OPS(rustland_enable, struct task_struct *p)
 {
-	scx_bpf_task_set_dsq_vtime(p, 0);
-	scx_bpf_task_set_slice(p, slice_ns);
+	p->scx.dsq_vtime = 0;
+	p->scx.slice = slice_ns;
 }
 
 /*
