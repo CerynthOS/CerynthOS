@@ -71,7 +71,8 @@ auto_start = true
         .stderr(Stdio::null())
         .env("CERYNTH_SCX_BINARY", fake_scheduler())
         .env("CERYNTH_SOCKET", &socket)
-        .env("CERYNTH_STATE", &state);
+        .env("CERYNTH_STATE", &state)
+        .env("CERYNTH_CONFIG", &config);
 
     for (key, value) in extra {
         cmd.env(key, value);
