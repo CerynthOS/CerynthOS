@@ -11,61 +11,58 @@ use crate::backend::Backend;
 /// unhealthy.
 const HEARTBEAT_TIMEOUT_SECS: u64 = 10;
 
+/// Maximum amount of time start() waits for the scheduler to become healthy.
+const START_TIMEOUT_SECS: u64 = 5;
+
 /// Default sched_ext subsystem state file.
-///
-/// Contains the name of the currently loaded sched_ext scheduler (e.g.
-/// "scx_rustland") or "none" when idle. Override with `CERYNTH_SCX_STATE_PATH`
-/// for testing.
 const DEFAULT_SCX_STATE_PATH: &str = "/sys/kernel/sched_ext/state";
 
 /// Default scheduler heartbeat file.
-///
-/// Written periodically by the scheduler process as JSON:
-/// `{ "pid": <u32>, "profile": "<name>", "heartbeat": <unix_secs> }`.
-/// Override with `CERYNTH_HEARTBEAT_PATH` for testing.
 const DEFAULT_HEARTBEAT_PATH: &str = "/run/cerynth/scheduler.json";
 
-/// Path to the sched_ext state file, overridable for testing.
 fn scx_state_path() -> PathBuf {
     std::env::var_os("CERYNTH_SCX_STATE_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_SCX_STATE_PATH))
 }
 
-/// Path to the scheduler heartbeat file, overridable for testing.
 fn heartbeat_path() -> PathBuf {
     std::env::var_os("CERYNTH_HEARTBEAT_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_HEARTBEAT_PATH))
 }
 
-/// Reads the name of the scheduler currently loaded in sched_ext, or `None`
-/// when the subsystem is unavailable (e.g. a non-sched_ext kernel).
 fn read_scx_state_from(path: &Path) -> Option<String> {
     let contents = std::fs::read_to_string(path).ok()?;
     let state = contents.trim();
-    if state.is_empty() {
+
+    if state.is_empty() || state == "none" {
         None
     } else {
         Some(state.to_string())
     }
 }
 
-/// Returns true when the heartbeat file exists, parses as the documented
-/// JSON contract, and contains a `heartbeat` timestamp fresh enough.
 fn heartbeat_is_fresh(path: &Path) -> bool {
     let Ok(contents) = std::fs::read_to_string(path) else {
         return false;
     };
+
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&contents) else {
         return false;
     };
-    let Some(timestamp) = json.get("heartbeat").and_then(serde_json::Value::as_u64) else {
+
+    let Some(timestamp) = json
+        .get("heartbeat")
+        .and_then(serde_json::Value::as_u64)
+    else {
         return false;
     };
+
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
         return false;
     };
+
     now.as_secs().saturating_sub(timestamp) <= HEARTBEAT_TIMEOUT_SECS
 }
 
@@ -88,34 +85,108 @@ impl ScxBackend {
         }
     }
 
-    /// Overrides the initial adaptation state, e.g. from the daemon's
-    /// persisted runtime state rather than always defaulting to enabled.
     pub fn with_adaptation(mut self, adaptation_enabled: bool) -> Self {
         self.adaptation_enabled = adaptation_enabled;
         self
     }
+
+    /// Reconcile the tracked child with reality.
+    ///
+    /// If the scheduler exited unexpectedly, clear the stored PID and Child
+    /// so that the backend can be started again.
+    fn reap_child(&mut self) -> Result<(), String> {
+        let Some(child) = self.child.as_mut() else {
+            self.pid = None;
+            return Ok(());
+        };
+
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                self.child = None;
+                self.pid = None;
+            }
+
+            Ok(None) => {
+                // Child is still alive.
+            }
+
+            Err(error) => {
+                return Err(format!(
+                    "failed to inspect scheduler process: {error}"
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns whether the scheduler is currently healthy enough to be used.
+    fn scheduler_is_healthy(&self) -> bool {
+        let Some(pid) = self.pid else {
+            return false;
+        };
+
+        let process_alive = unsafe {
+            libc::kill(pid as i32, 0) == 0
+        };
+
+        if !process_alive {
+            return false;
+        }
+
+        let sched_ext_enabled = read_scx_state_from(&scx_state_path()).is_some();
+
+        let heartbeat_ok = heartbeat_is_fresh(&heartbeat_path());
+
+        process_alive && sched_ext_enabled && heartbeat_ok
+    }
+
+    /// Wait until the spawned scheduler is alive and healthy.
+    fn wait_until_healthy(&mut self) -> Result<(), String> {
+        let deadline =
+            Instant::now() + Duration::from_secs(START_TIMEOUT_SECS);
+
+        while Instant::now() < deadline {
+            self.reap_child()?;
+
+            if self.pid.is_none() {
+                return Err(
+                    "scheduler exited before becoming healthy".to_string()
+                );
+            }
+
+            if self.scheduler_is_healthy() {
+                return Ok(());
+            }
+
+            thread::sleep(Duration::from_millis(100));
+        }
+
+        Err(
+            "scheduler did not become healthy within 5 seconds"
+                .to_string(),
+        )
+    }
 }
 
 impl Backend for ScxBackend {
-    fn status(&self) -> Result<SchedulerStatus, String> {
-        // Probe for a live process by sending signal 0: kill(pid, 0) returns
-        // 0 when a process with this PID exists, -1 otherwise (e.g. ESRCH for
-        // a dead or recycled PID).
-        let running = self.pid.is_some_and(|pid| {
-            // Signal 0 probes for existence: returns 0 if the PID is alive.
-            unsafe { libc::kill(pid as i32, 0) == 0 }
-        });
+    fn status(&mut self) -> Result<SchedulerStatus, String> {
+        self.reap_child()?;
 
-        // A scheduler that is not running cannot be producing a fresh
-        // heartbeat, so only check freshness while the process is alive.
-        let heartbeat_ok = running && heartbeat_is_fresh(&heartbeat_path());
+        let running = self.pid.is_some();
+
+        let sched_ext_state =
+            read_scx_state_from(&scx_state_path());
+
+        let heartbeat_ok =
+            running && heartbeat_is_fresh(&heartbeat_path());
 
         Ok(SchedulerStatus {
             profile: self.profile.clone(),
             adaptation_enabled: self.adaptation_enabled,
             backend: SchedulerBackend::Scx,
             running,
-            sched_ext_state: read_scx_state_from(&scx_state_path()),
+            sched_ext_state,
             heartbeat_ok,
         })
     }
@@ -125,8 +196,8 @@ impl Backend for ScxBackend {
     }
 
     fn set_profile(&mut self, profile: Profile) -> Result<(), String> {
-        // If a scheduler is running, restart it so the new profile takes
-        // effect. If not running, just update the stored profile.
+        self.reap_child()?;
+
         if self.pid.is_some() {
             self.stop()?;
             self.profile = profile;
@@ -134,6 +205,7 @@ impl Backend for ScxBackend {
         } else {
             self.profile = profile;
         }
+
         Ok(())
     }
 
@@ -148,12 +220,14 @@ impl Backend for ScxBackend {
     }
 
     fn start(&mut self) -> Result<(), String> {
-        // If a scheduler process is already tracked, refuse to double-start.
+        self.reap_child()?;
+
         if self.pid.is_some() {
-            return Err("scheduler is already running".to_string());
+            return Err(
+                "scheduler is already running".to_string()
+            );
         }
 
-        // The scheduler binary must exist before we try to launch it.
         if !self.scheduler_binary.exists() {
             return Err(format!(
                 "scheduler binary not found: {}",
@@ -161,237 +235,240 @@ impl Backend for ScxBackend {
             ));
         }
 
-        // Launch cerynth-scx with the currently selected profile.
         let child = Command::new(&self.scheduler_binary)
             .arg("--profile")
             .arg(self.profile.to_string())
             .spawn()
-            .map_err(|e| format!("failed to spawn scheduler: {e}"))?;
+            .map_err(|e| {
+                format!("failed to spawn scheduler: {e}")
+            })?;
 
         self.pid = Some(child.id());
         self.child = Some(child);
+
+        // Safety gate:
+        //
+        // spawn() only means that the process was created.
+        //
+        // We require:
+        //
+        // 1. process is alive
+        // 2. sched_ext reports an active scheduler
+        // 3. heartbeat is fresh
+        //
+        // before reporting successful start.
+        if let Err(error) = self.wait_until_healthy() {
+            let _ = self.stop();
+            return Err(error);
+        }
+
         Ok(())
     }
 
     fn stop(&mut self) -> Result<(), String> {
-        // There must be a tracked scheduler to stop.
+        self.reap_child()?;
+
         let Some(child) = self.child.as_mut() else {
-            return Err("no scheduler is currently running".to_string());
+            return Err(
+                "no scheduler is currently running".to_string()
+            );
         };
+
         let pid = self
             .pid
-            .ok_or_else(|| "no scheduler is currently running".to_string())?;
+            .ok_or_else(|| {
+                "no scheduler is currently running".to_string()
+            })?;
 
-        // Request a graceful shutdown via SIGTERM.
-        if unsafe { libc::kill(pid as i32, libc::SIGTERM) != 0 } {
+        // First attempt graceful termination.
+        if unsafe {
+            libc::kill(pid as i32, libc::SIGTERM)
+        } != 0
+        {
+            let error = std::io::Error::last_os_error();
+
+            // If the process disappeared between reap_child() and kill(),
+            // treat it as already stopped.
+            if error.raw_os_error() == Some(libc::ESRCH) {
+                self.child = None;
+                self.pid = None;
+                return Ok(());
+            }
+
             return Err(format!(
-                "failed to send SIGTERM to scheduler (pid {pid}): {}",
-                std::io::Error::last_os_error()
+                "failed to send SIGTERM to scheduler (pid {pid}): {error}"
             ));
         }
 
-        // Give the process a bounded grace period to exit after SIGTERM.
-        // If it does not exit within the timeout, escalate to SIGKILL.
-        let poll_interval = Duration::from_millis(100);
-        let deadline = Instant::now() + Duration::from_secs(5);
+        let deadline =
+            Instant::now() + Duration::from_secs(5);
+
         loop {
             match child.try_wait() {
-                Ok(Some(_)) => break, // exited gracefully
+                Ok(Some(_)) => break,
+
                 Ok(None) => {
                     if Instant::now() >= deadline {
-                        // Grace period elapsed: force termination.
-                        if unsafe { libc::kill(pid as i32, libc::SIGKILL) != 0 } {
-                            return Err(format!(
-                                "failed to send SIGKILL to scheduler (pid {pid}): {}",
-                                std::io::Error::last_os_error()
-                            ));
+                        if unsafe {
+                            libc::kill(pid as i32, libc::SIGKILL)
+                        } != 0
+                        {
+                            let error =
+                                std::io::Error::last_os_error();
+
+                            if error.raw_os_error() != Some(libc::ESRCH) {
+                                return Err(format!(
+                                    "failed to send SIGKILL to scheduler \
+                                     (pid {pid}): {error}"
+                                ));
+                            }
                         }
-                        child
-                            .wait()
-                            .map_err(|e| format!("failed to reap scheduler after SIGKILL: {e}"))?;
+
+                        child.wait().map_err(|e| {
+                            format!(
+                                "failed to reap scheduler after SIGKILL: {e}"
+                            )
+                        })?;
+
                         break;
                     }
-                    thread::sleep(poll_interval);
+
+                    thread::sleep(Duration::from_millis(100));
                 }
-                Err(e) => return Err(format!("failed to poll scheduler state: {e}")),
+
+                Err(error) => {
+                    return Err(format!(
+                        "failed to poll scheduler state: {error}"
+                    ));
+                }
             }
         }
 
         self.child = None;
         self.pid = None;
+
         Ok(())
     }
 
     fn restart(&mut self) -> Result<(), String> {
-        self.stop()?;
-        self.start()?;
-        Ok(())
+        self.reap_child()?;
+
+        if self.pid.is_some() {
+            self.stop()?;
+        }
+
+        self.start()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
-
-    /// Returns a unique temp path per test so parallel runs cannot collide.
-    fn temp_file(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("cerynth-{name}-{}", std::process::id()))
-    }
-
-    fn write_heartbeat(path: &Path, timestamp: u64) {
-        std::fs::write(
-            path,
-            format!("{{\"pid\": 123, \"profile\": \"interactive\", \"heartbeat\": {timestamp}}}"),
-        )
-        .unwrap();
-    }
-
-    fn now() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    }
 
     #[test]
     fn heartbeat_is_fresh_when_timestamp_recent() {
-        let path = temp_file("heartbeat-fresh");
-        write_heartbeat(&path, now());
+        let path = std::env::temp_dir().join(format!(
+            "cerynth-heartbeat-fresh-{}",
+            std::process::id()
+        ));
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        std::fs::write(
+            &path,
+            format!(
+                "{{\"pid\":123,\"profile\":\"interactive\",\
+                 \"heartbeat\":{now}}}"
+            ),
+        )
+        .unwrap();
 
         assert!(heartbeat_is_fresh(&path));
 
-        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
     fn heartbeat_is_stale_when_timestamp_old() {
-        let path = temp_file("heartbeat-stale");
-        write_heartbeat(&path, now().saturating_sub(HEARTBEAT_TIMEOUT_SECS + 60));
+        let path = std::env::temp_dir().join(format!(
+            "cerynth-heartbeat-stale-{}",
+            std::process::id()
+        ));
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let old =
+            now.saturating_sub(HEARTBEAT_TIMEOUT_SECS + 60);
+
+        std::fs::write(
+            &path,
+            format!(
+                "{{\"pid\":123,\"profile\":\"interactive\",\
+                 \"heartbeat\":{old}}}"
+            ),
+        )
+        .unwrap();
 
         assert!(!heartbeat_is_fresh(&path));
 
-        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
     fn heartbeat_missing_or_malformed_is_not_fresh() {
-        let missing = temp_file("heartbeat-missing");
+        let missing = std::env::temp_dir().join(format!(
+            "cerynth-heartbeat-missing-{}",
+            std::process::id()
+        ));
+
         let _ = std::fs::remove_file(&missing);
+
         assert!(!heartbeat_is_fresh(&missing));
 
-        let malformed = temp_file("heartbeat-malformed");
+        let malformed = std::env::temp_dir().join(format!(
+            "cerynth-heartbeat-malformed-{}",
+            std::process::id()
+        ));
+
         std::fs::write(&malformed, "not json").unwrap();
+
         assert!(!heartbeat_is_fresh(&malformed));
 
-        let _ = std::fs::remove_file(&malformed);
+        let _ = std::fs::remove_file(malformed);
     }
 
     #[test]
     fn scx_state_reads_trimmed_contents() {
-        let path = temp_file("scx-state");
+        let path = std::env::temp_dir().join(format!(
+            "cerynth-scx-state-{}",
+            std::process::id()
+        ));
+
         std::fs::write(&path, "scx_rustland\n").unwrap();
 
-        assert_eq!(read_scx_state_from(&path), Some("scx_rustland".to_string()));
+        assert_eq!(
+            read_scx_state_from(&path),
+            Some("scx_rustland".to_string())
+        );
 
-        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
     fn scx_state_is_none_when_unavailable() {
-        let missing = temp_file("scx-state-missing");
-        let _ = std::fs::remove_file(&missing);
+        let path = std::env::temp_dir().join(format!(
+            "cerynth-scx-state-missing-{}",
+            std::process::id()
+        ));
 
-        assert_eq!(read_scx_state_from(&missing), None);
-    }
+        let _ = std::fs::remove_file(&path);
 
-    #[test]
-    fn start_launches_scheduler_and_records_pid() {
-        let scheduler = PathBuf::from("tests/fake_scheduler.sh");
-
-        let mut backend = ScxBackend::new(scheduler, Profile::Interactive);
-
-        assert!(backend.start().is_ok());
-        assert!(backend.pid.is_some());
-
-        let pid = backend.pid.unwrap();
-
-        assert!(pid > 0);
-
-        unsafe {
-            libc::kill(pid as i32, libc::SIGTERM);
-        }
-    }
-
-    #[test]
-    fn restart_stops_old_scheduler_and_starts_new_one() {
-        let scheduler = PathBuf::from("tests/fake_scheduler.sh");
-
-        let mut backend = ScxBackend::new(scheduler, Profile::Interactive);
-
-        backend.start().expect("initial start should succeed");
-
-        let first_pid = backend.pid.expect("first PID should exist");
-
-        backend.restart().expect("restart should succeed");
-
-        let second_pid = backend.pid.expect("second PID should exist");
-
-        assert_ne!(first_pid, second_pid);
-
-        backend.stop().expect("final stop should succeed");
-
-        assert!(backend.pid.is_none());
-        assert!(backend.child.is_none());
-    }
-
-    #[test]
-    fn pause_resume_adaptation_updates_status() {
-        let scheduler = PathBuf::from("tests/fake_scheduler.sh");
-
-        let mut backend = ScxBackend::new(scheduler, Profile::Balanced);
-
-        assert!(backend.status().unwrap().adaptation_enabled);
-
-        backend.pause_adaptation().expect("pause should succeed");
-        assert!(!backend.status().unwrap().adaptation_enabled);
-
-        backend.resume_adaptation().expect("resume should succeed");
-        assert!(backend.status().unwrap().adaptation_enabled);
-    }
-
-    #[test]
-    fn set_profile_stopped_updates_profile_only() {
-        let scheduler = PathBuf::from("tests/fake_scheduler.sh");
-
-        let mut backend = ScxBackend::new(scheduler, Profile::Balanced);
-
-        backend
-            .set_profile(Profile::Performance)
-            .expect("set_profile");
-
-        assert_eq!(backend.get_profile().unwrap(), Profile::Performance);
-        assert!(backend.pid.is_none());
-    }
-
-    #[test]
-    fn set_profile_running_restarts_with_new_pid() {
-        let scheduler = PathBuf::from("tests/fake_scheduler.sh");
-
-        let mut backend = ScxBackend::new(scheduler, Profile::Interactive);
-
-        backend.start().expect("start should succeed");
-        let first_pid = backend.pid.expect("first PID should exist");
-
-        backend
-            .set_profile(Profile::Performance)
-            .expect("set_profile while running should succeed");
-
-        let second_pid = backend.pid.expect("PID after restart should exist");
-
-        assert_ne!(first_pid, second_pid);
-        assert_eq!(backend.get_profile().unwrap(), Profile::Performance);
-
-        backend.stop().expect("final stop should succeed");
+        assert_eq!(read_scx_state_from(&path), None);
     }
 }

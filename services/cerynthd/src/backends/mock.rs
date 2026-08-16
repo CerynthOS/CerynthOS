@@ -15,7 +15,7 @@ impl MockBackend {
 }
 
 impl Backend for MockBackend {
-    fn status(&self) -> Result<SchedulerStatus, String> {
+    fn status(&mut self) -> Result<SchedulerStatus, String> {
         Ok(SchedulerStatus {
             profile: self.state.profile.clone(),
             adaptation_enabled: self.state.adaptation_enabled,

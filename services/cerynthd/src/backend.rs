@@ -9,7 +9,7 @@ pub type SharedBackend = Arc<Mutex<Box<dyn Backend + Send + Sync>>>;
 
 /// Every scheduler backend (Mock, SCX, etc.) must implement this.
 pub trait Backend {
-    fn status(&self) -> Result<SchedulerStatus, String>;
+    fn status(&mut self) -> Result<SchedulerStatus, String>;
 
     fn get_profile(&self) -> Result<Profile, String>;
 
