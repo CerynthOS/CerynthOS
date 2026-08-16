@@ -26,25 +26,61 @@ fn state_path(tag: &str) -> PathBuf {
 
 /// Starts the daemon with an isolated socket and state file, always driving
 /// the fake scheduler. Returns the child plus the socket/state paths it uses.
-fn start_daemon(tag: &str, extra: &[(&str, &str)]) -> (Child, PathBuf, PathBuf) {
+
+fn start_daemon(
+    tag: &str,
+    extra: &[(&str, &str)],
+) -> (Child, PathBuf, PathBuf) {
     let socket = socket_path(tag);
     let state = state_path(tag);
 
-    // Clear any stale socket from a previous run so the bind succeeds.
+    // Clear any stale socket from a previous run.
     let _ = std::fs::remove_file(&socket);
 
+    // SCX lifecycle tests provide a fake sched_ext state path.
+    // Those tests should explicitly use the SCX backend.
+    //
+    // Normal control-plane tests use the safe Mock backend.
+    let use_scx = extra
+        .iter()
+        .any(|(key, _)| *key == "CERYNTH_SCX_STATE_PATH");
+
+    let backend = if use_scx { "scx" } else { "mock" };
+
+    let config = std::env::temp_dir().join(format!(
+        "cerynth-{tag}-{}.toml",
+        std::process::id()
+    ));
+
+    std::fs::write(
+        &config,
+        format!(
+            r#"
+default_profile = "balanced"
+adaptation_enabled = false
+scheduler_backend = "{backend}"
+auto_start = true
+"#
+        ),
+    )
+    .expect("failed to write test config");
+
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cerynthd"));
+
     cmd.stdout(Stdio::null())
         .stderr(Stdio::null())
         .env("CERYNTH_SCX_BINARY", fake_scheduler())
         .env("CERYNTH_SOCKET_PATH", &socket)
-        .env("CERYNTH_STATE_PATH", &state);
+        .env("CERYNTH_STATE_PATH", &state)
+        .env("CERYNTH_CONFIG_PATH", &config);
+
     for (key, value) in extra {
         cmd.env(key, value);
     }
+
     let child = cmd.spawn().expect("failed to start daemon");
 
-    // Give the daemon a moment to bind its socket and auto-start.
+    // Give the daemon time to bind its socket and auto-start.
     thread::sleep(Duration::from_secs(1));
 
     (child, socket, state)
