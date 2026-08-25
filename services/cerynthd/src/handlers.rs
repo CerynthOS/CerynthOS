@@ -1,5 +1,5 @@
 use crate::backend::Backend;
-use cerynth_ipc::{Request, Response};
+use cerynth_ipc::{AdaptationMode, Request, Response};
 
 pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) -> Response {
     match request {
@@ -14,6 +14,16 @@ pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) ->
         },
 
         Request::SetProfile(profile) => match backend.set_profile(profile) {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
+
+        Request::GetAdaptationMode => match backend.get_adaptation_mode() {
+            Ok(mode) => Response::AdaptationMode(mode),
+            Err(e) => Response::Error(e),
+        },
+
+        Request::SetAdaptationMode(mode) => match backend.set_adaptation_mode(mode) {
             Ok(()) => Response::Success,
             Err(e) => Response::Error(e),
         },
@@ -55,6 +65,7 @@ mod tests {
         MockBackend::new(DaemonState {
             profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             scheduler_backend: SchedulerBackend::Mock,
         })
     }

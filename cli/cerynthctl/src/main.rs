@@ -23,6 +23,8 @@ fn main() {
             println!("  cerynthctl profile set <balanced|interactive|performance|background>");
             println!("  cerynthctl adaptation pause");
             println!("  cerynthctl adaptation resume");
+            println!("  cerynthctl adaptation mode get");
+            println!("  cerynthctl adaptation mode set <off|shadow|canary>");
             return;
         }
     };

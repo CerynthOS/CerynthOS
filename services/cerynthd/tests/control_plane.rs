@@ -27,10 +27,7 @@ fn state_path(tag: &str) -> PathBuf {
 /// Starts the daemon with an isolated socket and state file, always driving
 /// the fake scheduler. Returns the child plus the socket/state paths it uses.
 
-fn start_daemon(
-    tag: &str,
-    extra: &[(&str, &str)],
-) -> (Child, PathBuf, PathBuf) {
+fn start_daemon(tag: &str, extra: &[(&str, &str)]) -> (Child, PathBuf, PathBuf) {
     let socket = socket_path(tag);
     let state = state_path(tag);
 
@@ -47,10 +44,7 @@ fn start_daemon(
 
     let backend = if use_scx { "scx" } else { "mock" };
 
-    let config = std::env::temp_dir().join(format!(
-        "cerynth-{tag}-{}.toml",
-        std::process::id()
-    ));
+    let config = std::env::temp_dir().join(format!("cerynth-{tag}-{}.toml", std::process::id()));
 
     std::fs::write(
         &config,
@@ -58,6 +52,7 @@ fn start_daemon(
             r#"
 default_profile = "balanced"
 adaptation_enabled = false
+adaptation_mode = "off"
 scheduler_backend = "{backend}"
 auto_start = true
 "#

@@ -13,6 +13,7 @@ pub fn print_response(envelope: ResponseEnvelope) {
                     "Disabled"
                 }
             );
+            println!("Adaptation Mode : {:?}", status.adaptation_mode);
             println!(
                 "Running         : {}",
                 if status.running { "Yes" } else { "No" }
@@ -33,6 +34,10 @@ pub fn print_response(envelope: ResponseEnvelope) {
 
         SocketResponse::Profile { profile } => {
             println!("Current Profile : {:?}", profile);
+        }
+
+        SocketResponse::AdaptationMode { mode } => {
+            println!("Adaptation Mode : {:?}", mode);
         }
 
         SocketResponse::Success => {
