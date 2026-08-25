@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::backend::SchedulerStatus;
+use crate::backend::{AdaptationMode, SchedulerStatus};
 use crate::profile::Profile;
 
 /// Internal response type used by the daemon.
@@ -11,6 +11,7 @@ use crate::profile::Profile;
 pub enum Response {
     Status(SchedulerStatus),
     Profile(Profile),
+    AdaptationMode(AdaptationMode),
     Success,
     Error(String),
 }
@@ -25,6 +26,8 @@ pub enum SocketResponse {
 
     Profile { profile: Profile },
 
+    AdaptationMode { mode: AdaptationMode },
+
     Success,
 
     Error { message: String },
@@ -38,6 +41,8 @@ impl From<Response> for SocketResponse {
             Response::Status(status) => SocketResponse::Status { status },
 
             Response::Profile(profile) => SocketResponse::Profile { profile },
+
+            Response::AdaptationMode(mode) => SocketResponse::AdaptationMode { mode },
 
             Response::Success => SocketResponse::Success,
 

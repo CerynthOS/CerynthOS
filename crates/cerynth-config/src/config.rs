@@ -1,4 +1,4 @@
-use cerynth_ipc::{Profile, SchedulerBackend};
+use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 use serde::{Deserialize, Serialize};
 
 use std::fs;
@@ -22,6 +22,7 @@ fn default_true() -> bool {
 pub struct Config {
     pub default_profile: Profile,
     pub adaptation_enabled: bool,
+    pub adaptation_mode: AdaptationMode,
     pub scheduler_backend: SchedulerBackend,
 
     /// Path to the scheduler binary the daemon launches.
@@ -38,6 +39,7 @@ impl Default for Config {
         Self {
             default_profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             scheduler_backend: SchedulerBackend::Mock,
             scheduler_binary: default_scheduler_binary(),
             auto_start: true,
@@ -103,6 +105,7 @@ mod tests {
         let config = Config {
             default_profile: Profile::Performance,
             adaptation_enabled: true,
+            adaptation_mode: AdaptationMode::Shadow,
             scheduler_backend: SchedulerBackend::Mock,
             scheduler_binary: PathBuf::from("/usr/lib/cerynth/cerynth-scx"),
             auto_start: true,
@@ -114,6 +117,7 @@ mod tests {
 
         assert_eq!(loaded.default_profile, Profile::Performance);
         assert!(loaded.adaptation_enabled);
+        assert_eq!(loaded.adaptation_mode, AdaptationMode::Shadow);
         assert_eq!(loaded.scheduler_backend, SchedulerBackend::Mock);
         assert_eq!(
             loaded.scheduler_binary,
@@ -148,6 +152,7 @@ mod tests {
             std::path::PathBuf::from("/usr/lib/cerynth/cerynth-scx")
         );
         assert!(!config.adaptation_enabled);
+        assert_eq!(config.adaptation_mode, AdaptationMode::Off);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use cerynth_ipc::{Profile, SchedulerBackend};
+use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 use serde::{Deserialize, Serialize};
 
 use std::fs;
@@ -12,6 +12,7 @@ use std::path::Path;
 pub struct RuntimeState {
     pub profile: Profile,
     pub adaptation_enabled: bool,
+    pub adaptation_mode: AdaptationMode,
     pub scheduler_backend: SchedulerBackend,
 }
 
@@ -20,6 +21,7 @@ impl Default for RuntimeState {
         Self {
             profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             scheduler_backend: SchedulerBackend::Mock,
         }
     }
@@ -81,6 +83,7 @@ mod tests {
         let state = RuntimeState {
             profile: Profile::Interactive,
             adaptation_enabled: true,
+            adaptation_mode: AdaptationMode::Shadow,
             scheduler_backend: SchedulerBackend::Mock,
         };
 
@@ -90,6 +93,7 @@ mod tests {
 
         assert_eq!(loaded.profile, Profile::Interactive);
         assert!(loaded.adaptation_enabled);
+        assert_eq!(loaded.adaptation_mode, AdaptationMode::Shadow);
 
         let _ = std::fs::remove_file(&test_file("roundtrip"));
     }
@@ -102,6 +106,7 @@ mod tests {
 
         assert_eq!(state.profile, Profile::Balanced);
         assert!(!state.adaptation_enabled);
+        assert_eq!(state.adaptation_mode, AdaptationMode::Off);
     }
 
     #[test]
@@ -112,6 +117,7 @@ mod tests {
 
         assert_eq!(state.profile, Profile::Balanced);
         assert!(!state.adaptation_enabled);
+        assert_eq!(state.adaptation_mode, AdaptationMode::Off);
 
         let _ = std::fs::remove_file(&test_file("corrupt"));
     }

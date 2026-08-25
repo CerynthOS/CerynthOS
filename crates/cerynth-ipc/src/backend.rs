@@ -44,6 +44,53 @@ impl std::str::FromStr for SchedulerBackend {
     }
 }
 
+/// Adaptation mode controlling whether and how the daemon applies policy recommendations.
+///
+/// - `Off`: No adaptation; the daemon never reads or acts on policy.
+/// - `Shadow`: Reads policy and logs recommendations but never switches the scheduler.
+/// - `Canary`: Reads policy, validates the recommendation, and applies a guarded switch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AdaptationMode {
+    Off,
+    Shadow,
+    Canary,
+}
+
+impl AdaptationMode {
+    /// Returns all available adaptation modes in declaration order.
+    pub fn all() -> [AdaptationMode; 3] {
+        [
+            AdaptationMode::Off,
+            AdaptationMode::Shadow,
+            AdaptationMode::Canary,
+        ]
+    }
+}
+
+impl std::fmt::Display for AdaptationMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdaptationMode::Off => write!(f, "off"),
+            AdaptationMode::Shadow => write!(f, "shadow"),
+            AdaptationMode::Canary => write!(f, "canary"),
+        }
+    }
+}
+
+impl std::str::FromStr for AdaptationMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "off" => Ok(AdaptationMode::Off),
+            "shadow" => Ok(AdaptationMode::Shadow),
+            "canary" => Ok(AdaptationMode::Canary),
+            _ => Err(format!("unknown adaptation mode: {}", s)),
+        }
+    }
+}
+
 /// Status information returned by the scheduler daemon.
 ///
 /// Contains the current profile, adaptation state, active backend, and
@@ -57,6 +104,9 @@ pub struct SchedulerStatus {
 
     /// Whether automatic profile adaptation is enabled.
     pub adaptation_enabled: bool,
+
+    /// The adaptation mode controlling how recommendations are applied.
+    pub adaptation_mode: AdaptationMode,
 
     /// The scheduler backend currently in use.
     pub backend: SchedulerBackend,
@@ -87,6 +137,7 @@ impl Default for SchedulerStatus {
         Self {
             profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             backend: SchedulerBackend::Mock,
             running: false,
             sched_ext_state: None,
@@ -114,6 +165,7 @@ mod tests {
         let status = SchedulerStatus {
             profile: Profile::Performance,
             adaptation_enabled: true,
+            adaptation_mode: AdaptationMode::Shadow,
             backend: SchedulerBackend::Mock,
             running: true,
             sched_ext_state: Some("scx_rustland".to_string()),
@@ -130,6 +182,7 @@ mod tests {
         let status = SchedulerStatus::default();
         assert_eq!(status.profile, Profile::Balanced);
         assert!(!status.adaptation_enabled);
+        assert_eq!(status.adaptation_mode, AdaptationMode::Off);
         assert_eq!(status.backend, SchedulerBackend::Mock);
         assert!(!status.running);
         assert_eq!(status.sched_ext_state, None);
@@ -150,5 +203,42 @@ mod tests {
             "scx".parse::<SchedulerBackend>(),
             Ok(SchedulerBackend::Scx)
         ));
+    }
+
+    #[test]
+    fn adaptation_mode_serialization() {
+        let mode = AdaptationMode::Off;
+        let json = serde_json::to_string(&mode).unwrap();
+        assert_eq!(json, "\"off\"");
+
+        let mode: AdaptationMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(mode, AdaptationMode::Off);
+
+        assert_eq!(AdaptationMode::Off.to_string(), "off");
+        assert!(matches!(
+            "off".parse::<AdaptationMode>(),
+            Ok(AdaptationMode::Off)
+        ));
+
+        let mode = AdaptationMode::Shadow;
+        let json = serde_json::to_string(&mode).unwrap();
+        assert_eq!(json, "\"shadow\"");
+
+        let mode: AdaptationMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(mode, AdaptationMode::Shadow);
+
+        let mode = AdaptationMode::Canary;
+        let json = serde_json::to_string(&mode).unwrap();
+        assert_eq!(json, "\"canary\"");
+
+        let mode: AdaptationMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(mode, AdaptationMode::Canary);
+    }
+
+    #[test]
+    fn invalid_adaptation_mode_rejected() {
+        assert!("invalid".parse::<AdaptationMode>().is_err());
+        assert!("offf".parse::<AdaptationMode>().is_err());
+        assert!("canaryy".parse::<AdaptationMode>().is_err());
     }
 }

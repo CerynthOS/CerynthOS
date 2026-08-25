@@ -8,6 +8,10 @@ pub fn execute(request: Request) -> std::io::Result<ResponseEnvelope> {
 
         Request::GetProfile => SocketRequest::GetProfile,
 
+        Request::GetAdaptationMode => SocketRequest::GetAdaptationMode,
+
+        Request::SetAdaptationMode(mode) => SocketRequest::SetAdaptationMode { mode },
+
         Request::PauseAdaptation => SocketRequest::PauseAdaptation,
 
         Request::ResumeAdaptation => SocketRequest::ResumeAdaptation,
