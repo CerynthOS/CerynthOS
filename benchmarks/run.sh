@@ -48,7 +48,8 @@ WORKLOAD_SCRIPT="${WORKLOAD_DIR}/${WORKLOAD}.sh"
 if [ ! -x "${WORKLOAD_SCRIPT}" ]; then
   echo "error: no workload script at ${WORKLOAD_SCRIPT}" >&2
   echo "available workloads:" >&2
-  ls "${WORKLOAD_DIR}"/*.sh 2>/dev/null | xargs -n1 basename | sed 's/\.sh$//' >&2
+  find "${WORKLOAD_DIR}" -maxdepth 1 -type f -name '*.sh' -printf '%f\n' |
+    sed 's/\.sh$//' >&2
   exit 1
 fi
 

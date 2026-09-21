@@ -26,7 +26,9 @@ fi
   --enable BPF_JIT_DEFAULT_ON \
   --enable DEBUG_INFO \
   --enable DEBUG_INFO_BTF \
-  --enable SCHED_CLASS_EXT
+  --enable SCHED_CLASS_EXT \
+  --disable SYSTEM_TRUSTED_KEYS \
+  --disable SYSTEM_REVOCATION_KEYS
 
 make -C "$LINUX" O="$BUILD" olddefconfig
 

@@ -14,7 +14,7 @@ users:
     sudo:
       - ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLeMPkqtKfdL/FW9c9cv475qEsFrwC3gIOQLIebEheB cerynth-vm
+      - __CERYNTH_SSH_PUBLIC_KEY__
 
 ssh_pwauth: false
 disable_root: true
