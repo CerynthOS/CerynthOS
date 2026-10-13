@@ -17,6 +17,7 @@ built against these values independently.
 | `/var/lib/cerynth/state.json` | Person 3 | Persistent runtime state |
 | `/run/cerynth/cerynthd.sock` | Person 3 | Daemon IPC socket |
 | `/run/cerynth/scheduler.json` | Person 2 | Scheduler status |
+| `/run/cerynth/scheduler-stats.json` | Person 2 | Scheduler runtime counters |
 | `/run/cerynth/policy.json` | Person 4 | Shadow-mode recommendations |
 | `/run/cerynth/boot-ok` | Person 1 | Boot completion marker |
 
@@ -102,6 +103,40 @@ rename):
 running. `cerynthd`'s `ScxBackend` treats the scheduler as unhealthy once
 `heartbeat` is more than `HEARTBEAT_TIMEOUT_SECS` (10s) old, so this field
 existing and staying fresh is load-bearing for health checks, not cosmetic.
+
+## Scheduler stats schema
+
+`/run/cerynth/scheduler-stats.json`, written atomically by `cerynth-scx` at
+startup, every second, and on clean exit (`"running": false`). Same
+`heartbeat` meaning as `scheduler.json`. Full field list, semantics and
+change rules: `docs/scheduler/stats.md`.
+
+```json
+{
+  "schema_version": 1,
+  "running": true,
+  "pid": 1234,
+  "profile": "interactive",
+  "started_at_ms": 1785990000000,
+  "uptime_ms": 92013,
+  "heartbeat": 1785990092,
+  "tasks_dequeued": 184233,
+  "tasks_dispatched": 184233,
+  "tasks_pending": 0,
+  "dispatch_errors": 0,
+  "dequeue_errors": 0,
+  "batches_processed": 5821,
+  "avg_batch_size": 31.65,
+  "max_batch_size": 32,
+  "starvation_rescues": 44,
+  "bpf": { "nr_online_cpus": 8, "nr_running": 6, "nr_queued": 0, "nr_scheduled": 0,
+           "user_dispatches": 160112, "kernel_dispatches": 52410, "cancel_dispatches": 31,
+           "bounce_dispatches": 0, "failed_dispatches": 0, "sched_congested": 0 }
+}
+```
+
+Readers must ignore unknown fields. Renames and removals bump
+`schema_version`.
 
 ## Policy recommendation schema
 

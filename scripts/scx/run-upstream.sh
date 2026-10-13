@@ -17,6 +17,7 @@ LOG_FILE="/tmp/cerynth-scx.log"
 sudo -v
 
 echo "Starting $BINARY (logs: $LOG_FILE)"
+# shellcheck disable=SC2024  # on purpose: the log stays owned by the invoking user
 sudo nohup "$BINARY" > "$LOG_FILE" 2>&1 &
 SCX_PID=$!
 echo "$SCX_PID" > "$PID_FILE"
