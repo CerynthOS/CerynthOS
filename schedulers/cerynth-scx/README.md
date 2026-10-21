@@ -19,6 +19,8 @@ Design, profiles and safety model: [`docs/scheduler/README.md`](../../docs/sched
   snapshot.
 - `status.rs`: `/run/cerynth/scheduler.json` and the atomic JSON writer
   both files share.
+- `process.rs`: process-level hardening. Moves helper threads out of
+  `sched_ext` and disables core dumps, so a killed scheduler dies quickly.
 - `error.rs`: typed errors for dequeue/dispatch failures.
 
 ## Profiles
@@ -72,6 +74,13 @@ Schema: [`docs/scheduler/stats.md`](../../docs/scheduler/stats.md).
   scheduler 5 s later.
 - If no dispatch succeeds for 2 s, the scheduler exits by itself and the
   kernel falls back to its default scheduler.
+- A killed or crashed scheduler is gone in well under a second. Its helper
+  thread runs in the kernel's real-time class and core dumps are off, so
+  nothing the dying process needs depends on the scheduler that just died.
+- A load that fails before the scheduler ever ran, or a restart requested
+  by the kernel, ends with **exit code 75**: start it again. One process can
+  load a scheduler only once, so it cannot retry by itself (see "Starting
+  again" in `docs/scheduler/README.md`).
 - No `unwrap()`s on the dequeue/dispatch path. Errors are counted and
   summarized once per heartbeat instead of logged one by one.
 - `Ctrl+C`/`SIGTERM` trigger a clean shutdown through the `ctrlc` crate,

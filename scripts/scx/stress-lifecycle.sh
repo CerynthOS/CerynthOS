@@ -120,16 +120,19 @@ log "cerynth-scx lifecycle stress: $ITERATIONS iterations, load=$LOAD, hold=${HO
 log "binary: $SCX_BIN"
 log "kernel: $(uname -r), sched_ext: $(scx_state), enable_seq: $(enable_seq)"
 
-mark_kernel_log
 start_load "$LOAD"
 START_SECONDS=$SECONDS
 
 COMPLETED=0
 FAILED_ITERATIONS=0
 for ((i = 1; i <= ITERATIONS; i++)); do
+    fails_before=$FAIL_COUNT
+    # The kernel log is checked one iteration at a time: the kernel's log
+    # buffer is too small to hold a whole 100-iteration run.
+    mark_kernel_log
+
     if ! run_iteration "$i"; then
-        FAILED_ITERATIONS=$((FAILED_ITERATIONS + 1))
-        log "iteration $i failed; scheduler log tail:"
+        log "iteration $i stopped early; scheduler log tail:"
         tail -5 "$SCHED_LOG" | sed 's/^/      /' | tee -a "$LOG_DIR/progress.log"
     fi
     if ! reset_to_baseline; then
@@ -137,21 +140,22 @@ for ((i = 1; i <= ITERATIONS; i++)); do
         log "UNRECOVERABLE: sched_ext stuck in '$(scx_state)' even after SysRq-S. Stopping."
         break
     fi
+    # No stall is expected anywhere in an iteration, including after the
+    # SIGKILL: a "runnable task stall" here means the kernel watchdog had to
+    # eject a scheduler that should have been gone already.
+    check_kernel_log "iteration $i"
+
+    ((FAIL_COUNT > fails_before)) && FAILED_ITERATIONS=$((FAILED_ITERATIONS + 1))
     COMPLETED=$i
     sync "$LOG_DIR/progress.log" 2>/dev/null || sync
 done
 
 stop_load
 DURATION=$((SECONDS - START_SECONDS))
-
-kernel_log_since_mark >"$LOG_DIR/kernel.log"
-TROUBLE=$(kernel_trouble_since_mark)
-if [[ -n "$TROUBLE" ]]; then
-    fail "kernel log clean (see kernel.log):"
-    printf '%s\n' "$TROUBLE" | head -20 | sed 's/^/      /' | tee -a "$LOG_DIR/progress.log"
-else
-    pass "kernel log clean: no stalls, scx_bpf_error, lockups or oopses"
-fi
+read -r FALLBACK_COUNT FALLBACK_MAX_MS FALLBACK_AVG_MS <<<"$(fallback_stats)"
+# Launches that exited with EXIT_START_AGAIN and were repeated by
+# start_healthy. Not a failure, but worth knowing how often it happens.
+LOAD_RETRIES=$START_AGAIN_COUNT
 
 write_result stress-lifecycle \
     --argjson iterations_requested "$ITERATIONS" \
@@ -160,10 +164,16 @@ write_result stress-lifecycle \
     --argjson unrecoverable "$UNRECOVERABLE" \
     --argjson load "$LOAD" \
     --argjson duration_s "$DURATION" \
-    --argjson final_enable_seq "$(enable_seq)"
+    --argjson final_enable_seq "$(enable_seq)" \
+    --argjson hard_kills "$FALLBACK_COUNT" \
+    --argjson fallback_ms_max "$FALLBACK_MAX_MS" \
+    --argjson fallback_ms_avg "$FALLBACK_AVG_MS" \
+    --argjson load_retries "$LOAD_RETRIES"
 
 log "done in ${DURATION}s: $COMPLETED/$ITERATIONS iterations, $FAILED_ITERATIONS failed," \
     "$PASS_COUNT checks passed, $FAIL_COUNT failed"
+log "fallback after SIGKILL: max ${FALLBACK_MAX_MS}ms, avg ${FALLBACK_AVG_MS}ms over $FALLBACK_COUNT kills;" \
+    "load retries: $LOAD_RETRIES"
 log "results: $LOG_DIR/result.json"
 
 if ((FAIL_COUNT > 0)) || [[ "$UNRECOVERABLE" == true ]]; then

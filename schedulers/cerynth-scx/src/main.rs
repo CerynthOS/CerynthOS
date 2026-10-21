@@ -17,6 +17,7 @@ pub mod bpf_intf;
 #[allow(clippy::all, clippy::pedantic, unsafe_code)]
 mod bpf;
 use std::mem::MaybeUninit;
+use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, bail};
@@ -31,6 +32,7 @@ use profile::{Params, Profile};
 
 mod error;
 mod policy;
+mod process;
 mod stats;
 mod status;
 
@@ -52,6 +54,34 @@ const DISPATCH_STALL_LIMIT: Duration = Duration::from_secs(2);
 /// Fault injection for `scripts/scx/fault-test.sh`: when set to N, every Nth
 /// dispatch attempt is treated as failed without reaching the BPF side.
 const INJECT_DISPATCH_ERRORS_ENV: &str = "CERYNTH_SCX_INJECT_DISPATCH_ERRORS";
+
+/// Exit code for "this start didn't work out, but starting again is expected
+/// to" (`EX_TEMPFAIL` in sysexits.h). Used in two cases:
+///
+/// - The load failed before the scheduler ever ran. Loading can fail for
+///   reasons that have nothing to do with us and are gone a moment later:
+///   the kernel sets up per-task storage for every task on the machine while
+///   enabling a scheduler, and under heavy load one of those small
+///   allocations occasionally fails (`ops.init_task() failed (-12)`, seen
+///   once in ~600 loads).
+/// - The kernel asked for a restart, e.g. because a CPU went on/offline.
+///
+/// We can't do the second start ourselves. Loading installs a filter that
+/// makes every later `mmap()` in this process fail (`scx_rustland_core` does
+/// that so the dispatch loop can never page-fault). The filter cannot be
+/// removed and survives `exec`, and both loading BPF and starting any
+/// program at all need `mmap()`. Only a fresh process started by someone
+/// else can load again, and that someone is whoever started us (cerynthd).
+const EXIT_START_AGAIN: u8 = 75;
+
+/// Fault injection for `scripts/scx/fault-test.sh`: when set to a non-zero
+/// number, this start is treated as a failed load, right after the BPF
+/// scheduler was attached.
+const INJECT_LOAD_FAILURE_ENV: &str = "CERYNTH_SCX_INJECT_LOAD_FAILURE";
+
+/// Set to keep core dumps on a crash (off by default, see
+/// `process::disable_core_dumps`). For debugging a crash only.
+const ALLOW_COREDUMP_ENV: &str = "CERYNTH_SCX_ALLOW_COREDUMP";
 
 #[derive(Parser, Debug)]
 #[command(name = "cerynth-scx", about = "CerynthOS sched_ext scheduler")]
@@ -80,6 +110,11 @@ struct Scheduler<'a> {
     inject_dispatch_errors_every: Option<u64>,
     dispatch_attempts: u64,
     last_error: Option<SchedError>,
+
+    /// Whether the dispatch loop got to run at all. If the kernel had
+    /// already thrown the scheduler out before the first pass, the *load*
+    /// failed, which is worth retrying; a failure later on is not.
+    ran_a_pass: bool,
 }
 
 impl<'a> Scheduler<'a> {
@@ -116,6 +151,7 @@ impl<'a> Scheduler<'a> {
             inject_dispatch_errors_every,
             dispatch_attempts: 0,
             last_error: None,
+            ran_a_pass: false,
         })
     }
 
@@ -250,6 +286,7 @@ impl<'a> Scheduler<'a> {
         let mut stalled = false;
 
         while !self.bpf.exited() {
+            self.ran_a_pass = true;
             self.dispatch_tasks();
 
             if let Some(since) = self.stalled_since {
@@ -283,20 +320,57 @@ impl<'a> Scheduler<'a> {
     }
 }
 
-fn inject_dispatch_errors_from_env() -> Result<Option<u64>> {
-    let Ok(value) = std::env::var(INJECT_DISPATCH_ERRORS_ENV) else {
+/// Read a non-negative number from an environment variable. Unset means
+/// `None`; anything that isn't a number is an error rather than a silent
+/// default, since these switches change how the scheduler behaves.
+fn number_from_env<T>(name: &str) -> Result<Option<T>>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let Ok(value) = std::env::var(name) else {
         return Ok(None);
     };
-    match value.trim().parse::<u64>() {
-        Ok(0) => Ok(None),
-        Ok(every) => Ok(Some(every)),
-        Err(e) => bail!("{INJECT_DISPATCH_ERRORS_ENV}={value:?} is not a number: {e}"),
+    match value.trim().parse::<T>() {
+        Ok(number) => Ok(Some(number)),
+        Err(e) => bail!("{name}={value:?} is not a number: {e}"),
     }
 }
 
-fn main() -> Result<()> {
+/// What to do after the scheduler stopped.
+#[derive(Debug, PartialEq, Eq)]
+enum Next {
+    /// Done; exit with the scheduler's own result.
+    Exit,
+    /// Exit with `EXIT_START_AGAIN`: a fresh process is expected to work.
+    StartAgain,
+}
+
+/// Pure decision, so the rules can be unit tested without a kernel.
+fn decide_next(failed: bool, restart_requested: bool, ran_a_pass: bool) -> Next {
+    if failed {
+        // Only a failure before the first dispatch pass is a failed *load*.
+        // A scheduler that ran and was then thrown out (watchdog, SysRq-S,
+        // its own stall bail-out) must stay out: asking to be loaded again
+        // would fight whatever stopped it.
+        if ran_a_pass {
+            Next::Exit
+        } else {
+            Next::StartAgain
+        }
+    } else if restart_requested {
+        Next::StartAgain
+    } else {
+        Next::Exit
+    }
+}
+
+fn main() -> Result<ExitCode> {
     let cli = Cli::parse();
-    let inject_every = inject_dispatch_errors_from_env()?;
+    // 0 means "off" for both switches.
+    let inject_every = number_from_env::<u64>(INJECT_DISPATCH_ERRORS_ENV)?.filter(|n| *n > 0);
+    let inject_load_failure =
+        number_from_env::<u32>(INJECT_LOAD_FAILURE_ENV)?.is_some_and(|n| n > 0);
 
     println!(
         "cerynth-scx: starting (profile = {}, base time slice = {} ns)",
@@ -309,26 +383,93 @@ fn main() -> Result<()> {
              ({INJECT_DISPATCH_ERRORS_ENV}). Testing only."
         );
     }
+    if inject_load_failure {
+        eprintln!(
+            "cerynth-scx: FAULT INJECTION ON - this start will be treated as a failed load \
+             ({INJECT_LOAD_FAILURE_ENV}). Testing only."
+        );
+    }
+
+    if std::env::var_os(ALLOW_COREDUMP_ENV).is_none() {
+        if let Err(e) = process::disable_core_dumps() {
+            eprintln!("cerynth-scx: could not disable core dumps: {e}");
+        }
+    }
 
     let mut open_object = MaybeUninit::uninit();
-    let result = loop {
-        // An init failure (e.g. another sched_ext scheduler is already
-        // loaded) returns here without touching the status file: it may
-        // belong to that other, still-running instance.
-        let mut sched = Scheduler::init(&mut open_object, cli.profile, inject_every)?;
+    // An init failure (e.g. another sched_ext scheduler is already loaded)
+    // returns here without touching the status file: it may belong to that
+    // other, still-running instance.
+    let mut sched = Scheduler::init(&mut open_object, cli.profile, inject_every)?;
+
+    // The helper thread exists from init onwards; without this a hard kill
+    // leaves the machine stalled until the kernel watchdog steps in.
+    if let Err(e) = process::shield_helper_threads() {
+        eprintln!(
+            "cerynth-scx: could not move helper threads out of sched_ext ({e}); \
+             after a crash the fallback may take until the 5s kernel watchdog"
+        );
+    }
+
+    let outcome = if inject_load_failure {
+        Err(anyhow::anyhow!("load failure (injected fault)"))
+    } else {
         sched.write_stats(true);
         if let Err(e) = status::SchedulerStatus::running(cli.profile, sched.started_at_ms).write() {
             eprintln!("cerynth-scx: failed to write status file: {e}");
         }
-        match sched.run() {
-            Ok(exit_info) if exit_info.should_restart() => {}
-            Ok(_) => break Ok(()),
-            Err(e) => break Err(e),
-        }
+        sched.run()
     };
+    let ran_a_pass = sched.ran_a_pass;
+    // Detach from the kernel before anything else happens.
+    drop(sched);
 
     if let Err(e) = status::SchedulerStatus::stopped().write() {
         eprintln!("cerynth-scx: failed to write status file: {e}");
     }
-    result
+
+    let restart_requested = matches!(&outcome, Ok(exit_info) if exit_info.should_restart());
+    match decide_next(outcome.is_err(), restart_requested, ran_a_pass) {
+        Next::Exit => outcome.map(|_| ExitCode::SUCCESS),
+        Next::StartAgain => {
+            match &outcome {
+                Err(e) => eprintln!("cerynth-scx: loading failed before the scheduler ran: {e:#}"),
+                Ok(_) => eprintln!("cerynth-scx: the kernel asked for a restart"),
+            }
+            eprintln!(
+                "cerynth-scx: exiting with code {EXIT_START_AGAIN} (start me again); \
+                 this process cannot load a scheduler a second time"
+            );
+            Ok(ExitCode::from(EXIT_START_AGAIN))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clean_exit_just_exits() {
+        assert_eq!(decide_next(false, false, true), Next::Exit);
+    }
+
+    #[test]
+    fn kernel_restart_request_asks_to_be_started_again() {
+        assert_eq!(decide_next(false, true, true), Next::StartAgain);
+    }
+
+    #[test]
+    fn failed_load_asks_to_be_started_again() {
+        assert_eq!(decide_next(true, false, false), Next::StartAgain);
+    }
+
+    #[test]
+    fn failure_after_running_is_final() {
+        // Watchdog ejection, SysRq-S, our own stall bail-out: the scheduler
+        // was running and something stopped it.
+        assert_eq!(decide_next(true, false, true), Next::Exit);
+        // Even if the kernel's exit record also carries a restart request.
+        assert_eq!(decide_next(true, true, true), Next::Exit);
+    }
 }

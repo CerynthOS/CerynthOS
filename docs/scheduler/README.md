@@ -104,7 +104,9 @@ BPF scheduler unloaded and Linux scheduling the machine again:
 | What goes wrong | What happens | Tested by |
 | --- | --- | --- |
 | Clean stop (SIGTERM / SIGINT) | scheduler detaches, writes `running: false` to both files, exits 0 | `stress-lifecycle.sh` |
-| Crash / SIGKILL | the kernel unloads the BPF scheduler when the process's file descriptors close | `fault-test.sh crash-*` |
+| Crash / SIGKILL | the kernel unloads the BPF scheduler as soon as the process is gone, in well under a second (see "Dying quickly" below) | `fault-test.sh crash-*`, `stress-lifecycle.sh` |
+| Loading fails before the scheduler ever ran | scheduler detaches, writes `running: false`, exits with code 75, "start me again" (see "Starting again" below) | `fault-test.sh load-failure` |
+| Kernel asks for a restart (a CPU went on/offline) | same: exit code 75 | unit test of the decision only |
 | Scheduler frozen (SIGSTOP, deadlock) | kernel watchdog: a runnable task waiting > 5 s (`timeout_ms`) ejects the scheduler | `fault-test.sh heartbeat-freeze` |
 | A dispatch fails | task kept in `pending` and retried next pass, never dropped | `fault-test.sh dispatch-errors` |
 | Dispatches keep failing | no successful dispatch for 2 s → scheduler exits by itself, before the 5 s watchdog | `fault-test.sh dispatch-stall` |
@@ -116,10 +118,88 @@ out of the queue, the kernel considers it the scheduler's job. If the loop
 logs the error and moves on, that task never runs again, and five seconds
 later the watchdog ejects the whole scheduler over one lost task.
 
+### Dying quickly
+
+The kernel unloads the BPF half only once the scheduler *process* is
+completely gone, and while the process is dying nobody is dispatching
+tasks. So anything that slows the process's death freezes the machine for
+that long. Two things did (`src/process.rs`):
+
+- **The helper thread.** The process has a second thread (started by the
+  `ctrlc` crate to wait for signals). The dispatch loop's own thread is
+  placed on a CPU by the BPF half directly, but every other task on the
+  machine, including that helper thread, needs the dispatch loop to give it
+  a CPU. On SIGKILL the helper must run once more to exit. With every CPU
+  busy it waited for a dispatch loop that was already dead, the process
+  could not finish dying, and the BPF half stayed loaded until the kernel
+  watchdog ejected it. Measured with `stress-lifecycle.sh` on a 24-CPU
+  machine under full load: **84 of 99 SIGKILLs took 5–9 s** to fall back.
+  The helper thread is now moved to the kernel's real-time class at
+  startup, which the kernel schedules itself, so it can always exit. Same
+  test, same machine, after the fix: **100 of 100 SIGKILLs fell back in at
+  most 193 ms** (average 142 ms), with no watchdog ejection in the kernel
+  log.
+- **Core dumps.** A core dump is written by a helper program the kernel
+  starts while the crashed process is still half-alive, and that helper
+  would need CPU time from the scheduler that just crashed. Core dumps are
+  switched off for this process (`CERYNTH_SCX_ALLOW_COREDUMP=1` turns them
+  back on for debugging).
+
+`kill_hard` in `scripts/scx/test-lib.sh` times every hard kill and fails if
+the fallback takes more than 3 s, so a regression here shows up as a number.
+
+### Starting again
+
+One scheduler process can load the BPF scheduler exactly once. While
+loading, the vendored `scx_rustland_core` code installs a seccomp filter
+that makes every later `mmap()` call in the process fail. That is on
+purpose: the dispatch loop must never take a page fault, because resolving
+one can need a kernel thread that is itself waiting for the dispatch loop.
+
+The filter cannot be removed, and anything the process executes inherits
+it. Loading BPF needs `mmap()`, and so does starting any program at all. So
+neither a second load inside the same process nor re-executing the binary
+can work. Re-executing was tried first, and `fault-test.sh` caught it: the
+new image died in the dynamic loader with
+`cannot create search path array: Cannot allocate memory`.
+
+So when a start did not work out but a fresh one is expected to, the
+scheduler detaches, writes `running: false` and says so with its exit code:
+
+| Exit code | Meaning | What the supervisor should do |
+| --- | --- | --- |
+| 0 | clean stop (SIGTERM / SIGINT) | nothing |
+| 75 (`EX_TEMPFAIL`) | the load failed before the scheduler ever ran, or the kernel asked for a restart | start it again, a limited number of times |
+| any other | a real error: ejected by the watchdog, SysRq-S, stall bail-out, another scheduler already loaded | do not restart automatically |
+
+Only a failure *before the first dispatch pass* counts as a failed load. A
+scheduler that ran and was then ejected is never asked to be started again,
+because that would fight whatever stopped it.
+
+As of week 3 `cerynthd` does not look at the exit code. A start that ends
+in 75 is reported like any other failed start (`scheduler exited before
+becoming healthy`). The test scripts do act on it: `start_healthy` in
+`scripts/scx/test-lib.sh` launches up to 3 times and counts every repeat as
+`load_retries` in `result.json`.
+
 Errors on the hot path are counted, not printed. Once per second the
 heartbeat prints one summary line if anything new failed. A burst of
 thousands of errors can't flood the journal or block the loop on a full
 stderr pipe.
+
+## Known issues
+
+- On kernel 7.2 every load prints
+  `sched_ext: Writing directly to p->scx.slice/dsq_vtime is deprecated`
+  three times. It comes from the vendored `main.bpf.c`
+  (`scx_rustland_core 2.4.11`), not from our code, and is harmless today.
+  A future kernel may turn it into a load failure. The fix is a newer
+  pinned `scx`, which is a platform decision.
+- `ops.init_task() failed (-12)` while loading, about once in 600 loads
+  under full CPU load. The kernel sets up per-task storage for every task
+  when a scheduler is enabled, and one small allocation occasionally fails.
+  Nothing is loaded when it happens. The scheduler exits with code 75, and
+  the one time this was seen the next start worked.
 
 ## Running it
 

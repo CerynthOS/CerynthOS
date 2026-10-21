@@ -29,7 +29,8 @@ ONLY=""
 
 SCENARIOS=(
     crash-sigkill
-    crash-sigsegv
+    crash-sigabrt
+    load-failure
     status-deleted
     status-corrupt
     heartbeat-freeze
@@ -40,7 +41,8 @@ SCENARIOS=(
 
 declare -A DESCRIPTIONS=(
     [crash-sigkill]="scheduler killed outright (SIGKILL)"
-    [crash-sigsegv]="scheduler crashes (SIGSEGV)"
+    [crash-sigabrt]="scheduler crashes (SIGABRT, what a Rust abort raises)"
+    [load-failure]="loading fails: must leave cleanly with the start-again exit code"
     [status-deleted]="status and stats files deleted while running"
     [status-corrupt]="status and stats files overwritten with invalid JSON"
     [heartbeat-freeze]="scheduler frozen (SIGSTOP): heartbeat stops, kernel watchdog must eject it"
@@ -124,19 +126,55 @@ reap_scheduler() {
     SCX_PID=""
 }
 
-kernel_says() { kernel_log_since_mark | grep -q "$1"; }
 kernel_silent_about() { ! kernel_says "$1"; }
 
+# A crash must end in a quick fallback: kill_hard times it and fails if the
+# kernel watchdog had to do the job (see FALLBACK_LIMIT_MS in test-lib.sh).
 scenario_crash() {
     local sig="$1"
     start_healthy balanced || return 1
     sleep 1
-    kill_hard "$sig" || return 1
+    kill_hard "$sig"
     check "machine responsive after SIG$sig" probe_responsive
+    check "the kernel watchdog was not needed" kernel_silent_about "runnable task stall"
 }
 
 scenario_crash-sigkill() { scenario_crash KILL; }
-scenario_crash-sigsegv() { scenario_crash SEGV; }
+
+# Not SIGSEGV: Rust's runtime installs its own SIGSEGV handler (to report
+# stack overflows). For a SIGSEGV sent from outside there is no faulting
+# instruction to return to, so the handler just uninstalls itself and the
+# program carries on - the first version of this test "crashed" a scheduler
+# that never noticed. SIGABRT has no handler and is what a real Rust abort
+# (double panic, allocation failure) raises.
+scenario_crash-sigabrt() { scenario_crash ABRT; }
+
+# The scheduler cannot retry a failed load itself: once loaded, its process
+# can never load again (see "Starting again" in docs/scheduler/README.md).
+# So it has to leave nothing behind and tell whoever started it, through its
+# exit code, that starting again is worth it.
+scenario_load-failure() {
+    launch balanced CERYNTH_SCX_INJECT_LOAD_FAILURE=1
+    check "scheduler exits by itself" wait_for "$START_TIMEOUT" pid_gone "$SCX_PID" || return 1
+    reap_scheduler
+    check "exit code $EXIT_START_AGAIN, start me again (got $SCX_RC)" \
+        test "$SCX_RC" -eq "$EXIT_START_AGAIN"
+    check "sched_ext disabled" wait_for "$STOP_TIMEOUT" state_is disabled
+    check "scheduler.json says stopped" status_stopped
+    check "log explains why" grep -q "loading failed before the scheduler ran" "$SCHED_LOG"
+    check "machine responsive" probe_responsive
+
+    # The other side of that contract: start_healthy plays the supervisor
+    # and must get a scheduler up when only the first launch fails.
+    local again_before=$START_AGAIN_COUNT
+    FIRST_LAUNCH_ENV=(CERYNTH_SCX_INJECT_LOAD_FAILURE=1)
+    start_healthy balanced || return 1
+    check "the start took exactly one extra launch" \
+        test "$START_AGAIN_COUNT" -eq $((again_before + 1))
+    sleep 1.5
+    check "second launch is dispatching" stats_dispatching
+    stop_clean TERM
+}
 
 scenario_status-deleted() {
     start_healthy interactive || return 1
@@ -247,7 +285,6 @@ log "cerynth-scx fault tests: ${SELECTED[*]}"
 log "binary: $SCX_BIN, load: $LOAD busy loops"
 log "kernel: $(uname -r), sched_ext: $(scx_state)"
 
-RUN_MARK=$(cut -d' ' -f1 /proc/uptime)
 start_load "$LOAD"
 START_SECONDS=$SECONDS
 SCENARIO_RESULTS=()
@@ -259,14 +296,10 @@ for s in "${SELECTED[@]}"; do
 
     "scenario_$s" || log "$s: stopped early after a failed check"
     reset_to_baseline || fail "$s: could not get back to a clean state"
-
-    trouble=$(kernel_trouble_since_mark "${EXPECTED_KERNEL[$s]:-}")
-    if [[ -n "$trouble" ]]; then
-        fail "$s: unexpected kernel messages"
-        printf '%s\n' "$trouble" | head -10 | sed 's/^/      /' | tee -a "$LOG_DIR/progress.log"
-    fi
-
     check_recovery || log "$s: recovery failed"
+
+    # One window per scenario, covering the fault and the recovery after it.
+    check_kernel_log "$s" "${EXPECTED_KERNEL[$s]:-}"
 
     if ((FAIL_COUNT == fails_before)); then
         SCENARIO_RESULTS+=("$s=pass")
@@ -277,7 +310,7 @@ done
 
 stop_load
 DURATION=$((SECONDS - START_SECONDS))
-kernel_log_since "$RUN_MARK" >"$LOG_DIR/kernel.log"
+read -r FALLBACK_COUNT FALLBACK_MAX_MS FALLBACK_AVG_MS <<<"$(fallback_stats)"
 
 SCENARIOS_JSON=$(printf '%s\n' "${SCENARIO_RESULTS[@]}" |
     jq -R 'split("=") | {(.[0]): .[1]}' | jq -s 'add')
@@ -285,9 +318,16 @@ SCENARIOS_JSON=$(printf '%s\n' "${SCENARIO_RESULTS[@]}" |
 write_result fault-test \
     --argjson scenarios "$SCENARIOS_JSON" \
     --argjson load "$LOAD" \
-    --argjson duration_s "$DURATION"
+    --argjson duration_s "$DURATION" \
+    --argjson hard_kills "$FALLBACK_COUNT" \
+    --argjson fallback_ms_max "$FALLBACK_MAX_MS" \
+    --argjson fallback_ms_avg "$FALLBACK_AVG_MS" \
+    --argjson load_retries "$START_AGAIN_COUNT"
 
 log "done in ${DURATION}s: $PASS_COUNT checks passed, $FAIL_COUNT failed"
+if ((FALLBACK_COUNT > 0)); then
+    log "fallback after a hard kill: max ${FALLBACK_MAX_MS}ms, avg ${FALLBACK_AVG_MS}ms over $FALLBACK_COUNT kill(s)"
+fi
 printf '%s\n' "${SCENARIO_RESULTS[@]}" | sed 's/=/: /; s/^/  /' | tee -a "$LOG_DIR/progress.log"
 log "results: $LOG_DIR/result.json"
 
