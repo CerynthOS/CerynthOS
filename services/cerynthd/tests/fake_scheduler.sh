@@ -11,7 +11,7 @@ while true; do
     # observe it without needing write access to /run.
     if [ -n "$CERYNTH_HEARTBEAT_PATH" ]; then
         mkdir -p "$(dirname "$CERYNTH_HEARTBEAT_PATH")" 2>/dev/null
-        echo "{\"pid\":$$,\"profile\":\"$2\",\"heartbeat\":$(date +%s)}" \
+        echo "{\"pid\":$$,\"running\":true,\"healthy\":true,\"profile\":\"$2\",\"heartbeat\":$(date +%s)}" \
             > "$CERYNTH_HEARTBEAT_PATH" 2>/dev/null
     fi
     sleep 1

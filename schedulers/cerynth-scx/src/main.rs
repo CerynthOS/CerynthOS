@@ -24,8 +24,9 @@ use scx_utils::libbpf_clap_opts::LibbpfOpts;
 mod profile;
 use profile::Profile;
 
-mod error;
 mod policy;
+mod reporter;
+mod initialization;
 mod status;
 
 const MAX_BATCH: usize = 64;
@@ -41,12 +42,19 @@ struct Cli {
     /// Which schedulinh profile to run.
     #[arg(long, value_enum, default_value_t = Profile::Balanced)]
     profile: Profile,
+    #[arg(long, hide = true, requires = "reporter_parent")]
+    status_reporter: bool,
+    #[arg(long, hide = true)]
+    reporter_parent: Option<u32>,
 }
 
 struct Scheduler<'a> {
     bpf: BpfScheduler<'a>,
     profile: Profile,
     started_at_ms: u64,
+    stats: status::SchedulerStats,
+    // Field order matters: detach BPF before Reporter::drop can wait.
+    reporter: reporter::Reporter,
 }
 
 impl<'a> Scheduler<'a> {
@@ -55,6 +63,7 @@ impl<'a> Scheduler<'a> {
         slice_ns: u64,
         profile: Profile,
     ) -> Result<Self> {
+        let reporter = reporter::Reporter::start()?;
         let open_opts = LibbpfOpts::default();
         let bpf = BpfScheduler::init(
             open_object,
@@ -72,6 +81,12 @@ impl<'a> Scheduler<'a> {
             bpf,
             profile,
             started_at_ms,
+            reporter,
+            stats: status::SchedulerStats {
+                pid: std::process::id(),
+                profile: format!("{profile:?}"),
+                ..Default::default()
+            },
         })
     }
 
@@ -84,19 +99,48 @@ impl<'a> Scheduler<'a> {
             match self.bpf.dequeue_task() {
                 Ok(Some(task)) => tasks.push(task),
                 Ok(None) => break,
-                Err(errno) => {
-                    eprintln!("cerynth-scx: {}", error::SchedError::Dequeue(errno));
+                Err(_) => {
+                    self.stats.dequeue_errors += 1;
                     break;
                 }
             }
         }
+        let batch_size = tasks.len() as u64;
+        self.stats.tasks_dequeued += batch_size;
+        if batch_size > 0 {
+            self.stats.batches_processed += 1;
+            self.stats.max_batch_size = self.stats.max_batch_size.max(batch_size);
+            self.stats.avg_batch_size =
+                self.stats.tasks_dequeued as f64 / self.stats.batches_processed as f64;
+        }
         for task in policy::order_tasks(self.profile, tasks) {
             let dispatched_task = DispatchedTask::new(&task);
-            if let Err(e) = self.bpf.dispatch_task(&dispatched_task) {
-                eprintln!("cerynth-scx: {}", error::SchedError::Dispatch(e));
+            if self.bpf.dispatch_task(&dispatched_task).is_err() {
+                self.stats.dispatch_errors += 1;
+            } else {
+                self.stats.tasks_dispatched += 1;
             }
         }
         self.bpf.notify_complete(0);
+        self.stats.progress_sequence += 1;
+    }
+
+    fn write_stats(&mut self) {
+        self.stats.heartbeat = status::now_ms() / 1000;
+        self.stats.scheduler_uptime_ms = status::now_ms().saturating_sub(self.started_at_ms);
+        self.stats.kernel_queued = *self.bpf.nr_queued_mut();
+        self.stats.kernel_scheduled = *self.bpf.nr_scheduled_mut();
+        self.stats.kernel_user_dispatches = *self.bpf.nr_user_dispatches_mut();
+        self.stats.kernel_direct_dispatches = *self.bpf.nr_kernel_dispatches_mut();
+        self.stats.kernel_failed_dispatches = *self.bpf.nr_failed_dispatches_mut();
+        self.stats.kernel_cancel_dispatches = *self.bpf.nr_cancel_dispatches_mut();
+        if !matches!(
+            self.reporter
+                .publish(self.profile, self.started_at_ms, &self.stats),
+            Ok(true)
+        ) {
+            self.stats.reporter_drops += 1;
+        }
     }
 
     fn run(&mut self) -> Result<UserExitInfo> {
@@ -104,21 +148,15 @@ impl<'a> Scheduler<'a> {
         while !self.bpf.exited() {
             self.dispatch_tasks();
             if last_heartbeat.elapsed() >= HEARTBEAT_INTERVAL {
-                if let Err(e) =
-                    status::SchedulerStatus::running(self.profile, self.started_at_ms).write()
-                {
-                    eprintln!("cerynth-scx: failed to refresh status file: {e}");
-                }
+                self.write_stats();
                 last_heartbeat = Instant::now();
             }
         }
-        println!("cerynth-scx: shutting down, handing control back to the kernel...");
         self.bpf.shutdown_and_report()
     }
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
+fn run_scheduler(cli: Cli) -> Result<()> {
     let slice_ns: u64 = cli.profile.slice_ns();
 
     println!(
@@ -129,15 +167,28 @@ fn main() -> Result<()> {
     let mut open_object = MaybeUninit::uninit();
     loop {
         let mut sched = Scheduler::init(&mut open_object, slice_ns, cli.profile)?;
-        if let Err(e) = status::SchedulerStatus::running(cli.profile, sched.started_at_ms).write() {
-            eprintln!("cerynth-scx: failed to write status file: {e}");
-        }
+        sched.write_stats();
         if !sched.run()?.should_restart() {
             break;
         }
     }
-    if let Err(e) = status::SchedulerStatus::stopped().write() {
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    if cli.status_reporter {
+        return Ok(reporter::run(
+            cli.reporter_parent.expect("required by clap"),
+        )?);
+    }
+    let result = run_scheduler(cli);
+    // A watchdog/BPF error returns through `?` above. Publish the stopped
+    // state on that path as well as on an ordinary shutdown.
+    let mut stopped = status::SchedulerStatus::stopped();
+    stopped.exit_error = result.as_ref().err().map(|error| format!("{error:#}"));
+    if let Err(e) = stopped.write() {
         eprintln!("cerynth-scx: failed to write status file: {e}");
     }
-    Ok(())
+    result
 }

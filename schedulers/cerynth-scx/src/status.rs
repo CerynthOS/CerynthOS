@@ -2,13 +2,13 @@ use std::fs;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::profile::Profile;
 
 const STATUS_DIR: &str = "/run/cerynth";
 const STATUS_PATH: &str = "/run/cerynth/scheduler.json";
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct SchedulerStatus {
     pub running: bool,
     pub pid: u32,
@@ -24,6 +24,8 @@ pub struct SchedulerStatus {
     /// HEARTBEAT_TIMEOUT_SECS old. main.rs's run loop refreshes this
     /// periodically while dispatching, not just at start/stop.
     pub heartbeat: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exit_error: Option<String>,
 }
 fn read_sched_ext_state() -> String {
     fs::read_to_string("/sys/kernel/sched_ext/state")
@@ -57,8 +59,9 @@ impl SchedulerStatus {
             profile: format!("{profile:?}"),
             healthy: true,
             started_at_ms,
-            sched_ext_state: read_sched_ext_state(),
+            sched_ext_state: "enabled".to_string(),
             heartbeat: now_secs(),
+            exit_error: None,
         }
     }
 
@@ -71,6 +74,7 @@ impl SchedulerStatus {
             started_at_ms: 0,
             sched_ext_state: read_sched_ext_state(),
             heartbeat: now_secs(),
+            exit_error: None,
         }
     }
 
@@ -107,5 +111,40 @@ mod tests {
 
         let now = now_secs();
         assert!(heartbeat.unwrap() <= now && heartbeat.unwrap() + 2 >= now);
+    }
+}
+
+/// Diagnostic counters only; they do not participate in scheduling decisions.
+#[derive(Default, Deserialize, Serialize)]
+pub struct SchedulerStats {
+    pub pid: u32,
+    pub profile: String,
+    pub heartbeat: u64,
+    pub scheduler_uptime_ms: u64,
+    pub progress_sequence: u64,
+    pub tasks_dequeued: u64,
+    pub tasks_dispatched: u64,
+    pub reporter_drops: u64,
+    pub dispatch_errors: u64,
+    pub dequeue_errors: u64,
+    pub batches_processed: u64,
+    pub avg_batch_size: f64,
+    pub max_batch_size: u64,
+    pub kernel_queued: u64,
+    pub kernel_scheduled: u64,
+    pub kernel_user_dispatches: u64,
+    pub kernel_direct_dispatches: u64,
+    pub kernel_failed_dispatches: u64,
+    pub kernel_cancel_dispatches: u64,
+}
+
+impl SchedulerStats {
+    pub fn write(&self) -> std::io::Result<()> {
+        let path = format!("{STATUS_DIR}/scheduler-stats.json");
+        let tmp = format!("{path}.tmp");
+        fs::create_dir_all(STATUS_DIR)?;
+        let json = serde_json::to_vec(self)?;
+        fs::write(&tmp, json)?;
+        fs::rename(tmp, path)
     }
 }

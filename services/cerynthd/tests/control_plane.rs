@@ -24,6 +24,10 @@ fn state_path(tag: &str) -> PathBuf {
     std::env::temp_dir().join(format!("cerynth-{tag}-{}.json", std::process::id()))
 }
 
+fn config_path(tag: &str) -> PathBuf {
+    std::env::temp_dir().join(format!("cerynth-{tag}-{}.toml", std::process::id()))
+}
+
 /// Starts the daemon with an isolated socket and state file, always driving
 /// the fake scheduler. Returns the child plus the socket/state paths it uses.
 
@@ -47,10 +51,7 @@ fn start_daemon(
 
     let backend = if use_scx { "scx" } else { "mock" };
 
-    let config = std::env::temp_dir().join(format!(
-        "cerynth-{tag}-{}.toml",
-        std::process::id()
-    ));
+    let config = config_path(tag);
 
     std::fs::write(
         &config,
@@ -112,7 +113,7 @@ fn temp_path(name: &str) -> PathBuf {
 /// Writes a fake sched_ext state file and returns its path.
 fn write_scx_state(name: &str) -> PathBuf {
     let path = temp_path(name);
-    std::fs::write(&path, "scx_e2e_sched\n").unwrap();
+    std::fs::write(&path, "enabled\n").unwrap();
     path
 }
 
@@ -191,7 +192,8 @@ fn profile_persists_after_restart() {
         .stderr(Stdio::null())
         .env("CERYNTH_SCX_BINARY", fake_scheduler())
         .env("CERYNTH_SOCKET", &socket)
-        .env("CERYNTH_STATE", &state);
+        .env("CERYNTH_STATE", &state)
+        .env("CERYNTH_CONFIG", config_path("profile-persist"));
     let mut daemon = cmd.spawn().expect("failed to restart daemon");
 
     thread::sleep(Duration::from_secs(1));
@@ -233,7 +235,7 @@ fn scx_lifecycle_flow() {
     let stdout = String::from_utf8_lossy(&status.stdout);
     assert!(stdout.contains("Running         : Yes"), "was:\n{stdout}");
     assert!(
-        stdout.contains("sched_ext state : scx_e2e_sched"),
+        stdout.contains("sched_ext state : enabled"),
         "was:\n{stdout}"
     );
     assert!(stdout.contains("Heartbeat       : OK"), "was:\n{stdout}");
@@ -306,4 +308,56 @@ fn scx_double_start_errors() {
     stop_daemon(&mut daemon, &socket);
     let _ = std::fs::remove_file(&scx_state);
     let _ = std::fs::remove_file(&heartbeat);
+}
+
+#[test]
+fn scx_repeated_profile_transitions_keep_matching_heartbeat() {
+    let scx_state = write_scx_state("profiles-state");
+    let heartbeat = temp_path("profiles-heartbeat");
+    let (mut daemon, socket, _) = start_daemon("profile-transitions", &[
+        ("CERYNTH_SCX_STATE_PATH", scx_state.to_str().unwrap()),
+        ("CERYNTH_HEARTBEAT_PATH", heartbeat.to_str().unwrap()),
+    ]);
+    for _ in 0..2 {
+        for profile in ["balanced", "interactive", "performance", "background"] {
+            let result = ctl(&socket, &["profile", "set", profile]);
+            assert!(!String::from_utf8_lossy(&result.stderr).contains('✗'));
+            let status = ctl(&socket, &["status"]);
+            let text = String::from_utf8_lossy(&status.stdout);
+            assert!(text.contains("Running         : Yes"), "{text}");
+            assert!(text.contains("Heartbeat       : OK"), "{text}");
+            let record: serde_json::Value = serde_json::from_slice(&std::fs::read(&heartbeat).unwrap()).unwrap();
+            assert_eq!(record["profile"].as_str(), Some(profile));
+        }
+    }
+    stop_daemon(&mut daemon, &socket);
+    let _ = std::fs::remove_file(scx_state);
+    let _ = std::fs::remove_file(heartbeat);
+}
+
+#[test]
+fn scx_failed_child_is_reaped_before_starting_a_new_process() {
+    let scx_state = write_scx_state("process-exit-state");
+    let heartbeat = temp_path("process-exit-heartbeat");
+    let (mut daemon, socket, _) = start_daemon("process-exit", &[
+        ("CERYNTH_SCX_STATE_PATH", scx_state.to_str().unwrap()),
+        ("CERYNTH_HEARTBEAT_PATH", heartbeat.to_str().unwrap()),
+    ]);
+    let old: serde_json::Value = serde_json::from_slice(&std::fs::read(&heartbeat).unwrap()).unwrap();
+    let pid = old["pid"].as_u64().unwrap();
+    assert!(std::process::Command::new("kill").args(["-KILL", &pid.to_string()]).status().unwrap().success());
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let status = ctl(&socket, &["status"]);
+    let text = String::from_utf8_lossy(&status.stdout);
+    assert!(text.contains("Running         : No"), "{text}");
+    assert!(text.contains("stale/missing"), "{text}");
+    let start = ctl(&socket, &["start"]);
+    assert!(!String::from_utf8_lossy(&start.stderr).contains('✗'));
+    let new: serde_json::Value = serde_json::from_slice(&std::fs::read(&heartbeat).unwrap()).unwrap();
+    assert_ne!(new["pid"], old["pid"]);
+    let status = ctl(&socket, &["status"]);
+    assert!(String::from_utf8_lossy(&status.stdout).contains("Heartbeat       : OK"));
+    stop_daemon(&mut daemon, &socket);
+    let _ = std::fs::remove_file(scx_state);
+    let _ = std::fs::remove_file(heartbeat);
 }

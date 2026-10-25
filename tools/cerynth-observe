@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Refreshed read-only Cerynth runtime status. No daemon changes required."""
+import argparse
+import json
+import math
+import sys
+import time
+from cerynth_runtime import Observer, render
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--once', action='store_true')
+parser.add_argument('--json', action='store_true')
+parser.add_argument('--interval', type=float, default=1)
+parser.add_argument('--runtime-dir', default='/run/cerynth')
+parser.add_argument('--state')
+args = parser.parse_args()
+if not math.isfinite(args.interval) or args.interval <= 0:
+    parser.error('--interval must be positive')
+observer = Observer(args.runtime_dir, args.state)
+try:
+    observer.sample()  # CPU baseline
+    time.sleep(args.interval)
+    while True:
+        sample = observer.sample()
+        if sys.stdout.isatty() and not args.json:
+            print('\033[2J\033[H', end='')
+        print(json.dumps(sample) if args.json else render(sample), flush=True)
+        if args.once:
+            break
+        time.sleep(args.interval)
+except KeyboardInterrupt:
+    pass

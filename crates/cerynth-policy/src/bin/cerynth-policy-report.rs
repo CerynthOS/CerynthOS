@@ -9,11 +9,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use cerynth_ipc::Profile;
+use clap::Parser;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct PolicyRecord {
-    current_profile: Profile,
+    #[serde(default)]
+    current_profile: Option<Profile>,
     recommended_profile: Profile,
     confidence: f64,
     reason: String,
@@ -132,33 +134,68 @@ fn print_report(path: &Path, report: &Report) {
     println!("  cooldown holds: {}", report.cooldown_holds);
 }
 
-fn main() -> Result<()> {
-    let replay_dir = PathBuf::from("artifacts/policy-replay/full");
+#[derive(Parser)]
+#[command(about = "Summarize policy decision JSONL files")]
+struct Args {
+    #[arg(
+        long,
+        required_unless_present = "directory",
+        conflicts_with = "directory"
+    )]
+    input: Option<PathBuf>,
+    #[arg(long)]
+    directory: Option<PathBuf>,
+}
 
-    let mut files: Vec<PathBuf> = fs::read_dir(&replay_dir)
-        .with_context(|| format!("reading {}", replay_dir.display()))?
-        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-        .filter(|path| {
-            path.extension()
-                .and_then(|ext| ext.to_str())
-                .is_some_and(|ext| ext == "jsonl")
-        })
-        .collect();
-
-    files.sort();
-
-    if files.is_empty() {
-        println!("No policy replay files found in artifacts/policy-replay/full/");
-        return Ok(());
+fn collect_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    for entry in
+        fs::read_dir(directory).with_context(|| format!("reading {}", directory.display()))?
+    {
+        let path = entry?.path();
+        if path.is_dir() && !path.is_symlink() {
+            collect_files(&path, files)?;
+        } else if path.extension().is_some_and(|ext| ext == "jsonl") {
+            files.push(path);
+        }
     }
-
-    println!("CerynthOS Adaptive Policy Replay Report");
-    println!("========================================");
-
-    for path in files {
-        let report = analyze(&path)?;
-        print_report(&path, &report);
-    }
-
     Ok(())
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+    let mut files = Vec::new();
+    if let Some(input) = args.input {
+        files.push(input);
+    } else if let Some(directory) = args.directory {
+        collect_files(&directory, &mut files)?;
+    }
+    files.sort();
+    anyhow::ensure!(!files.is_empty(), "No policy JSONL files found");
+    println!("CerynthOS Adaptive Policy Replay Report");
+    for path in files {
+        print_report(&path, &analyze(&path)?);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_exactly_one_source() {
+        assert!(Args::try_parse_from(["report"]).is_err());
+        assert!(Args::try_parse_from(["report", "--input", "a", "--directory", "b"]).is_err());
+        assert!(Args::try_parse_from(["report", "--input", "a"]).is_ok());
+        assert!(Args::try_parse_from(["report", "--directory", "b"]).is_ok());
+    }
+
+    #[test]
+    fn live_records_need_no_simulated_current_profile() {
+        let record: PolicyRecord = serde_json::from_str(
+            r#"{"recommended_profile":"interactive","confidence":0.84,"reason":"churn","apply":false}"#,
+        ).unwrap();
+        assert!(record.current_profile.is_none());
+        assert_eq!(record.recommended_profile, Profile::Interactive);
+    }
 }
