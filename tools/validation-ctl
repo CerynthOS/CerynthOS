@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Reject unintended arguments before invoking the exact sudoers commands.
+set -euo pipefail
+case "$#" in
+  1) case "$1" in status|start|stop) ;; *) exit 64 ;; esac ;;
+  3)
+    [[ "$1" == profile && "$2" == set ]] || exit 64
+    case "$3" in balanced|interactive|performance|background) ;; *) exit 64 ;; esac
+    ;;
+  *) exit 64 ;;
+esac
+exec sudo -n /usr/bin/cerynthctl "$@"

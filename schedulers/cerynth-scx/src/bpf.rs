@@ -45,6 +45,15 @@ use scx_utils::UserExitInfo;
 
 use scx_rustland_core::ALLOCATOR;
 
+// Restore allocator-related VM settings if preparation/attachment fails.
+// On success, BpfScheduler::drop restores them after detaching BPF.
+struct MemoryPreparation { armed: bool }
+impl Drop for MemoryPreparation {
+    fn drop(&mut self) {
+        if self.armed { ALLOCATOR.unlock_memory(); }
+    }
+}
+
 // Defined in UAPI
 const SCHED_EXT: i32 = 7;
 const TASK_COMM_LEN: usize = 16;
@@ -275,8 +284,10 @@ impl<'cb> BpfScheduler<'cb> {
         // Attach BPF scheduler.
         let mut skel = scx_ops_load!(skel, rustland, uei)?;
 
-        let struct_ops = Some(scx_ops_attach!(skel, rustland)?);
-
+        let mut memory = MemoryPreparation { armed: false };
+        let ((queued, dispatched), link) = crate::initialization::prepare_then_attach(
+            &mut skel,
+            |skel| {
         // Build the ring buffer of queued tasks.
         let maps = &skel.maps;
         let queued_ring_buffer = &maps.queued;
@@ -291,6 +302,7 @@ impl<'cb> BpfScheduler<'cb> {
 
         // Lock all the memory to prevent page faults that could trigger potential deadlocks during
         // scheduling.
+        memory.armed = true;
         ALLOCATOR.lock_memory();
         ALLOCATOR.disable_mmap().expect("Failed to disable mmap");
 
@@ -303,6 +315,13 @@ impl<'cb> BpfScheduler<'cb> {
                 )));
             }
         }
+
+        Ok::<_, anyhow::Error>((queued, dispatched))
+            },
+            |skel| scx_ops_attach!(skel, rustland),
+        )?;
+        let struct_ops = Some(link);
+        memory.armed = false;
 
         Ok(Self {
             skel,
