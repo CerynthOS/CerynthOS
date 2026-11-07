@@ -10,7 +10,7 @@ impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ClientError::Connection(err) => {
-                write!(f, "Connection error: {}", err)
+                write!(f, "Connection error: {err}")
             }
 
             ClientError::InvalidResponse => {

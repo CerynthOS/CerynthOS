@@ -18,6 +18,16 @@ pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) ->
             Err(e) => Response::Error(e),
         },
 
+        Request::GetAdaptationMode => match backend.get_adaptation_mode() {
+            Ok(mode) => Response::AdaptationMode(mode),
+            Err(e) => Response::Error(e),
+        },
+
+        Request::SetAdaptationMode(mode) => match backend.set_adaptation_mode(mode) {
+            Ok(()) => Response::Success,
+            Err(e) => Response::Error(e),
+        },
+
         Request::PauseAdaptation => match backend.pause_adaptation() {
             Ok(()) => Response::Success,
             Err(e) => Response::Error(e),
@@ -49,12 +59,13 @@ mod tests {
     use super::*;
     use crate::{backends::mock::MockBackend, state::DaemonState};
 
-    use cerynth_ipc::{Profile, SchedulerBackend};
+    use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 
     fn backend() -> MockBackend {
         MockBackend::new(DaemonState {
             profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             scheduler_backend: SchedulerBackend::Mock,
         })
     }

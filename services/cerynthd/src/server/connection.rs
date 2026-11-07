@@ -26,13 +26,13 @@ pub async fn handle_connection(
     let envelope = match decode_request(&buffer[..n]) {
         Ok(req) => req,
         Err(err) => {
-            eprintln!("Failed to parse request: {}", err);
+            eprintln!("Failed to parse request: {err}");
             return Ok(());
         }
     };
 
     if let Err(err) = envelope.validate_version() {
-        eprintln!("{}", err);
+        eprintln!("{err}");
         return Ok(());
     }
 
@@ -49,6 +49,7 @@ pub async fn handle_connection(
             let runtime_state = RuntimeState {
                 profile: status.profile,
                 adaptation_enabled: status.adaptation_enabled,
+                adaptation_mode: status.adaptation_mode,
                 scheduler_backend: status.backend,
             };
 

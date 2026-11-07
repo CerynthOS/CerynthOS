@@ -102,11 +102,11 @@ fn print_report(path: &Path, report: &Report) {
     println!("Samples: {}", report.samples);
 
     if let Some(first) = report.first {
-        println!("First recommendation: {}", first);
+        println!("First recommendation: {first}");
     }
 
     if let Some(last) = report.last {
-        println!("Last recommendation:  {}", last);
+        println!("Last recommendation:  {last}");
     }
 
     println!();

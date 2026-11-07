@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 DISK="${CERYNTH_VM_DISK:-$ROOT_DIR/vm/overlays/cerynth-dev.qcow2}"
-SEED="${CERYNTH_CLOUD_INIT:-$ROOT_DIR/vm/cloud-init/seed.iso}"
+SEED="${CERYNTH_CLOUD_INIT:-$ROOT_DIR/vm/generated/seed.iso}"
 MEMORY="${CERYNTH_VM_MEMORY:-6G}"
 CPUS="${CERYNTH_VM_CPUS:-4}"
 SSH_PORT="${CERYNTH_VM_SSH_PORT:-2222}"
@@ -29,7 +29,13 @@ mkdir -p "$ROOT_DIR/vm/logs"
 LOG_FILE="$ROOT_DIR/vm/logs/base-boot-$(date +%Y%m%d-%H%M%S).log"
 
 printf 'Starting Ubuntu base VM\n'
-printf 'SSH after boot: ssh -i ~/.ssh/cerynth_vm -p %s cerynth@127.0.0.1\n' "$SSH_PORT"
+
+SSH_KEY="${CERYNTH_VM_SSH_KEY:-$HOME/.ssh/cerynth_vm}"
+
+printf 'SSH after boot: ssh -i %s -p %s cerynth@127.0.0.1\n' \
+    "$SSH_KEY" \
+    "$SSH_PORT"
+
 printf 'Exit QEMU: Ctrl+A, then X\n\n'
 
 qemu-system-x86_64 \

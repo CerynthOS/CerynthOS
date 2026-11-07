@@ -1,6 +1,7 @@
 use crate::backend::Backend;
+use crate::backends::RollbackResult;
 use crate::state::DaemonState;
-use cerynth_ipc::{Profile, SchedulerStatus};
+use cerynth_ipc::{AdaptationMode, Profile, SchedulerStatus};
 
 /// Temporary backend until the real SCX backend is implemented.
 #[derive(Debug)]
@@ -17,9 +18,10 @@ impl MockBackend {
 impl Backend for MockBackend {
     fn status(&mut self) -> Result<SchedulerStatus, String> {
         Ok(SchedulerStatus {
-            profile: self.state.profile.clone(),
+            profile: self.state.profile,
             adaptation_enabled: self.state.adaptation_enabled,
-            backend: self.state.scheduler_backend.clone(),
+            adaptation_mode: self.state.adaptation_mode,
+            backend: self.state.scheduler_backend,
             running: true,
             // The mock reports no real subsystem or heartbeat signals.
             sched_ext_state: None,
@@ -28,11 +30,20 @@ impl Backend for MockBackend {
     }
 
     fn get_profile(&self) -> Result<Profile, String> {
-        Ok(self.state.profile.clone())
+        Ok(self.state.profile)
     }
 
     fn set_profile(&mut self, profile: Profile) -> Result<(), String> {
         self.state.profile = profile;
+        Ok(())
+    }
+
+    fn get_adaptation_mode(&self) -> Result<AdaptationMode, String> {
+        Ok(self.state.adaptation_mode)
+    }
+
+    fn set_adaptation_mode(&mut self, mode: AdaptationMode) -> Result<(), String> {
+        self.state.adaptation_mode = mode;
         Ok(())
     }
 
@@ -56,5 +67,25 @@ impl Backend for MockBackend {
 
     fn restart(&mut self) -> Result<(), String> {
         Ok(())
+    }
+
+    fn verify_post_switch_health(&mut self, expected_profile: Profile) -> Result<(), String> {
+        if self.state.profile == expected_profile {
+            Ok(())
+        } else {
+            Err(format!(
+                "post-switch health check failed: expected {:?}, got {:?}",
+                expected_profile, self.state.profile
+            ))
+        }
+    }
+
+    fn rollback(&mut self, previous_good_profile: Profile) -> RollbackResult {
+        // Mock: stop then try to set previous good profile
+        let _ = self.stop();
+        self.state.profile = previous_good_profile;
+        RollbackResult::Success {
+            previous_good_profile,
+        }
     }
 }

@@ -1,4 +1,4 @@
-//! Shared IPC types used by both the CerynthOS daemon and CLI.
+//! Shared IPC types used by both the `CerynthOS` daemon and CLI.
 
 pub mod backend;
 pub mod profile;
@@ -7,7 +7,7 @@ pub mod request;
 pub mod response;
 
 // Re-export the public API.
-pub use backend::{SchedulerBackend, SchedulerStatus};
+pub use backend::{AdaptationMode, SchedulerBackend, SchedulerStatus};
 pub use profile::Profile;
 
 pub use protocol::{

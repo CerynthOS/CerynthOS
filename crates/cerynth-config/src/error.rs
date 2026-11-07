@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// Errors that can occur while loading or saving CerynthOS configuration.
+/// Errors that can occur while loading or saving `CerynthOS` configuration.
 #[derive(Debug)]
 pub enum ConfigError {
     Io(std::io::Error),
@@ -12,10 +12,10 @@ pub enum ConfigError {
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConfigError::Io(err) => write!(f, "I/O error: {}", err),
-            ConfigError::TomlDe(err) => write!(f, "TOML parse error: {}", err),
-            ConfigError::TomlSer(err) => write!(f, "TOML serialization error: {}", err),
-            ConfigError::Json(err) => write!(f, "JSON error: {}", err),
+            ConfigError::Io(err) => write!(f, "I/O error: {err}"),
+            ConfigError::TomlDe(err) => write!(f, "TOML parse error: {err}"),
+            ConfigError::TomlSer(err) => write!(f, "TOML serialization error: {err}"),
+            ConfigError::Json(err) => write!(f, "JSON error: {err}"),
         }
     }
 }

@@ -18,6 +18,7 @@ pub enum Profile {
 
 impl Profile {
     /// Returns all available profiles in declaration order.
+    #[must_use]
     pub fn all() -> [Profile; 4] {
         [
             Profile::Balanced,
@@ -48,7 +49,7 @@ impl std::str::FromStr for Profile {
             "interactive" => Ok(Profile::Interactive),
             "performance" => Ok(Profile::Performance),
             "background" => Ok(Profile::Background),
-            _ => Err(format!("unknown profile: {}", s)),
+            _ => Err(format!("unknown profile: {s}")),
         }
     }
 }

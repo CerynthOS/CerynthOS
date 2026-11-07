@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use cerynth_ipc::Profile;
@@ -15,15 +15,20 @@ struct PolicyOutput {
     recommended_profile: Profile,
     confidence: f64,
     reason: String,
+    timestamp: u64,
     apply: bool,
 }
 
 impl From<PolicyDecision> for PolicyOutput {
     fn from(decision: PolicyDecision) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
         Self {
             recommended_profile: decision.recommended_profile,
             confidence: decision.confidence,
             reason: decision.reason,
+            timestamp,
             apply: false,
         }
     }
@@ -31,26 +36,21 @@ impl From<PolicyDecision> for PolicyOutput {
 
 fn output_path() -> PathBuf {
     env::var_os("CERYNTH_POLICY_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/run/cerynth/policy.json"))
+        .map_or_else(|| PathBuf::from("/run/cerynth/policy.json"), PathBuf::from)
 }
 
 fn write_policy(output: &PolicyOutput, path: &PathBuf) -> Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("creating {}", parent.display()))?;
+        fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
     }
 
-    let json = serde_json::to_string_pretty(output)
-        .context("serializing policy recommendation")?;
+    let json = serde_json::to_string_pretty(output).context("serializing policy recommendation")?;
 
     let tmp = path.with_extension("json.tmp");
 
-    fs::write(&tmp, format!("{json}\n"))
-        .with_context(|| format!("writing {}", tmp.display()))?;
+    fs::write(&tmp, format!("{json}\n")).with_context(|| format!("writing {}", tmp.display()))?;
 
-    fs::rename(&tmp, path)
-        .with_context(|| format!("replacing {}", path.display()))?;
+    fs::rename(&tmp, path).with_context(|| format!("replacing {}", path.display()))?;
 
     Ok(())
 }
@@ -107,9 +107,10 @@ fn main() -> Result<()> {
             Err(error) => PolicyOutput {
                 recommended_profile: Profile::Balanced,
                 confidence: 1.0,
-                reason: format!(
-                    "Telemetry collection failed; defaulting to balanced: {error}"
-                ),
+                reason: format!("Telemetry collection failed; defaulting to balanced: {error}"),
+                timestamp: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_or(0, |d| d.as_secs()),
                 apply: false,
             },
         };

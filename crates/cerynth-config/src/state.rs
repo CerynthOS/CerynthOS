@@ -1,4 +1,4 @@
-use cerynth_ipc::{Profile, SchedulerBackend};
+use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 use serde::{Deserialize, Serialize};
 
 use std::fs;
@@ -12,6 +12,7 @@ use std::path::Path;
 pub struct RuntimeState {
     pub profile: Profile,
     pub adaptation_enabled: bool,
+    pub adaptation_mode: AdaptationMode,
     pub scheduler_backend: SchedulerBackend,
 }
 
@@ -20,12 +21,14 @@ impl Default for RuntimeState {
         Self {
             profile: Profile::Balanced,
             adaptation_enabled: false,
+            adaptation_mode: AdaptationMode::Off,
             scheduler_backend: SchedulerBackend::Mock,
         }
     }
 }
 
 impl RuntimeState {
+    #[must_use]
     pub fn load(path: &str) -> Self {
         if !Path::new(path).exists() {
             return Self::default();
@@ -71,16 +74,18 @@ mod tests {
     /// Each test gets its own path: the tests run concurrently and a shared
     /// filename makes them race against each other.
     fn test_file(name: &str) -> String {
-        format!("target/test-state-{name}.json")
+        format!(
+            "{}/cerynth-test-state-{name}.json",
+            std::env::temp_dir().display()
+        )
     }
 
     #[test]
     fn save_and_load_state() {
-        const TEST_FILE: &str = "target/test-state-save-and-load.json";
-
         let state = RuntimeState {
             profile: Profile::Interactive,
             adaptation_enabled: true,
+            adaptation_mode: AdaptationMode::Shadow,
             scheduler_backend: SchedulerBackend::Mock,
         };
 
@@ -90,29 +95,32 @@ mod tests {
 
         assert_eq!(loaded.profile, Profile::Interactive);
         assert!(loaded.adaptation_enabled);
+        assert_eq!(loaded.adaptation_mode, AdaptationMode::Shadow);
 
-        let _ = std::fs::remove_file(&test_file("roundtrip"));
+        let _ = std::fs::remove_file(test_file("roundtrip"));
     }
 
     #[test]
     fn missing_state_returns_default() {
-        let _ = std::fs::remove_file(&test_file("missing"));
+        let _ = std::fs::remove_file(test_file("missing"));
 
         let state = RuntimeState::load(&test_file("missing"));
 
         assert_eq!(state.profile, Profile::Balanced);
         assert!(!state.adaptation_enabled);
+        assert_eq!(state.adaptation_mode, AdaptationMode::Off);
     }
 
     #[test]
     fn corrupt_state_returns_default() {
-        std::fs::write(&test_file("corrupt"), "not json").unwrap();
+        std::fs::write(test_file("corrupt"), "not json").unwrap();
 
         let state = RuntimeState::load(&test_file("corrupt"));
 
         assert_eq!(state.profile, Profile::Balanced);
         assert!(!state.adaptation_enabled);
+        assert_eq!(state.adaptation_mode, AdaptationMode::Off);
 
-        let _ = std::fs::remove_file(&test_file("corrupt"));
+        let _ = std::fs::remove_file(test_file("corrupt"));
     }
 }

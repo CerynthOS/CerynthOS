@@ -87,6 +87,7 @@ sudo install -d -m 0755 /usr/lib/cerynth /etc/cerynth /var/lib/cerynth /run/cery
 
 sudo install -m 0755 "$STAGE/usr/lib/cerynth/cerynthd"    /usr/lib/cerynth/cerynthd
 sudo install -m 0755 "$STAGE/usr/lib/cerynth/cerynth-scx" /usr/lib/cerynth/cerynth-scx
+sudo install -m 0755 "$STAGE/usr/lib/cerynth/cerynth-policy-live" /usr/lib/cerynth/cerynth-policy-live
 sudo install -m 0755 "$STAGE/usr/bin/cerynthctl"          /usr/bin/cerynthctl
 
 sudo install -m 0755 \
@@ -106,11 +107,15 @@ sudo install -m 0644 \
     /etc/systemd/system/cerynthd.service
 
 sudo install -m 0644 \
+    "$STAGE/etc/systemd/system/cerynth-policy-live.service" \
+    /etc/systemd/system/cerynth-policy-live.service
+
+sudo install -m 0644 \
     "$STAGE/etc/systemd/system/cerynth-boot-marker.service" \
     /etc/systemd/system/cerynth-boot-marker.service
 
 sudo systemctl daemon-reload
-sudo systemctl enable cerynthd.service cerynth-boot-marker.service
+sudo systemctl enable cerynthd.service cerynth-policy-live.service cerynth-boot-marker.service
 
 # The marker normally runs at boot. Refreshing it here means the runtime is
 # fully consistent immediately after provisioning, without a reboot.
@@ -119,6 +124,7 @@ sudo systemctl enable cerynthd.service cerynth-boot-marker.service
 sudo systemctl restart cerynth-boot-marker.service
 
 sudo systemctl restart cerynthd.service
+sudo systemctl restart cerynth-policy-live.service
 
 rm -rf "$STAGE"
 REMOTE
@@ -132,16 +138,25 @@ printf '\nInstalled runtime:\n'
 ls -lh \
     /usr/lib/cerynth/cerynthd \
     /usr/lib/cerynth/cerynth-scx \
+    /usr/lib/cerynth/cerynth-policy-live \
     /usr/bin/cerynthctl \
     /etc/cerynth/cerynth.toml \
-    /etc/systemd/system/cerynthd.service
+    /etc/systemd/system/cerynthd.service \
+    /etc/systemd/system/cerynth-policy-live.service
+
 
 printf '\nDaemon state: '
 systemctl is-active cerynthd.service || true
 
 printf '\nRecent daemon log:\n'
 sudo journalctl -u cerynthd -b --no-pager -n 15 || true
+printf '\nPolicy state: '
+systemctl is-active cerynth-policy-live.service || true
+
+printf '\nRecent policy log:\n'
+sudo journalctl -u cerynth-policy-live -b --no-pager -n 15 || true
 REMOTE
+
 
 printf '\n'
 printf 'CerynthOS VM provisioning complete.\n'

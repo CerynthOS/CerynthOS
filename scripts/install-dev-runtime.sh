@@ -4,12 +4,13 @@
 #
 # Layout is frozen by docs/contracts/runtime-v1.md:
 #
-#   /usr/lib/cerynth/cerynthd          daemon
-#   /usr/lib/cerynth/cerynth-scx       scheduler
-#   /usr/bin/cerynthctl                CLI
-#   /etc/cerynth/cerynth.toml          configuration
-#   /var/lib/cerynth/                  persistent state
-#   /run/cerynth/                      socket and status files
+#   /usr/lib/cerynth/cerynthd            daemon
+#   /usr/lib/cerynth/cerynth-scx         scheduler
+#   /usr/lib/cerynth/cerynth-policy-live shadow policy engine
+#   /usr/bin/cerynthctl                  CLI
+#   /etc/cerynth/cerynth.toml            configuration
+#   /var/lib/cerynth/                    persistent state
+#   /run/cerynth/                        socket and status files
 #
 # Installing into "/" needs root. Use --root to stage into a directory
 # instead, which is how the VM provisioner builds its payload.
@@ -98,18 +99,20 @@ DEST_SYSTEMD="$PREFIX/etc/systemd/system"
 DAEMON="$ROOT_DIR/target/release/cerynthd"
 CLI="$ROOT_DIR/target/release/cerynthctl"
 SCHEDULER="$ROOT_DIR/target/release/cerynth-scx"
+POLICY_LIVE="$ROOT_DIR/target/release/cerynth-policy-live"
 
 CONFIG="$ROOT_DIR/packaging/config/cerynth.toml"
 SERVICE="$ROOT_DIR/packaging/systemd/cerynthd.service"
+POLICY_SERVICE="$ROOT_DIR/packaging/systemd/cerynth-policy-live.service"
 BOOT_MARKER="$ROOT_DIR/packaging/systemd/cerynth-boot-marker.service"
 BOOT_MARKER_SCRIPT="$ROOT_DIR/packaging/scripts/cerynth-boot-marker"
 
-for binary in "$DAEMON" "$CLI" "$SCHEDULER"; do
+for binary in "$DAEMON" "$CLI" "$SCHEDULER" "$POLICY_LIVE"; do
     [[ -f "$binary" ]] || die "missing $binary
 Build it first:  cargo build --release --workspace"
 done
 
-for file in "$CONFIG" "$SERVICE" "$BOOT_MARKER" "$BOOT_MARKER_SCRIPT"; do
+for file in "$CONFIG" "$SERVICE" "$POLICY_SERVICE" "$BOOT_MARKER" "$BOOT_MARKER_SCRIPT"; do
     [[ -f "$file" ]] || die "required file missing: $file"
 done
 
@@ -132,6 +135,8 @@ install -m 0755 "$DAEMON" "$DEST_LIB/cerynthd"
 verbose "$DEST_LIB/cerynthd"
 install -m 0755 "$SCHEDULER" "$DEST_LIB/cerynth-scx"
 verbose "$DEST_LIB/cerynth-scx"
+install -m 0755 "$POLICY_LIVE" "$DEST_LIB/cerynth-policy-live"
+verbose "$DEST_LIB/cerynth-policy-live"
 install -m 0755 "$CLI" "$DEST_BIN/cerynthctl"
 verbose "$DEST_BIN/cerynthctl"
 install -m 0755 "$BOOT_MARKER_SCRIPT" "$DEST_LIB/cerynth-boot-marker"
@@ -152,6 +157,8 @@ fi
 info "installing systemd units"
 install -m 0644 "$SERVICE" "$DEST_SYSTEMD/cerynthd.service"
 verbose "$DEST_SYSTEMD/cerynthd.service"
+install -m 0644 "$POLICY_SERVICE" "$DEST_SYSTEMD/cerynth-policy-live.service"
+verbose "$DEST_SYSTEMD/cerynth-policy-live.service"
 install -m 0644 "$BOOT_MARKER" "$DEST_SYSTEMD/cerynth-boot-marker.service"
 verbose "$DEST_SYSTEMD/cerynth-boot-marker.service"
 
@@ -160,18 +167,20 @@ if [[ "$ENABLE_UNITS" -eq 1 ]]; then
     systemctl daemon-reload
 
     info "enabling units"
-    systemctl enable cerynthd.service cerynth-boot-marker.service
+    systemctl enable cerynthd.service cerynth-policy-live.service cerynth-boot-marker.service
 fi
 
 printf '\n'
 printf 'CerynthOS development runtime installed:\n'
 printf '  %-20s %s\n' 'Daemon:'      "$DEST_LIB/cerynthd"
 printf '  %-20s %s\n' 'Scheduler:'   "$DEST_LIB/cerynth-scx"
+printf '  %-20s %s\n' 'Policy:'      "$DEST_LIB/cerynth-policy-live"
 printf '  %-20s %s\n' 'CLI:'         "$DEST_BIN/cerynthctl"
 printf '  %-20s %s\n' 'Config:'      "$DEST_ETC/cerynth.toml"
 printf '  %-20s %s\n' 'State dir:'   "$DEST_STATE"
 printf '  %-20s %s\n' 'Runtime dir:' "$DEST_RUN"
 printf '  %-20s %s\n' 'Units:'       "$DEST_SYSTEMD/cerynthd.service"
+printf '  %-20s %s\n' ''             "$DEST_SYSTEMD/cerynth-policy-live.service"
 printf '  %-20s %s\n' ''             "$DEST_SYSTEMD/cerynth-boot-marker.service"
 
 if [[ "$ENABLE_UNITS" -eq 1 ]]; then

@@ -14,7 +14,7 @@ pub const MIN_PROTOCOL_VERSION: u32 = 1;
 /// Prevents memory exhaustion from malformed or malicious messages.
 pub const MAX_MESSAGE_SIZE: usize = 64 * 1024;
 
-/// Runtime directory shared by every CerynthOS component.
+/// Runtime directory shared by every `CerynthOS` component.
 ///
 /// Created by systemd (`RuntimeDirectory=cerynth`) on a real system and by
 /// the daemon itself when run manually.
@@ -57,6 +57,7 @@ pub struct RequestEnvelope {
 
 impl RequestEnvelope {
     /// Creates a new request envelope with the current protocol version.
+    #[must_use]
     pub fn new(request: crate::request::SocketRequest) -> Self {
         Self {
             version: PROTOCOL_VERSION,
@@ -66,6 +67,7 @@ impl RequestEnvelope {
     }
 
     /// Creates a new request envelope with a correlation ID.
+    #[must_use]
     pub fn with_correlation_id(
         request: crate::request::SocketRequest,
         correlation_id: String,
@@ -111,6 +113,7 @@ pub struct ResponseEnvelope {
 
 impl ResponseEnvelope {
     /// Creates a new response envelope for the given request envelope.
+    #[must_use]
     pub fn for_request(
         request: &RequestEnvelope,
         response: crate::response::SocketResponse,
@@ -123,6 +126,7 @@ impl ResponseEnvelope {
     }
 
     /// Creates a new response envelope with an explicit correlation ID.
+    #[must_use]
     pub fn with_correlation_id(
         response: crate::response::SocketResponse,
         correlation_id: String,
