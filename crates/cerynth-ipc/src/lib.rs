@@ -7,7 +7,7 @@ pub mod request;
 pub mod response;
 
 // Re-export the public API.
-pub use backend::{SchedulerBackend, SchedulerStatus};
+pub use backend::{AdaptationMode, SchedulerBackend, SchedulerStatus};
 pub use profile::Profile;
 
 pub use protocol::{

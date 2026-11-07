@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::backend::AdaptationMode;
 use crate::profile::Profile;
 
 /// Internal request type used by the daemon.
@@ -11,6 +12,8 @@ pub enum Request {
     Status,
     GetProfile,
     SetProfile(Profile),
+    GetAdaptationMode,
+    SetAdaptationMode(AdaptationMode),
     PauseAdaptation,
     ResumeAdaptation,
     Start,
@@ -29,6 +32,10 @@ pub enum SocketRequest {
     GetProfile,
 
     SetProfile { profile: Profile },
+
+    GetAdaptationMode,
+
+    SetAdaptationMode { mode: AdaptationMode },
 
     PauseAdaptation,
 
@@ -54,6 +61,10 @@ impl From<SocketRequest> for Request {
 
             SocketRequest::SetProfile { profile } => Request::SetProfile(profile),
 
+            SocketRequest::GetAdaptationMode => Request::GetAdaptationMode,
+
+            SocketRequest::SetAdaptationMode { mode } => Request::SetAdaptationMode(mode),
+
             SocketRequest::PauseAdaptation => Request::PauseAdaptation,
 
             SocketRequest::ResumeAdaptation => Request::ResumeAdaptation,
@@ -75,6 +86,8 @@ impl SocketRequest {
             SocketRequest::Status => "status",
             SocketRequest::GetProfile => "get-profile",
             SocketRequest::SetProfile { .. } => "set-profile",
+            SocketRequest::GetAdaptationMode => "get-adaptation-mode",
+            SocketRequest::SetAdaptationMode { .. } => "set-adaptation-mode",
             SocketRequest::PauseAdaptation => "pause-adaptation",
             SocketRequest::ResumeAdaptation => "resume-adaptation",
             SocketRequest::Start => "start",

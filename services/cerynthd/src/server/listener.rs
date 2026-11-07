@@ -2,7 +2,6 @@ use std::os::unix::fs::PermissionsExt;
 
 use tokio::net::UnixListener;
 
-
 use crate::backend::SharedBackend;
 
 use super::connection::handle_connection;

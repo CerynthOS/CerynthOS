@@ -31,10 +31,7 @@ fn config_path(tag: &str) -> PathBuf {
 /// Starts the daemon with an isolated socket and state file, always driving
 /// the fake scheduler. Returns the child plus the socket/state paths it uses.
 
-fn start_daemon(
-    tag: &str,
-    extra: &[(&str, &str)],
-) -> (Child, PathBuf, PathBuf) {
+fn start_daemon(tag: &str, extra: &[(&str, &str)]) -> (Child, PathBuf, PathBuf) {
     let socket = socket_path(tag);
     let state = state_path(tag);
 
@@ -59,6 +56,7 @@ fn start_daemon(
             r#"
 default_profile = "balanced"
 adaptation_enabled = false
+adaptation_mode = "off"
 scheduler_backend = "{backend}"
 auto_start = true
 "#

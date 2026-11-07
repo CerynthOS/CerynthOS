@@ -1,5 +1,5 @@
 use cerynth_config::RuntimeState;
-use cerynth_ipc::{Profile, SchedulerBackend};
+use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 
 /// In-memory state owned by the daemon.
 ///
@@ -9,6 +9,7 @@ use cerynth_ipc::{Profile, SchedulerBackend};
 pub struct DaemonState {
     pub profile: Profile,
     pub adaptation_enabled: bool,
+    pub adaptation_mode: AdaptationMode,
     pub scheduler_backend: SchedulerBackend,
 }
 
@@ -17,6 +18,7 @@ impl From<RuntimeState> for DaemonState {
         Self {
             profile: state.profile,
             adaptation_enabled: state.adaptation_enabled,
+            adaptation_mode: state.adaptation_mode,
             scheduler_backend: state.scheduler_backend,
         }
     }
@@ -26,6 +28,7 @@ impl From<&DaemonState> for cerynth_config::RuntimeState {
         Self {
             profile: state.profile.clone(),
             adaptation_enabled: state.adaptation_enabled,
+            adaptation_mode: state.adaptation_mode.clone(),
             scheduler_backend: state.scheduler_backend.clone(),
         }
     }

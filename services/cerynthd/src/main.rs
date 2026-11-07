@@ -39,8 +39,12 @@ async fn main() -> std::io::Result<()> {
     println!("State file           : {state_path}");
     println!("Default profile      : {:?}", config.default_profile);
     println!("Scheduler backend    : {:?}", config.scheduler_backend);
-    println!("Scheduler binary     : {}", config.scheduler_binary.display());
+    println!(
+        "Scheduler binary     : {}",
+        config.scheduler_binary.display()
+    );
     println!("Adaptation enabled   : {}", config.adaptation_enabled);
+    println!("Adaptation mode      : {:?}", config.adaptation_mode);
     println!("Scheduler binary     : {}", scheduler_binary.display());
     println!("Auto-start           : {}", config.auto_start);
 
@@ -48,20 +52,16 @@ async fn main() -> std::io::Result<()> {
         SchedulerBackend::Mock => {
             println!("Using MockBackend");
 
-            Arc::new(Mutex::new(Box::new(
-                MockBackend::new(daemon_state),
-            )))
+            Arc::new(Mutex::new(Box::new(MockBackend::new(daemon_state))))
         }
 
         SchedulerBackend::Scx => {
             println!("Using ScxBackend");
 
             Arc::new(Mutex::new(Box::new(
-                ScxBackend::new(
-                    scheduler_binary,
-                    daemon_state.profile.clone(),
-                )
-                .with_adaptation(daemon_state.adaptation_enabled),
+                ScxBackend::new(scheduler_binary, daemon_state.profile.clone())
+                    .with_adaptation(daemon_state.adaptation_enabled)
+                    .with_adaptation_mode(daemon_state.adaptation_mode),
             )))
         }
     };
@@ -71,9 +71,7 @@ async fn main() -> std::io::Result<()> {
             Ok(()) => println!("✓ Scheduler auto-started"),
 
             Err(e) => {
-                eprintln!(
-                    "Warning: failed to auto-start scheduler: {e}"
-                );
+                eprintln!("Warning: failed to auto-start scheduler: {e}");
             }
         }
     } else {

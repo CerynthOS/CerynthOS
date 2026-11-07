@@ -49,6 +49,7 @@ pub async fn handle_connection(
             let runtime_state = RuntimeState {
                 profile: status.profile,
                 adaptation_enabled: status.adaptation_enabled,
+                adaptation_mode: status.adaptation_mode,
                 scheduler_backend: status.backend,
             };
 
