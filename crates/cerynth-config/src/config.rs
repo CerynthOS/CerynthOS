@@ -54,6 +54,7 @@ impl Config {
     /// read or parsed is *not* normal: it is reported on stderr before the
     /// fallback, because a silently ignored config is far harder to debug
     /// than a broken one.
+    #[must_use]
     pub fn load(path: &str) -> Self {
         if !Path::new(path).exists() {
             return Self::default();
@@ -95,13 +96,14 @@ mod tests {
     /// Each test gets its own path: the tests run concurrently and a shared
     /// filename makes them race against each other.
     fn test_file(name: &str) -> String {
-        format!("target/test-config-{name}.toml")
+        format!(
+            "{}/cerynth-test-config-{name}.toml",
+            std::env::temp_dir().display()
+        )
     }
 
     #[test]
     fn save_and_load_config() {
-        const TEST_FILE: &str = "target/test-config-save-and-load.toml";
-
         let config = Config {
             default_profile: Profile::Performance,
             adaptation_enabled: true,
@@ -125,7 +127,7 @@ mod tests {
         );
         assert!(loaded.auto_start);
 
-        let _ = std::fs::remove_file(&test_file("roundtrip"));
+        let _ = std::fs::remove_file(test_file("roundtrip"));
     }
 
     /// The config we actually ship must deserialize into `Config`.
@@ -157,7 +159,7 @@ mod tests {
 
     #[test]
     fn missing_config_returns_default() {
-        let _ = std::fs::remove_file(&test_file("missing"));
+        let _ = std::fs::remove_file(test_file("missing"));
 
         let config = Config::load(&test_file("missing"));
 
@@ -171,12 +173,12 @@ mod tests {
             let _ = std::fs::create_dir_all(parent);
         }
 
-        std::fs::write(&test_file("corrupt"), "this is not toml").unwrap();
+        std::fs::write(test_file("corrupt"), "this is not toml").unwrap();
         let config = Config::load(&test_file("corrupt"));
 
         assert_eq!(config.default_profile, Profile::Balanced);
         assert!(!config.adaptation_enabled);
 
-        let _ = std::fs::remove_file(&test_file("corrupt"));
+        let _ = std::fs::remove_file(test_file("corrupt"));
     }
 }

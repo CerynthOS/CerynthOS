@@ -32,8 +32,7 @@ async fn main() -> std::io::Result<()> {
     let daemon_state: DaemonState = runtime_state.into();
 
     let scheduler_binary = std::env::var_os("CERYNTH_SCX_BINARY")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| config.scheduler_binary.clone());
+        .map_or_else(|| config.scheduler_binary.clone(), PathBuf::from);
 
     println!("Config file          : {config_path}");
     println!("State file           : {state_path}");
@@ -59,7 +58,7 @@ async fn main() -> std::io::Result<()> {
             println!("Using ScxBackend");
 
             Arc::new(Mutex::new(Box::new(
-                ScxBackend::new(scheduler_binary, daemon_state.profile.clone())
+                ScxBackend::new(scheduler_binary, daemon_state.profile)
                     .with_adaptation(daemon_state.adaptation_enabled)
                     .with_adaptation_mode(daemon_state.adaptation_mode),
             )))

@@ -1,4 +1,4 @@
-//! Shared IPC types used by both the CerynthOS daemon and CLI.
+//! Shared IPC types used by both the `CerynthOS` daemon and CLI.
 
 pub mod backend;
 pub mod profile;

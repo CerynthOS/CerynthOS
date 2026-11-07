@@ -1,4 +1,4 @@
-//! Configuration and runtime state management for CerynthOS.
+//! Configuration and runtime state management for `CerynthOS`.
 
 pub mod config;
 pub mod error;

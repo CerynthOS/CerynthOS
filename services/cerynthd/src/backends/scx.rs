@@ -13,10 +13,10 @@ use crate::backends::RollbackResult;
 /// unhealthy.
 const HEARTBEAT_TIMEOUT_SECS: u64 = 10;
 
-/// Maximum amount of time start() waits for the scheduler to become healthy.
+/// Maximum amount of time `start()` waits for the scheduler to become healthy.
 const START_TIMEOUT_SECS: u64 = 15;
 
-/// Default sched_ext subsystem state file.
+/// Default `sched_ext` subsystem state file.
 const DEFAULT_SCX_STATE_PATH: &str = "/sys/kernel/sched_ext/state";
 
 /// Default scheduler heartbeat file.
@@ -24,14 +24,12 @@ const DEFAULT_HEARTBEAT_PATH: &str = "/run/cerynth/scheduler.json";
 
 fn scx_state_path() -> PathBuf {
     std::env::var_os("CERYNTH_SCX_STATE_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_SCX_STATE_PATH))
+        .map_or_else(|| PathBuf::from(DEFAULT_SCX_STATE_PATH), PathBuf::from)
 }
 
 fn heartbeat_path() -> PathBuf {
     std::env::var_os("CERYNTH_HEARTBEAT_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_HEARTBEAT_PATH))
+        .map_or_else(|| PathBuf::from(DEFAULT_HEARTBEAT_PATH), PathBuf::from)
 }
 
 fn read_scx_state_from(path: &Path) -> Option<String> {
@@ -73,8 +71,7 @@ fn heartbeat_is_fresh(path: &Path, expected_pid: u32) -> bool {
         return false;
     };
 
-    timestamp <= now.as_secs()
-        && now.as_secs() - timestamp <= HEARTBEAT_TIMEOUT_SECS
+    timestamp <= now.as_secs() && now.as_secs() - timestamp <= HEARTBEAT_TIMEOUT_SECS
 }
 
 pub struct ScxBackend {
@@ -232,7 +229,10 @@ impl ScxBackend {
             thread::sleep(Duration::from_millis(100));
         }
 
-        Err(format!("scheduler did not become healthy within {} seconds", timeout.as_secs_f64()))
+        Err(format!(
+            "scheduler did not become healthy within {} seconds",
+            timeout.as_secs_f64()
+        ))
     }
 
     /// Internal start that waits for the expected profile to be active.
@@ -286,11 +286,12 @@ impl Backend for ScxBackend {
 
         let sched_ext_state = read_scx_state_from(&scx_state_path());
 
-        let heartbeat_ok =
-            self.pid.is_some_and(|pid| heartbeat_is_fresh(&heartbeat_path(), pid));
+        let heartbeat_ok = self
+            .pid
+            .is_some_and(|pid| heartbeat_is_fresh(&heartbeat_path(), pid));
 
         Ok(SchedulerStatus {
-            profile: self.profile.clone(),
+            profile: self.profile,
             adaptation_enabled: self.adaptation_enabled,
             adaptation_mode: self.adaptation_mode,
             backend: SchedulerBackend::Scx,
@@ -301,7 +302,7 @@ impl Backend for ScxBackend {
     }
 
     fn get_profile(&self) -> Result<Profile, String> {
-        Ok(self.profile.clone())
+        Ok(self.profile)
     }
 
     fn set_profile(&mut self, profile: Profile) -> Result<(), String> {
@@ -348,8 +349,7 @@ impl Backend for ScxBackend {
             match self.verify_profile_in_heartbeat(expected_profile) {
                 Ok(true) => Ok(()),
                 Ok(false) => Err(format!(
-                    "profile mismatch: heartbeat reports different profile than expected {:?}",
-                    expected_profile
+                    "profile mismatch: heartbeat reports different profile than expected {expected_profile:?}"
                 )),
                 Err(e) => Err(format!("heartbeat verification error: {e}")),
             }
@@ -558,8 +558,12 @@ mod tests {
 
     #[test]
     fn heartbeat_rejects_other_process_stopped_and_future_records() {
-        let path = std::env::temp_dir().join(format!("cerynth-heartbeat-contract-{}", std::process::id()));
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let path =
+            std::env::temp_dir().join(format!("cerynth-heartbeat-contract-{}", std::process::id()));
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         for record in [
             serde_json::json!({"pid":124,"running":true,"healthy":true,"heartbeat":now}),
             serde_json::json!({"pid":123,"running":false,"healthy":true,"heartbeat":now}),
@@ -608,7 +612,11 @@ mod tests {
         backend.pid = Some(child.id());
         backend.child = Some(child);
         let result = backend.wait_until_healthy(Duration::from_secs(15));
-        assert!(result.unwrap_err().contains("exited before becoming healthy"));
+        assert!(
+            result
+                .unwrap_err()
+                .contains("exited before becoming healthy")
+        );
         assert!(backend.pid.is_none());
     }
 

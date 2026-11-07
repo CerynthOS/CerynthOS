@@ -28,6 +28,7 @@ impl Default for RuntimeState {
 }
 
 impl RuntimeState {
+    #[must_use]
     pub fn load(path: &str) -> Self {
         if !Path::new(path).exists() {
             return Self::default();
@@ -73,13 +74,14 @@ mod tests {
     /// Each test gets its own path: the tests run concurrently and a shared
     /// filename makes them race against each other.
     fn test_file(name: &str) -> String {
-        format!("target/test-state-{name}.json")
+        format!(
+            "{}/cerynth-test-state-{name}.json",
+            std::env::temp_dir().display()
+        )
     }
 
     #[test]
     fn save_and_load_state() {
-        const TEST_FILE: &str = "target/test-state-save-and-load.json";
-
         let state = RuntimeState {
             profile: Profile::Interactive,
             adaptation_enabled: true,
@@ -95,12 +97,12 @@ mod tests {
         assert!(loaded.adaptation_enabled);
         assert_eq!(loaded.adaptation_mode, AdaptationMode::Shadow);
 
-        let _ = std::fs::remove_file(&test_file("roundtrip"));
+        let _ = std::fs::remove_file(test_file("roundtrip"));
     }
 
     #[test]
     fn missing_state_returns_default() {
-        let _ = std::fs::remove_file(&test_file("missing"));
+        let _ = std::fs::remove_file(test_file("missing"));
 
         let state = RuntimeState::load(&test_file("missing"));
 
@@ -111,7 +113,7 @@ mod tests {
 
     #[test]
     fn corrupt_state_returns_default() {
-        std::fs::write(&test_file("corrupt"), "not json").unwrap();
+        std::fs::write(test_file("corrupt"), "not json").unwrap();
 
         let state = RuntimeState::load(&test_file("corrupt"));
 
@@ -119,6 +121,6 @@ mod tests {
         assert!(!state.adaptation_enabled);
         assert_eq!(state.adaptation_mode, AdaptationMode::Off);
 
-        let _ = std::fs::remove_file(&test_file("corrupt"));
+        let _ = std::fs::remove_file(test_file("corrupt"));
     }
 }

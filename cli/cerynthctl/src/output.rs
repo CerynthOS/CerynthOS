@@ -33,11 +33,11 @@ pub fn print_response(envelope: ResponseEnvelope) {
         }
 
         SocketResponse::Profile { profile } => {
-            println!("Current Profile : {:?}", profile);
+            println!("Current Profile : {profile:?}");
         }
 
         SocketResponse::AdaptationMode { mode } => {
-            println!("Adaptation Mode : {:?}", mode);
+            println!("Adaptation Mode : {mode:?}");
         }
 
         SocketResponse::Success => {
@@ -45,7 +45,7 @@ pub fn print_response(envelope: ResponseEnvelope) {
         }
 
         SocketResponse::Error { message } => {
-            eprintln!("✗ {}", message);
+            eprintln!("✗ {message}");
         }
 
         SocketResponse::Pong => {

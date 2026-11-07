@@ -18,10 +18,10 @@ impl MockBackend {
 impl Backend for MockBackend {
     fn status(&mut self) -> Result<SchedulerStatus, String> {
         Ok(SchedulerStatus {
-            profile: self.state.profile.clone(),
+            profile: self.state.profile,
             adaptation_enabled: self.state.adaptation_enabled,
             adaptation_mode: self.state.adaptation_mode,
-            backend: self.state.scheduler_backend.clone(),
+            backend: self.state.scheduler_backend,
             running: true,
             // The mock reports no real subsystem or heartbeat signals.
             sched_ext_state: None,
@@ -30,7 +30,7 @@ impl Backend for MockBackend {
     }
 
     fn get_profile(&self) -> Result<Profile, String> {
-        Ok(self.state.profile.clone())
+        Ok(self.state.profile)
     }
 
     fn set_profile(&mut self, profile: Profile) -> Result<(), String> {

@@ -274,7 +274,7 @@ impl TelemetrySource for ProcTelemetrySource {
 
         self.prev_context_switches = Some(context_switches);
 
-        let process_creation_rate = match self.prev_processes {
+        let _process_creation_rate = match self.prev_processes {
             Some(prev) if elapsed_secs > 0.0 => {
                 processes_created.saturating_sub(prev) as f64 / elapsed_secs
             }
@@ -312,8 +312,7 @@ impl TelemetrySource for ProcTelemetrySource {
         let swap_used_bytes = swap_total_bytes.saturating_sub(kb("SwapFree"));
 
         let sched_ext_state = fs::read_to_string("/sys/kernel/sched_ext/state")
-            .map(|s| s.trim().to_string())
-            .unwrap_or_else(|_| "unavailable".to_string());
+            .map_or_else(|_| "unavailable".to_string(), |s| s.trim().to_string());
 
         let top_processes = self.top_processes(elapsed_secs);
 
@@ -327,7 +326,7 @@ impl TelemetrySource for ProcTelemetrySource {
         let current_pids: std::collections::HashSet<i32> = fs::read_dir("/proc")
             .ok()
             .into_iter()
-            .flat_map(|entries| entries.flatten())
+            .flat_map(std::iter::Iterator::flatten)
             .filter_map(|entry| {
                 entry
                     .file_name()

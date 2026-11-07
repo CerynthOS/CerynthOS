@@ -12,12 +12,13 @@ pub enum SchedulerBackend {
     /// In-process stand-in used by tests and by the daemon before the real
     /// backend is wired up.
     Mock,
-    /// Drives a real `cerynth-scx` child process via sched_ext.
+    /// Drives a real `cerynth-scx` child process via `sched_ext`.
     Scx,
 }
 
 impl SchedulerBackend {
     /// Returns all available backends.
+    #[must_use]
     pub fn all() -> [SchedulerBackend; 2] {
         [SchedulerBackend::Mock, SchedulerBackend::Scx]
     }
@@ -39,7 +40,7 @@ impl std::str::FromStr for SchedulerBackend {
         match s.to_lowercase().as_str() {
             "mock" => Ok(SchedulerBackend::Mock),
             "scx" => Ok(SchedulerBackend::Scx),
-            _ => Err(format!("unknown scheduler backend: {}", s)),
+            _ => Err(format!("unknown scheduler backend: {s}")),
         }
     }
 }
@@ -59,6 +60,7 @@ pub enum AdaptationMode {
 
 impl AdaptationMode {
     /// Returns all available adaptation modes in declaration order.
+    #[must_use]
     pub fn all() -> [AdaptationMode; 3] {
         [
             AdaptationMode::Off,
@@ -86,7 +88,7 @@ impl std::str::FromStr for AdaptationMode {
             "off" => Ok(AdaptationMode::Off),
             "shadow" => Ok(AdaptationMode::Shadow),
             "canary" => Ok(AdaptationMode::Canary),
-            _ => Err(format!("unknown adaptation mode: {}", s)),
+            _ => Err(format!("unknown adaptation mode: {s}")),
         }
     }
 }
@@ -95,7 +97,7 @@ impl std::str::FromStr for AdaptationMode {
 ///
 /// Contains the current profile, adaptation state, active backend, and
 /// health signals for the scheduler: whether a process is running, what
-/// the sched_ext subsystem reports, and whether the scheduler heartbeat
+/// the `sched_ext` subsystem reports, and whether the scheduler heartbeat
 /// is fresh.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SchedulerStatus {
@@ -115,8 +117,8 @@ pub struct SchedulerStatus {
     #[serde(default)]
     pub running: bool,
 
-    /// Name of the scheduler currently loaded in the sched_ext subsystem
-    /// (e.g. "scx_rustland"), or `None` when sched_ext is unavailable.
+    /// Name of the scheduler currently loaded in the `sched_ext` subsystem
+    /// (e.g. "`scx_rustland`"), or `None` when `sched_ext` is unavailable.
     #[serde(default)]
     pub sched_ext_state: Option<String>,
 
@@ -126,7 +128,8 @@ pub struct SchedulerStatus {
 }
 
 impl SchedulerStatus {
-    /// Creates a new SchedulerStatus with default values.
+    /// Creates a new `SchedulerStatus` with default values.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

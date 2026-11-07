@@ -81,6 +81,7 @@ impl From<SocketRequest> for Request {
 }
 
 impl SocketRequest {
+    #[must_use]
     pub fn command_name(&self) -> &'static str {
         match self {
             SocketRequest::Status => "status",

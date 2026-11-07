@@ -67,8 +67,7 @@ impl AdaptationAuditEvent {
     pub fn new(result: impl Into<String>) -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
 
         Self {
             timestamp,
@@ -368,12 +367,11 @@ impl PolicyRecommendation {
     pub fn age_secs(&self) -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0)
+            .map_or(0, |d| d.as_secs())
             .saturating_sub(self.timestamp)
     }
 
-    /// Checks if the recommendation is fresh (within max_age_secs).
+    /// Checks if the recommendation is fresh (within `max_age_secs`).
     #[must_use]
     pub fn is_fresh(&self, max_age_secs: u64) -> bool {
         max_age_secs > 0 && self.age_secs() <= max_age_secs
@@ -435,7 +433,7 @@ pub enum RollbackResult {
 
 /// Adaptation Controller — orchestrates the adaptation loop.
 ///
-/// Connects: Config → PolicyReader → PolicyValidator → GuardrailEngine → Scheduler Backend
+/// Connects: Config → `PolicyReader` → `PolicyValidator` → `GuardrailEngine` → Scheduler Backend
 ///
 /// Runs periodically (e.g., every second) to evaluate recommendations and
 /// apply guarded switches in Canary mode, or log in Shadow mode.
@@ -464,7 +462,7 @@ pub struct AdaptationController {
 }
 
 impl AdaptationController {
-    /// Creates a new AdaptationController with default settings.
+    /// Creates a new `AdaptationController` with default settings.
     #[must_use]
     pub fn new(current_profile: Profile) -> Self {
         Self {
@@ -777,7 +775,7 @@ pub trait Backend {
 
     /// Verifies the scheduler is healthy after a profile switch.
     ///
-    /// Returns `Ok(())` if the scheduler is healthy (process alive, sched_ext active,
+    /// Returns `Ok(())` if the scheduler is healthy (process alive, `sched_ext` active,
     /// heartbeat fresh, and profile matches). Returns `Err` with a reason if unhealthy.
     fn verify_post_switch_health(&mut self, expected_profile: Profile) -> Result<(), String>;
 
@@ -787,7 +785,7 @@ pub trait Backend {
     /// Attempts a full rollback to a previous known-good profile.
     ///
     /// This stops the current scheduler, then attempts to start the previous good profile.
-    /// Returns RollbackResult indicating success or failure.
+    /// Returns `RollbackResult` indicating success or failure.
     fn rollback(&mut self, previous_good_profile: Profile) -> RollbackResult;
 }
 
@@ -920,7 +918,11 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
         // Write a valid policy file
-        let path = format!("{}/cerynth-test-adaptation-shadow-{}.json", std::env::temp_dir().display(), std::process::id());
+        let path = format!(
+            "{}/cerynth-test-adaptation-shadow-{}.json",
+            std::env::temp_dir().display(),
+            std::process::id()
+        );
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -958,7 +960,11 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("{}/cerynth-test-adaptation-canary-{}.json", std::env::temp_dir().display(), std::process::id());
+        let path = format!(
+            "{}/cerynth-test-adaptation-canary-{}.json",
+            std::env::temp_dir().display(),
+            std::process::id()
+        );
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -996,7 +1002,11 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("{}/cerynth-test-adaptation-lowconf-{}.json", std::env::temp_dir().display(), std::process::id());
+        let path = format!(
+            "{}/cerynth-test-adaptation-lowconf-{}.json",
+            std::env::temp_dir().display(),
+            std::process::id()
+        );
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.42,
@@ -1124,7 +1134,11 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("{}/cerynth-test-adaptation-failure-{}.json", std::env::temp_dir().display(), std::process::id());
+        let path = format!(
+            "{}/cerynth-test-adaptation-failure-{}.json",
+            std::env::temp_dir().display(),
+            std::process::id()
+        );
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -1192,7 +1206,11 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("{}/cerynth-test-adaptation-same-{}.json", std::env::temp_dir().display(), std::process::id());
+        let path = format!(
+            "{}/cerynth-test-adaptation-same-{}.json",
+            std::env::temp_dir().display(),
+            std::process::id()
+        );
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "balanced",
             "confidence": 0.90,
@@ -1400,7 +1418,7 @@ pub struct PolicyValidator {
 }
 
 impl PolicyValidator {
-    /// Creates a new PolicyValidator with default thresholds.
+    /// Creates a new `PolicyValidator` with default thresholds.
     ///
     /// Default minimum confidence: 0.75
     /// Default maximum age: 10 seconds
@@ -1412,14 +1430,14 @@ impl PolicyValidator {
         }
     }
 
-    /// Creates a PolicyValidator with a custom minimum confidence threshold.
+    /// Creates a `PolicyValidator` with a custom minimum confidence threshold.
     #[must_use]
     pub fn with_min_confidence(mut self, min_confidence: f64) -> Self {
         self.min_confidence = min_confidence;
         self
     }
 
-    /// Creates a PolicyValidator with a custom maximum age.
+    /// Creates a `PolicyValidator` with a custom maximum age.
     #[must_use]
     pub fn with_max_age(mut self, max_age_secs: u64) -> Self {
         self.max_age_secs = max_age_secs;
@@ -1429,10 +1447,11 @@ impl PolicyValidator {
     /// Validates a policy recommendation against the current profile.
     ///
     /// Checks:
-    /// - Confidence is >= min_confidence
-    /// - Policy is fresh (within max_age_secs)
+    /// - Confidence is >= `min_confidence`
+    /// - Policy is fresh (within `max_age_secs`)
     /// - Recommended profile differs from current profile
-    /// - Profile is valid (handled by PolicyRecommendation parsing)
+    /// - Profile is valid (handled by `PolicyRecommendation` parsing)
+    #[must_use]
     pub fn validate(
         &self,
         recommendation: &PolicyRecommendation,
@@ -1479,7 +1498,7 @@ pub struct PolicyReader {
 }
 
 impl PolicyReader {
-    /// Creates a new PolicyReader with the default path and max age.
+    /// Creates a new `PolicyReader` with the default path and max age.
     ///
     /// Default path: `/run/cerynth/policy.json`
     /// Default max age: 10 seconds
@@ -1491,7 +1510,7 @@ impl PolicyReader {
         }
     }
 
-    /// Creates a PolicyReader with a custom path.
+    /// Creates a `PolicyReader` with a custom path.
     #[must_use]
     pub fn with_path(path: impl Into<String>) -> Self {
         Self {
@@ -1541,7 +1560,7 @@ impl PolicyReader {
 
         let confidence = value
             .get("confidence")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .ok_or_else(|| PolicyReadError::MissingField("confidence".to_string()))?;
 
         if !(0.0..=1.0).contains(&confidence) {
@@ -1556,12 +1575,12 @@ impl PolicyReader {
 
         let timestamp = value
             .get("timestamp")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .ok_or_else(|| PolicyReadError::MissingField("timestamp".to_string()))?;
 
         let apply = value
             .get("apply")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         let recommendation = PolicyRecommendation {
@@ -2137,7 +2156,10 @@ mod policy_reader_tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_file(name: &str) -> String {
-        format!("target/test-policy-{name}.json")
+        format!(
+            "{}/cerynth-test-policy-{name}.json",
+            std::env::temp_dir().display()
+        )
     }
 
     fn write_policy_file(path: &str, json: &str) {
@@ -2641,8 +2663,7 @@ mod policy_validator_tests {
                 if from_profile == to_profile {
                     assert!(
                         !result.is_accepted(),
-                        "Should reject same profile: {:?}",
-                        from_profile
+                        "Should reject same profile: {from_profile:?}"
                     );
                     assert!(matches!(
                         result.rejection_reason(),
@@ -2651,9 +2672,7 @@ mod policy_validator_tests {
                 } else {
                     assert!(
                         result.is_accepted(),
-                        "Should accept different profile: {:?} -> {:?}",
-                        from_profile,
-                        to_profile
+                        "Should accept different profile: {from_profile:?} -> {to_profile:?}"
                     );
                 }
             }
@@ -2760,13 +2779,13 @@ pub struct GuardrailEngine {
 }
 
 impl GuardrailEngine {
-    /// Creates a new GuardrailEngine with default settings.
+    /// Creates a new `GuardrailEngine` with default settings.
     ///
     /// Defaults (per sprint requirements):
-    /// - min_confidence: 0.75
-    /// - min_dwell_secs: 15
-    /// - max_switches_per_hour: 12
-    /// - max_consecutive_failures: 3
+    /// - `min_confidence`: 0.75
+    /// - `min_dwell_secs`: 15
+    /// - `max_switches_per_hour`: 12
+    /// - `max_consecutive_failures`: 3
     #[must_use]
     pub fn new(current_profile: Profile) -> Self {
         Self {
@@ -2784,7 +2803,7 @@ impl GuardrailEngine {
         }
     }
 
-    /// Creates a GuardrailEngine with a custom initial profile.
+    /// Creates a `GuardrailEngine` with a custom initial profile.
     #[must_use]
     pub fn with_profile(current_profile: Profile) -> Self {
         Self::new(current_profile)
@@ -2871,6 +2890,7 @@ impl GuardrailEngine {
     /// * `recommendation` - The policy recommendation to evaluate
     /// * `heartbeat_ok` - Whether the scheduler heartbeat is fresh/healthy
     /// * `now` - Current Unix timestamp (for testing determinism)
+    #[must_use]
     pub fn can_switch(
         &self,
         recommendation: &PolicyRecommendation,
@@ -2936,8 +2956,8 @@ impl GuardrailEngine {
 
     /// Records a successful switch.
     ///
-    /// Updates state: current_profile, previous_good_profile, last_switch_time,
-    /// recent_switches, and resets consecutive_failures.
+    /// Updates state: `current_profile`, `previous_good_profile`, `last_switch_time`,
+    /// `recent_switches`, and resets `consecutive_failures`.
     pub fn record_success(&mut self, new_profile: Profile, now: u64) {
         self.previous_good_profile = Some(self.current_profile);
         self.current_profile = new_profile;
@@ -2949,8 +2969,8 @@ impl GuardrailEngine {
 
     /// Records a failed switch attempt.
     ///
-    /// Increments consecutive_failures. If the failure count reaches
-    /// max_consecutive_failures, adaptation is automatically disabled.
+    /// Increments `consecutive_failures`. If the failure count reaches
+    /// `max_consecutive_failures`, adaptation is automatically disabled.
     pub fn record_failure(&mut self) {
         self.consecutive_failures = self.consecutive_failures.saturating_add(1);
         if self.consecutive_failures >= self.max_consecutive_failures {

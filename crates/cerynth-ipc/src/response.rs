@@ -52,10 +52,12 @@ impl From<Response> for SocketResponse {
 }
 
 impl SocketResponse {
+    #[must_use]
     pub fn is_success(&self) -> bool {
         !matches!(self, SocketResponse::Error { .. })
     }
 
+    #[must_use]
     pub fn error_message(&self) -> Option<&str> {
         match self {
             SocketResponse::Error { message } => Some(message),

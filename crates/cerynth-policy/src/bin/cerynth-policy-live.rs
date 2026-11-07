@@ -23,8 +23,7 @@ impl From<PolicyDecision> for PolicyOutput {
     fn from(decision: PolicyDecision) -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
         Self {
             recommended_profile: decision.recommended_profile,
             confidence: decision.confidence,
@@ -37,8 +36,7 @@ impl From<PolicyDecision> for PolicyOutput {
 
 fn output_path() -> PathBuf {
     env::var_os("CERYNTH_POLICY_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/run/cerynth/policy.json"))
+        .map_or_else(|| PathBuf::from("/run/cerynth/policy.json"), PathBuf::from)
 }
 
 fn write_policy(output: &PolicyOutput, path: &PathBuf) -> Result<()> {
@@ -112,8 +110,7 @@ fn main() -> Result<()> {
                 reason: format!("Telemetry collection failed; defaulting to balanced: {error}"),
                 timestamp: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0),
+                    .map_or(0, |d| d.as_secs()),
                 apply: false,
             },
         };

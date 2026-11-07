@@ -26,13 +26,13 @@ pub async fn handle_connection(
     let envelope = match decode_request(&buffer[..n]) {
         Ok(req) => req,
         Err(err) => {
-            eprintln!("Failed to parse request: {}", err);
+            eprintln!("Failed to parse request: {err}");
             return Ok(());
         }
     };
 
     if let Err(err) = envelope.validate_version() {
-        eprintln!("{}", err);
+        eprintln!("{err}");
         return Ok(());
     }
 

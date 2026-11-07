@@ -1,5 +1,5 @@
 use crate::backend::Backend;
-use cerynth_ipc::{AdaptationMode, Request, Response};
+use cerynth_ipc::{Request, Response};
 
 pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) -> Response {
     match request {
@@ -59,7 +59,7 @@ mod tests {
     use super::*;
     use crate::{backends::mock::MockBackend, state::DaemonState};
 
-    use cerynth_ipc::{Profile, SchedulerBackend};
+    use cerynth_ipc::{AdaptationMode, Profile, SchedulerBackend};
 
     fn backend() -> MockBackend {
         MockBackend::new(DaemonState {
