@@ -54,12 +54,14 @@ printf 'Checking CerynthOS runtime under: %s\n\n' "${ROOT:-/}"
 
 check_exec /usr/lib/cerynth/cerynthd
 check_exec /usr/lib/cerynth/cerynth-scx
+check_exec /usr/lib/cerynth/cerynth-policy-live
 check_exec /usr/bin/cerynthctl
 check_exec /usr/lib/cerynth/cerynth-boot-marker
 
 check_file /etc/cerynth/cerynth.toml
 
 check_file /etc/systemd/system/cerynthd.service
+check_file /etc/systemd/system/cerynth-policy-live.service
 check_file /etc/systemd/system/cerynth-boot-marker.service
 
 check_dir /var/lib/cerynth

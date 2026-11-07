@@ -27,13 +27,40 @@ This repository contains the initial control plane for **CerynthOS**.
 -   Human-friendly CLI
 -   Persistent runtime state
 -   TOML configuration
--   Mock scheduler backend
+-   Real sched_ext scheduler backend
+-   CerynthOS cerynth-scx scheduler
+-   Live policy engine and telemetry
+-   systemd runtime packaging
+-   QEMU/KVM development VM
 -   Unit and integration tests
 
 ## Build
 
 ``` bash
-cargo build
+cargo build --release --workspace
+```
+
+## Fresh Development Setup
+
+```bash
+git clone https://github.com/CerynthOS/CerynthOS.git
+cd CerynthOS
+just bootstrap
+just fetch-upstream
+just doctor
+```
+
+Prepare and run the development VM:
+
+```bash
+./scripts/vm/setup-base-vm.sh
+./scripts/vm/run-base-vm.sh
+```
+
+After the VM is reachable, discover its local root filesystem configuration:
+
+```bash
+./scripts/vm/discover-root-filesystem.sh
 ```
 
 ## Run Daemon
@@ -121,7 +148,10 @@ cargo run -p cerynthctl -- adaptation resume
 Integration tests run with `--test-threads=1` because they share the
 same Unix socket (`/tmp/cerynthd.sock`) and runtime state.
 
-## Next Steps
+## Current Development Focus
 
--   Replace the mock backend with the real scheduler backend.
--   Extend scheduler functionality and telemetry.
+-   Guarded automatic policy adaptation
+-   Scheduler runtime statistics and telemetry
+-   Profile-specific scheduling behavior
+-   Benchmarking against the Linux default scheduler
+-   Packaging and VM reproducibility

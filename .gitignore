@@ -77,6 +77,8 @@ vm/initramfs/initrd.img-*
 vm/logs/*
 vm/modules/*
 artifacts/boot-report/*
+/vm/root-filesystem.env
+/vm/generated/
 
 !vm/images/.gitkeep
 !vm/overlays/.gitkeep

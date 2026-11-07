@@ -96,6 +96,8 @@ case "$SCHED_EXT" in
 esac
 
 check cerynthd    "cerynthd active"        'systemctl is-active --quiet cerynthd'
+check policy      "cerynth-policy-live active" \
+                                           'systemctl is-active --quiet cerynth-policy-live'
 check socket      "IPC socket at /run/cerynth/cerynthd.sock" \
                                            'test -S /run/cerynth/cerynthd.sock'
 

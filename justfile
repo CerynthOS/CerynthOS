@@ -22,7 +22,7 @@ lint:
     cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 test:
-    cargo nextest run --workspace
+    cargo test --workspace
 
 audit:
     cargo audit
