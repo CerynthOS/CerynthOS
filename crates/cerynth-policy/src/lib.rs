@@ -920,7 +920,7 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
         // Write a valid policy file
-        let path = format!("target/test-adaptation-shadow-{}.json", std::process::id());
+        let path = format!("{}/cerynth-test-adaptation-shadow-{}.json", std::env::temp_dir().display(), std::process::id());
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -958,7 +958,7 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("target/test-adaptation-canary-{}.json", std::process::id());
+        let path = format!("{}/cerynth-test-adaptation-canary-{}.json", std::env::temp_dir().display(), std::process::id());
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -996,7 +996,7 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("target/test-adaptation-lowconf-{}.json", std::process::id());
+        let path = format!("{}/cerynth-test-adaptation-lowconf-{}.json", std::env::temp_dir().display(), std::process::id());
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.42,
@@ -1031,7 +1031,8 @@ mod adaptation_controller_tests {
             .as_secs();
 
         let path = format!(
-            "target/test-adaptation-guardrail-{}.json",
+            "{}/cerynth-test-adaptation-guardrail-{}.json",
+            std::env::temp_dir().display(),
             std::process::id()
         );
         let json = serde_json::to_string(&serde_json::json!({
@@ -1085,7 +1086,8 @@ mod adaptation_controller_tests {
             .as_secs();
 
         let path = format!(
-            "target/test-adaptation-heartbeat-{}.json",
+            "{}/cerynth-test-adaptation-heartbeat-{}.json",
+            std::env::temp_dir().display(),
             std::process::id()
         );
         let json = serde_json::to_string(&serde_json::json!({
@@ -1122,7 +1124,7 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("target/test-adaptation-failure-{}.json", std::process::id());
+        let path = format!("{}/cerynth-test-adaptation-failure-{}.json", std::env::temp_dir().display(), std::process::id());
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "performance",
             "confidence": 0.90,
@@ -1190,7 +1192,7 @@ mod adaptation_controller_tests {
             .unwrap()
             .as_secs();
 
-        let path = format!("target/test-adaptation-same-{}.json", std::process::id());
+        let path = format!("{}/cerynth-test-adaptation-same-{}.json", std::env::temp_dir().display(), std::process::id());
         let json = serde_json::to_string(&serde_json::json!({
             "recommended_profile": "balanced",
             "confidence": 0.90,
@@ -1226,7 +1228,8 @@ mod adaptation_controller_tests {
             .as_secs();
 
         let path = format!(
-            "target/test-adaptation-rollback-{}.json",
+            "{}/cerynth-test-adaptation-rollback-{}.json",
+            std::env::temp_dir().display(),
             std::process::id()
         );
 
@@ -1276,7 +1279,8 @@ mod adaptation_controller_tests {
             .as_secs();
 
         let path = format!(
-            "target/test-adaptation-rollback-failure-{}.json",
+            "{}/cerynth-test-adaptation-rollback-failure-{}.json",
+            std::env::temp_dir().display(),
             std::process::id()
         );
 
