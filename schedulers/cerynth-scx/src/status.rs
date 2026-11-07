@@ -1,13 +1,14 @@
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
 use crate::profile::Profile;
 
-const STATUS_DIR: &str = "/run/cerynth";
 const STATUS_PATH: &str = "/run/cerynth/scheduler.json";
+
 #[derive(Deserialize, Serialize)]
 pub struct SchedulerStatus {
     pub running: bool,
@@ -18,29 +19,30 @@ pub struct SchedulerStatus {
     pub sched_ext_state: String,
 
     /// Unix timestamp (whole seconds) of the last time this status was
-    /// written. cerynthd's ScxBackend reads this field (named exactly
+    /// written. cerynthd's `ScxBackend` reads this field (named exactly
     /// "heartbeat", in seconds) to decide whether the scheduler is still
     /// alive: it considers the scheduler unhealthy once this is more than
-    /// HEARTBEAT_TIMEOUT_SECS old. main.rs's run loop refreshes this
+    /// `HEARTBEAT_TIMEOUT_SECS` old. main.rs's run loop refreshes this
     /// periodically while dispatching, not just at start/stop.
     pub heartbeat: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_error: Option<String>,
 }
-fn read_sched_ext_state() -> String {
+
+pub fn read_sched_ext_state() -> String {
     fs::read_to_string("/sys/kernel/sched_ext/state")
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|_| "unavailable".to_string())
+        .map_or_else(|_| "unavailable".to_string(), |s| s.trim().to_string())
 }
 
 pub fn now_ms() -> u64 {
-    SystemTime::now()
+    let ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
-        .as_millis() as u64
+        .as_millis();
+    u64::try_from(ms).unwrap_or(u64::MAX)
 }
 
-fn now_secs() -> u64 {
+pub fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -51,12 +53,19 @@ impl SchedulerStatus {
     /// `started_at_ms` is the scheduler's real start time, captured once by
     /// the caller. Passing it in (instead of recomputing it here) is what
     /// lets `run()` call this repeatedly to refresh only `heartbeat`
-    /// without started_at_ms drifting forward on every refresh.
+    /// without `started_at_ms` drifting forward on every refresh.
+    ///
+    /// Called from the dispatch loop, so it must not touch the filesystem.
+    /// `sched_ext_state` and `healthy` are the scheduler's own claim; the
+    /// reporter process (`reporter::run`) replaces both with what
+    /// `/sys/kernel/sched_ext/state` says before writing the file, so a live
+    /// process whose scheduler the kernel already kicked out (watchdog,
+    /// `SysRq-S`) is published as running but not healthy.
     pub fn running(profile: Profile, started_at_ms: u64) -> Self {
         Self {
             running: true,
             pid: std::process::id(),
-            profile: format!("{profile:?}"),
+            profile: profile.as_str().to_string(),
             healthy: true,
             started_at_ms,
             sched_ext_state: "enabled".to_string(),
@@ -79,17 +88,27 @@ impl SchedulerStatus {
     }
 
     pub fn write(&self) -> std::io::Result<()> {
-        fs::create_dir_all(STATUS_DIR)?;
-        let tmp_path = format!("{STATUS_PATH}.tmp");
-        let json = serde_json::to_string_pretty(self).unwrap_or_default();
-        {
-            let mut file = fs::File::create(&tmp_path)?;
-            file.write_all(json.as_bytes())?;
-            file.sync_all()?;
-        }
-        fs::rename(&tmp_path, STATUS_PATH)?;
-        Ok(())
+        write_json_atomic(Path::new(STATUS_PATH), self)
     }
+}
+
+/// Write `value` as JSON so readers only ever see the old file or the new
+/// one, never a half-written mix: write a temp file next to it, flush it to
+/// disk, then rename it over the target (a rename within one directory is
+/// atomic). Recreates the parent directory if something deleted it.
+pub fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let json = serde_json::to_string_pretty(value).map_err(std::io::Error::other)?;
+    let mut tmp_path = path.as_os_str().to_owned();
+    tmp_path.push(".tmp");
+    {
+        let mut file = fs::File::create(&tmp_path)?;
+        file.write_all(json.as_bytes())?;
+        file.sync_all()?;
+    }
+    fs::rename(&tmp_path, path)
 }
 
 #[cfg(test)]
@@ -112,39 +131,32 @@ mod tests {
         let now = now_secs();
         assert!(heartbeat.unwrap() <= now && heartbeat.unwrap() + 2 >= now);
     }
-}
 
-/// Diagnostic counters only; they do not participate in scheduling decisions.
-#[derive(Default, Deserialize, Serialize)]
-pub struct SchedulerStats {
-    pub pid: u32,
-    pub profile: String,
-    pub heartbeat: u64,
-    pub scheduler_uptime_ms: u64,
-    pub progress_sequence: u64,
-    pub tasks_dequeued: u64,
-    pub tasks_dispatched: u64,
-    pub reporter_drops: u64,
-    pub dispatch_errors: u64,
-    pub dequeue_errors: u64,
-    pub batches_processed: u64,
-    pub avg_batch_size: f64,
-    pub max_batch_size: u64,
-    pub kernel_queued: u64,
-    pub kernel_scheduled: u64,
-    pub kernel_user_dispatches: u64,
-    pub kernel_direct_dispatches: u64,
-    pub kernel_failed_dispatches: u64,
-    pub kernel_cancel_dispatches: u64,
-}
+    #[test]
+    fn profile_is_serialized_lowercase() {
+        let status = SchedulerStatus::running(Profile::Interactive, 1_000);
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json["profile"], "interactive");
+    }
 
-impl SchedulerStats {
-    pub fn write(&self) -> std::io::Result<()> {
-        let path = format!("{STATUS_DIR}/scheduler-stats.json");
-        let tmp = format!("{path}.tmp");
-        fs::create_dir_all(STATUS_DIR)?;
-        let json = serde_json::to_vec(self)?;
-        fs::write(&tmp, json)?;
-        fs::rename(tmp, path)
+    #[test]
+    fn atomic_write_recreates_a_deleted_directory_and_replaces_garbage() {
+        let dir = std::env::temp_dir().join(format!("cerynth-scx-status-{}", std::process::id()));
+        let path = dir.join("scheduler.json");
+
+        // Directory missing entirely (someone ran rm -rf /run/cerynth).
+        let _ = fs::remove_dir_all(&dir);
+        write_json_atomic(&path, &serde_json::json!({ "a": 1 })).unwrap();
+
+        // File corrupted by something else: the next write must replace it.
+        fs::write(&path, "{ not json").unwrap();
+        write_json_atomic(&path, &serde_json::json!({ "a": 2 })).unwrap();
+
+        let back: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(back["a"], 2);
+        assert!(!dir.join("scheduler.json.tmp").exists());
+
+        fs::remove_dir_all(&dir).unwrap();
     }
 }

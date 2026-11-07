@@ -1,5 +1,9 @@
 //! Filesystem reporting is isolated from the scheduling loop. A blocked
 //! reporter must never prevent the parent from dispatching its lock owners.
+
+// prctl/getppid/kill and adopting fd 0: thin libc calls with no safe
+// wrapper in our dependencies (same policy as process.rs).
+#![allow(unsafe_code)]
 use std::io;
 use std::os::fd::{FromRawFd, OwnedFd};
 use std::os::unix::net::UnixDatagram;
@@ -7,7 +11,8 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
 use crate::profile::Profile;
-use crate::status::{SchedulerStats, SchedulerStatus};
+use crate::stats::StatsSnapshot;
+use crate::status::SchedulerStatus;
 use serde::{Deserialize, Serialize};
 
 const MAX_SNAPSHOT: usize = 8192;
@@ -15,13 +20,13 @@ const MAX_SNAPSHOT: usize = 8192;
 #[derive(Deserialize)]
 struct Snapshot {
     status: SchedulerStatus,
-    stats: SchedulerStats,
+    stats: StatsSnapshot,
 }
 
 #[derive(Serialize)]
 struct SnapshotRef<'a> {
     status: SchedulerStatus,
-    stats: &'a SchedulerStats,
+    stats: &'a StatsSnapshot,
 }
 
 pub struct Reporter {
@@ -84,7 +89,7 @@ impl Reporter {
         &self,
         profile: Profile,
         started_at_ms: u64,
-        stats: &SchedulerStats,
+        stats: &StatsSnapshot,
     ) -> io::Result<bool> {
         let bytes = serde_json::to_vec(&SnapshotRef {
             status: SchedulerStatus::running(profile, started_at_ms),
@@ -180,7 +185,7 @@ mod tests {
         command.arg("30");
         let reporter = Reporter::with_command(command).unwrap();
         let pid = reporter.child.id();
-        let stats = SchedulerStats::default();
+        let stats = StatsSnapshot::default();
         let deadline = Instant::now() + Duration::from_secs(2);
         let mut dropped = 0;
         for _ in 0..1000 {
@@ -197,7 +202,7 @@ mod tests {
 
     #[test]
     fn reporter_snapshot_preserves_scheduler_identity_and_heartbeat() {
-        let stats = SchedulerStats {
+        let stats = StatsSnapshot {
             pid: 123,
             heartbeat: 10,
             progress_sequence: 55,
