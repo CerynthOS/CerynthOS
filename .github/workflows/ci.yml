@@ -15,7 +15,7 @@ jobs:
           repository: sched-ext/scx
           path: third_party/scx
           ref: 67be0435c454dc8984a11064dc8b9c6476c46b6d
-      - run: sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev pkg-config
+      - run: sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev libseccomp-dev zlib1g-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt,clippy
