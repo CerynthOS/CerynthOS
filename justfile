@@ -44,6 +44,14 @@ doctor:
 
 # --- Platform runtime (Person 1) -------------------------------------------
 
+# Print the cgroup v2 resource support matrix for this host.
+resource-support:
+    cargo run --quiet -p cerynth-resources --bin cerynth-resource-support
+
+# Run the resource-control tests (privileged cases skip cleanly).
+test-resource:
+    cargo test -p cerynth-resources -- --nocapture
+
 # Install the runtime into a staging root for inspection.
 runtime-stage root="/tmp/cerynth-install-test":
     ./scripts/install-dev-runtime.sh --root {{root}} --verbose

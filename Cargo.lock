@@ -401,6 +401,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cerynth-resources"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "nix 0.30.1",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "cerynth-scx"
 version = "0.1.0"
 dependencies = [
@@ -649,7 +661,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0b1fab2ae45819af2d0731d60f2afe17227ebb1a1538a236da84c93e9a60162"
 dependencies = [
  "dispatch2",
- "nix",
+ "nix 0.31.3",
  "windows-sys",
 ]
 
@@ -1051,7 +1063,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95f55336f7dbde4fbbaae7b5e271f9efc65bf1d0b69c6fcb1e5026a385e95f70"
 dependencies = [
  "cc",
- "nix",
+ "nix 0.31.3",
  "pkg-config",
 ]
 
@@ -1141,6 +1153,18 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys",
+]
+
+[[package]]
+name = "nix"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
 ]
 
 [[package]]
@@ -1641,7 +1665,7 @@ dependencies = [
  "libbpf-rs",
  "libc",
  "log",
- "nix",
+ "nix 0.31.3",
  "num",
  "nvml-wrapper",
  "nvml-wrapper-sys",
@@ -2216,6 +2240,7 @@ version = "1.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
 dependencies = [
+ "getrandom",
  "js-sys",
  "serde_core",
  "wasm-bindgen",

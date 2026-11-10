@@ -6,6 +6,7 @@ members = [
     "crates/cerynth-config",
     "crates/cerynth-ipc",
     "crates/cerynth-policy",
+    "crates/cerynth-resources",
     "crates/cerynth-telemetry",
     "services/cerynthd",
     "schedulers/cerynth-scx",
