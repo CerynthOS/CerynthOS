@@ -1,0 +1,14 @@
+[Unit]
+Description=Cerynth Guard per-user execution service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/cerynth-guardd serve %h/.config/cerynth/guard.toml
+RuntimeDirectory=cerynth-guard
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

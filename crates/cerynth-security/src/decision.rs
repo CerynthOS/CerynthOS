@@ -48,12 +48,21 @@ pub struct ActionRequest {
 
 impl ActionRequest {
     #[must_use]
-    pub fn new(session_id: Uuid, kind: CapabilityKind, target: impl Into<String>, args: serde_json::Value) -> Self {
+    pub fn new(
+        session_id: Uuid,
+        kind: CapabilityKind,
+        target: impl Into<String>,
+        args: serde_json::Value,
+    ) -> Self {
         Self {
             schema: SCHEMA.into(),
             request_id: Uuid::new_v4(),
             session_id,
-            action: Action { kind, target: target.into(), args },
+            action: Action {
+                kind,
+                target: target.into(),
+                args,
+            },
             context: RequestContext::default(),
         }
     }
@@ -63,7 +72,10 @@ impl ActionRequest {
     #[must_use]
     pub fn digest(&self) -> String {
         let value = serde_json::json!({ "session_id": self.session_id, "action": self.action });
-        format!("sha256:{}", hex::encode(Sha256::digest(canonical_json(&value))))
+        format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(canonical_json(&value)))
+        )
     }
 }
 
@@ -145,7 +157,12 @@ pub struct SecurityDecision {
 
 impl SecurityDecision {
     #[must_use]
-    pub fn new(req: &ActionRequest, decision: Verdict, reason: Reason, enforcement: Enforcement) -> Self {
+    pub fn new(
+        req: &ActionRequest,
+        decision: Verdict,
+        reason: Reason,
+        enforcement: Enforcement,
+    ) -> Self {
         Self {
             schema: SCHEMA.into(),
             request_id: req.request_id,
@@ -163,7 +180,12 @@ impl SecurityDecision {
     /// What a caller must assume when Guard can't be reached: deny.
     #[must_use]
     pub fn guard_unavailable(req: &ActionRequest) -> Self {
-        Self::new(req, Verdict::Deny, Reason::GuardUnavailable, Enforcement::Enforced)
+        Self::new(
+            req,
+            Verdict::Deny,
+            Reason::GuardUnavailable,
+            Enforcement::Enforced,
+        )
     }
 
     #[must_use]
@@ -242,7 +264,12 @@ mod tests {
     use super::*;
 
     fn push(session: Uuid, target: &str, force: bool) -> ActionRequest {
-        ActionRequest::new(session, CapabilityKind::GitPush, target, serde_json::json!({ "force": force }))
+        ActionRequest::new(
+            session,
+            CapabilityKind::GitPush,
+            target,
+            serde_json::json!({ "force": force }),
+        )
     }
 
     #[test]
@@ -252,17 +279,39 @@ mod tests {
         let mut same = push(s, "origin:refs/heads/agent/x", false);
         same.request_id = Uuid::new_v4(); // request id is not part of the operation
         assert_eq!(a.digest(), same.digest());
-        assert_ne!(a.digest(), push(s, "origin:refs/heads/agent/x", true).digest(), "args change");
-        assert_ne!(a.digest(), push(s, "origin:refs/heads/main", false).digest(), "target change");
-        assert_ne!(a.digest(), push(Uuid::new_v4(), "origin:refs/heads/agent/x", false).digest(), "session change");
+        assert_ne!(
+            a.digest(),
+            push(s, "origin:refs/heads/agent/x", true).digest(),
+            "args change"
+        );
+        assert_ne!(
+            a.digest(),
+            push(s, "origin:refs/heads/main", false).digest(),
+            "target change"
+        );
+        assert_ne!(
+            a.digest(),
+            push(Uuid::new_v4(), "origin:refs/heads/agent/x", false).digest(),
+            "session change"
+        );
         assert!(a.digest().starts_with("sha256:") && a.digest().len() == 7 + 64);
     }
 
     #[test]
     fn digest_ignores_key_order() {
         let s = Uuid::new_v4();
-        let a = ActionRequest::new(s, CapabilityKind::ToolExec, "x", serde_json::json!({"a":1,"b":2}));
-        let b = ActionRequest::new(s, CapabilityKind::ToolExec, "x", serde_json::from_str(r#"{"b":2,"a":1}"#).unwrap());
+        let a = ActionRequest::new(
+            s,
+            CapabilityKind::ToolExec,
+            "x",
+            serde_json::json!({"a":1,"b":2}),
+        );
+        let b = ActionRequest::new(
+            s,
+            CapabilityKind::ToolExec,
+            "x",
+            serde_json::from_str(r#"{"b":2,"a":1}"#).unwrap(),
+        );
         assert_eq!(a.digest(), b.digest());
     }
 
@@ -275,11 +324,19 @@ mod tests {
                 "context":{"harness":"opencode","origin":"agent"}}"#,
         )
         .unwrap();
-        let d = SecurityDecision::new(&req, Verdict::ApprovalRequired, Reason::PolicyRequiresApproval, Enforcement::Enforced);
+        let d = SecurityDecision::new(
+            &req,
+            Verdict::ApprovalRequired,
+            Reason::PolicyRequiresApproval,
+            Enforcement::Enforced,
+        );
         let v = serde_json::to_value(&d).unwrap();
         assert_eq!(v["decision"], "approval_required");
         assert_eq!(v["reason"], "policy_requires_approval");
         assert_eq!(v["enforcement"], "enforced");
-        assert_eq!(SecurityDecision::guard_unavailable(&req).decision, Verdict::Deny);
+        assert_eq!(
+            SecurityDecision::guard_unavailable(&req).decision,
+            Verdict::Deny
+        );
     }
 }

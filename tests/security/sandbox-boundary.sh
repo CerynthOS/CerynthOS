@@ -113,6 +113,11 @@ check "read Cerynth persistent state"           deny 'test -e /var/lib/cerynth'
 check "see host processes (PID 1 is not init)"  deny '[ "$(cat /proc/1/comm)" = systemd ]'
 check "gain root privileges via sudo"           deny 'sudo -n true'
 check "regain capabilities (CapEff non-zero)"   deny 'grep -q "^CapEff:\s*0*[1-9a-f]" /proc/self/status'
+if [[ -e /dev/dri/renderD128 ]]; then
+    check "access host GPU render node without a grant" deny 'test -e /dev/dri/renderD128'
+else
+    echo "skip  GPU  no host render node; GPU access denial not validated"
+fi
 
 # Credentials in the launcher's environment must not reach the agent.
 FAKE_API_KEY="CANARY-API-KEY-55d1" OPENAI_API_KEY="CANARY-OPENAI-0b7e" \

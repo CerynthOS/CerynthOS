@@ -9,6 +9,7 @@ members = [
     "crates/cerynth-security",
     "crates/cerynth-telemetry",
     "services/cerynthd",
+    "services/cerynth-guardd",
     "schedulers/cerynth-scx",
 ]
 

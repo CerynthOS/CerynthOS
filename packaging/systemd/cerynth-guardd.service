@@ -1,0 +1,24 @@
+[Unit]
+Description=Cerynth Guard experimental local security service
+After=local-fs.target
+
+[Service]
+Type=simple
+User=cerynth-guard
+Group=cerynth-guard
+RuntimeDirectory=cerynth-guard
+RuntimeDirectoryMode=0700
+StateDirectory=cerynth-guard
+StateDirectoryMode=0700
+ExecStart=/usr/bin/cerynth-guardd serve /etc/cerynth/guard/guardd.toml
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -6,11 +6,12 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use landlock::{
-    ABI, Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr, RulesetStatus,
+    ABI, Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
+    RulesetStatus,
 };
 use seccompiler::{
-    BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter, SeccompRule,
-    TargetArch,
+    BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter,
+    SeccompRule, TargetArch,
 };
 
 /// What Landlock managed to enforce on this kernel.
@@ -115,20 +116,33 @@ const CLONE_NS_FLAGS: &[u64] = &[
 /// # Errors
 /// Fails if a filter can't be compiled or installed.
 pub fn apply_seccomp() -> anyhow::Result<()> {
-    let arch = TargetArch::try_from(std::env::consts::ARCH).map_err(|e| anyhow::anyhow!("{e:?}"))?;
+    let arch =
+        TargetArch::try_from(std::env::consts::ARCH).map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
     // Filter 1: denied syscalls, and clone() asking for new namespaces → EPERM.
-    let mut rules: BTreeMap<i64, Vec<SeccompRule>> =
-        denied_syscalls().into_iter().map(|(nr, _)| (nr, vec![])).collect();
+    let mut rules: BTreeMap<i64, Vec<SeccompRule>> = denied_syscalls()
+        .into_iter()
+        .map(|(nr, _)| (nr, vec![]))
+        .collect();
     let clone_rules = CLONE_NS_FLAGS
         .iter()
         .map(|&flag| {
-            SeccompRule::new(vec![SeccompCondition::new(0, SeccompCmpArgLen::Qword, SeccompCmpOp::MaskedEq(flag), flag)?])
+            SeccompRule::new(vec![SeccompCondition::new(
+                0,
+                SeccompCmpArgLen::Qword,
+                SeccompCmpOp::MaskedEq(flag),
+                flag,
+            )?])
         })
         .collect::<Result<Vec<_>, _>>()?;
     rules.insert(libc::SYS_clone, clone_rules);
-    let deny: BpfProgram = SeccompFilter::new(rules, SeccompAction::Allow, SeccompAction::Errno(libc::EPERM as u32), arch)?
-        .try_into()?;
+    let deny: BpfProgram = SeccompFilter::new(
+        rules,
+        SeccompAction::Allow,
+        SeccompAction::Errno(libc::EPERM as u32),
+        arch,
+    )?
+    .try_into()?;
 
     // Filter 2: clone3 → ENOSYS. Its flags live in a struct seccomp can't
     // inspect, so make libc fall back to clone(), which filter 1 checks.

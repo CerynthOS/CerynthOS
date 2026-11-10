@@ -1,0 +1,6 @@
+# Run as a dedicated, unprivileged service account. Directories must be private.
+runtime_dir = "/run/cerynth-guard"
+state_dir = "/var/lib/cerynth-guard"
+guard_exec = "/usr/lib/cerynth/cerynth-guard-exec"
+approval_ttl_secs = 600
+allow_file_remotes = false

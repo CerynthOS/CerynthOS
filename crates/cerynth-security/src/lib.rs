@@ -16,7 +16,7 @@ pub mod profile;
 
 pub use capability::{Capability, CapabilityKind, CapabilitySet, Mode};
 pub use decision::{
-    Action, ActionRequest, ApprovalAnswer, ApprovalInfo, ApprovalResponse, Enforcement, Reason, Risk, SecurityDecision,
-    Verdict,
+    Action, ActionRequest, ApprovalAnswer, ApprovalInfo, ApprovalResponse, Enforcement, Reason,
+    Risk, SecurityDecision, Verdict,
 };
 pub use profile::{GuardSession, HostPaths, SandboxProfile, SessionMode};

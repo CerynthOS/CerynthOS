@@ -15,7 +15,10 @@ use clap::Parser;
 use uuid::Uuid;
 
 #[derive(Parser, Debug)]
-#[command(name = "cerynth-guard-run", about = "Run a command in a Cerynth Guard sandbox")]
+#[command(
+    name = "cerynth-guard-run",
+    about = "Run a command in a Cerynth Guard sandbox"
+)]
 struct Cli {
     /// Session description (JSON `GuardSession`).
     #[arg(long, conflicts_with_all = ["workspace", "caps"])]
@@ -43,12 +46,22 @@ fn load(cli: &Cli) -> anyhow::Result<GuardSession> {
     if let Some(p) = &cli.session {
         return Ok(serde_json::from_slice(&std::fs::read(p)?)?);
     }
-    let workspace = cli.workspace.clone().ok_or_else(|| anyhow::anyhow!("--workspace or --session is required"))?;
+    let workspace = cli
+        .workspace
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("--workspace or --session is required"))?;
     let capabilities: CapabilitySet = match &cli.caps {
         Some(p) => serde_json::from_slice(&std::fs::read(p)?)?,
         None => CapabilitySet::default(),
     };
-    Ok(GuardSession { session_id: Uuid::new_v4(), parent_session_id: None, mode: SessionMode::Managed, workspace, capabilities, harness: None })
+    Ok(GuardSession {
+        session_id: Uuid::new_v4(),
+        parent_session_id: None,
+        mode: SessionMode::Managed,
+        workspace,
+        capabilities,
+        harness: None,
+    })
 }
 
 fn main() -> ExitCode {
@@ -60,8 +73,14 @@ fn main() -> ExitCode {
             .parent()
             .map(|d| d.join("cerynth-guard-exec"))
             .filter(|p| p.exists())
-            .ok_or_else(|| anyhow::anyhow!("cerynth-guard-exec not found next to cerynth-guard-run"))?;
-        let host = HostPaths { guard_exec, guard_socket: cli.guard_socket.clone(), egress_socket: cli.egress_socket.clone() };
+            .ok_or_else(|| {
+                anyhow::anyhow!("cerynth-guard-exec not found next to cerynth-guard-run")
+            })?;
+        let host = HostPaths {
+            guard_exec,
+            guard_socket: cli.guard_socket.clone(),
+            egress_socket: cli.egress_socket.clone(),
+        };
         Ok(profile.command_line(&host, &cli.cmd))
     };
     let argv = match run() {

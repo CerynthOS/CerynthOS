@@ -8,9 +8,9 @@
 //! - no matching capability            → deny (`no_matching_capability`)
 //! - capability says deny              → deny (`policy_deny`)
 //! - a Cedar `forbid` applies          → deny (`policy_deny`, that policy's `@id`)
-//! - a determining permit has `@mode("approval")`, or the capability says approval
-//!                                     → approval required
-//! - otherwise                         → allow
+//! - a determining permit has `@mode("approval")`, or the capability says
+//!   approval → approval required
+//! - otherwise → allow
 //!
 //! Cedar ignores policies whose evaluation errors. For a guardrail that would
 //! mean a `forbid` silently not applying, so any evaluation error is a deny.
@@ -18,7 +18,8 @@
 use std::str::FromStr;
 
 use cedar_policy::{
-    Authorizer, Context, Decision, Entities, EntityId, EntityTypeName, EntityUid, PolicySet, Request,
+    Authorizer, Context, Decision, Entities, EntityId, EntityTypeName, EntityUid, PolicySet,
+    Request,
 };
 
 use crate::capability::{CapabilityKind, Mode};
@@ -44,8 +45,12 @@ impl PolicyEngine {
     /// # Errors
     /// The policy text doesn't parse. guardd refuses to start (fails closed).
     pub fn new(text: &str) -> anyhow::Result<Self> {
-        let policies = PolicySet::from_str(text).map_err(|e| anyhow::anyhow!("invalid Cedar policy: {e}"))?;
-        Ok(Self { policies, authorizer: Authorizer::new() })
+        let policies =
+            PolicySet::from_str(text).map_err(|e| anyhow::anyhow!("invalid Cedar policy: {e}"))?;
+        Ok(Self {
+            policies,
+            authorizer: Authorizer::new(),
+        })
     }
 
     /// # Errors
@@ -62,13 +67,20 @@ impl PolicyEngine {
     }
 
     fn uid(ty: &str, id: &str) -> anyhow::Result<EntityUid> {
-        Ok(EntityUid::from_type_name_and_id(EntityTypeName::from_str(ty)?, EntityId::new(id)))
+        Ok(EntityUid::from_type_name_and_id(
+            EntityTypeName::from_str(ty)?,
+            EntityId::new(id),
+        ))
     }
 
     /// Evaluate one request for one session.
     #[must_use]
     pub fn evaluate(&self, session: &GuardSession, req: &ActionRequest) -> PolicyOutcome {
-        let deny = |reason, policy_id: Option<String>| PolicyOutcome { verdict: Verdict::Deny, reason, policy_id };
+        let deny = |reason, policy_id: Option<String>| PolicyOutcome {
+            verdict: Verdict::Deny,
+            reason,
+            policy_id,
+        };
         let kind = req.action.kind;
         if kind == CapabilityKind::Unknown {
             return deny(Reason::UnknownActionKind, None);
@@ -92,18 +104,34 @@ impl PolicyEngine {
             return outcome;
         }
         if cap_mode == Mode::Approval {
-            return PolicyOutcome { verdict: Verdict::ApprovalRequired, reason: Reason::PolicyRequiresApproval, policy_id: Some("capability".into()) };
+            return PolicyOutcome {
+                verdict: Verdict::ApprovalRequired,
+                reason: Reason::PolicyRequiresApproval,
+                policy_id: Some("capability".into()),
+            };
         }
-        PolicyOutcome { verdict: Verdict::Allow, reason: Reason::PolicyAllow, policy_id: None }
+        PolicyOutcome {
+            verdict: Verdict::Allow,
+            reason: Reason::PolicyAllow,
+            policy_id: None,
+        }
     }
 
     /// `Ok(Some(outcome))` when Cedar denies or requires approval,
     /// `Ok(None)` when it simply allows.
-    fn cedar(&self, session: &GuardSession, req: &ActionRequest) -> anyhow::Result<Option<PolicyOutcome>> {
+    fn cedar(
+        &self,
+        session: &GuardSession,
+        req: &ActionRequest,
+    ) -> anyhow::Result<Option<PolicyOutcome>> {
         let principal = Self::uid("Cerynth::Session", &session.session_id.to_string())?;
         let action = Self::uid("Cerynth::Action", req.action.kind.as_str())?;
         let resource = Self::uid("Cerynth::Target", &req.action.target)?;
-        let args = if req.action.args.is_object() { req.action.args.clone() } else { serde_json::json!({}) };
+        let args = if req.action.args.is_object() {
+            req.action.args.clone()
+        } else {
+            serde_json::json!({})
+        };
         let ctx = serde_json::json!({
             "target": req.action.target,
             "args": args,
@@ -114,16 +142,28 @@ impl PolicyEngine {
         });
         let context = Context::from_json_value(ctx, None)?;
         let request = Request::new(principal, action, resource, context, None)?;
-        let resp = self.authorizer.is_authorized(&request, &self.policies, &Entities::empty());
+        let resp = self
+            .authorizer
+            .is_authorized(&request, &self.policies, &Entities::empty());
 
         if let Some(err) = resp.diagnostics().errors().next() {
-            return Ok(Some(PolicyOutcome { verdict: Verdict::Deny, reason: Reason::PolicyDeny, policy_id: Some(format!("policy-error: {err}")) }));
+            return Ok(Some(PolicyOutcome {
+                verdict: Verdict::Deny,
+                reason: Reason::PolicyDeny,
+                policy_id: Some(format!("policy-error: {err}")),
+            }));
         }
         let determining: Vec<_> = resp.diagnostics().reason().collect();
         match resp.decision() {
             Decision::Deny => {
-                let id = determining.first().map_or_else(|| "no-permit".to_string(), |id| self.policy_label(id));
-                Ok(Some(PolicyOutcome { verdict: Verdict::Deny, reason: Reason::PolicyDeny, policy_id: Some(id) }))
+                let id = determining
+                    .first()
+                    .map_or_else(|| "no-permit".to_string(), |id| self.policy_label(id));
+                Ok(Some(PolicyOutcome {
+                    verdict: Verdict::Deny,
+                    reason: Reason::PolicyDeny,
+                    policy_id: Some(id),
+                }))
             }
             Decision::Allow => {
                 let approval = determining.iter().find(|id| {
@@ -156,12 +196,21 @@ mod tests {
         }
     }
     fn push(s: &GuardSession, branch: &str, force: bool) -> ActionRequest {
-        ActionRequest::new(s.session_id, CapabilityKind::GitPush, format!("origin:refs/heads/{branch}"), serde_json::json!({ "force": force }))
+        ActionRequest::new(
+            s.session_id,
+            CapabilityKind::GitPush,
+            format!("origin:refs/heads/{branch}"),
+            serde_json::json!({ "force": force }),
+        )
     }
     fn caps_push_all() -> Vec<Capability> {
         vec![
             Capability::new(CapabilityKind::GitPush, "origin:*", Mode::Allow),
-            Capability::new(CapabilityKind::NetEgress, "api.anthropic.com:443", Mode::Allow),
+            Capability::new(
+                CapabilityKind::NetEgress,
+                "api.anthropic.com:443",
+                Mode::Allow,
+            ),
         ]
     }
 
@@ -175,7 +224,10 @@ mod tests {
         let e = PolicyEngine::with_defaults().unwrap();
         let s = session(vec![], false);
         let o = e.evaluate(&s, &push(&s, "agent/x", false));
-        assert_eq!((o.verdict, o.reason), (Verdict::Deny, Reason::NoMatchingCapability));
+        assert_eq!(
+            (o.verdict, o.reason),
+            (Verdict::Deny, Reason::NoMatchingCapability)
+        );
     }
 
     #[test]
@@ -192,21 +244,40 @@ mod tests {
         let e = PolicyEngine::with_defaults().unwrap();
         let s = session(caps_push_all(), false);
         let force = e.evaluate(&s, &push(&s, "agent/fix", true));
-        assert_eq!((force.verdict, force.policy_id.as_deref()), (Verdict::Deny, Some("no-force-push")));
+        assert_eq!(
+            (force.verdict, force.policy_id.as_deref()),
+            (Verdict::Deny, Some("no-force-push"))
+        );
         let main = e.evaluate(&s, &push(&s, "main", false));
-        assert_eq!((main.verdict, main.policy_id.as_deref()), (Verdict::Deny, Some("protect-default-branches")));
+        assert_eq!(
+            (main.verdict, main.policy_id.as_deref()),
+            (Verdict::Deny, Some("protect-default-branches"))
+        );
         let child = session(caps_push_all(), true);
         let sub = e.evaluate(&child, &push(&child, "agent/fix", false));
-        assert_eq!((sub.verdict, sub.policy_id.as_deref()), (Verdict::Deny, Some("subagents-cannot-push")));
+        assert_eq!(
+            (sub.verdict, sub.policy_id.as_deref()),
+            (Verdict::Deny, Some("subagents-cannot-push"))
+        );
     }
 
     #[test]
     fn plain_egress_is_allowed_when_granted() {
         let e = PolicyEngine::with_defaults().unwrap();
         let s = session(caps_push_all(), false);
-        let req = ActionRequest::new(s.session_id, CapabilityKind::NetEgress, "api.anthropic.com:443", serde_json::Value::Null);
+        let req = ActionRequest::new(
+            s.session_id,
+            CapabilityKind::NetEgress,
+            "api.anthropic.com:443",
+            serde_json::Value::Null,
+        );
         assert_eq!(e.evaluate(&s, &req).verdict, Verdict::Allow);
-        let other = ActionRequest::new(s.session_id, CapabilityKind::NetEgress, "evil.example:443", serde_json::Value::Null);
+        let other = ActionRequest::new(
+            s.session_id,
+            CapabilityKind::NetEgress,
+            "evil.example:443",
+            serde_json::Value::Null,
+        );
         assert_eq!(e.evaluate(&s, &other).reason, Reason::NoMatchingCapability);
     }
 
@@ -220,7 +291,12 @@ mod tests {
         )
         .unwrap();
         let s = session(caps_push_all(), false);
-        let req = ActionRequest::new(s.session_id, CapabilityKind::NetEgress, "api.anthropic.com:443", serde_json::json!({}));
+        let req = ActionRequest::new(
+            s.session_id,
+            CapabilityKind::NetEgress,
+            "api.anthropic.com:443",
+            serde_json::json!({}),
+        );
         let o = e.evaluate(&s, &req);
         assert_eq!(o.verdict, Verdict::Deny);
         assert!(o.policy_id.unwrap().starts_with("policy-error"));
@@ -236,6 +312,9 @@ mod tests {
         let e = PolicyEngine::with_defaults().unwrap();
         let mut s = session(caps_push_all(), false);
         s.mode = SessionMode::Observed;
-        assert_eq!(e.evaluate(&s, &push(&s, "agent/x", false)).reason, Reason::SessionNotManaged);
+        assert_eq!(
+            e.evaluate(&s, &push(&s, "agent/x", false)).reason,
+            Reason::SessionNotManaged
+        );
     }
 }

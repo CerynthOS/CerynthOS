@@ -53,7 +53,9 @@ impl CapabilityKind {
 }
 
 /// How a matching capability lets the action through.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Mode {
     /// Ordered from most to least permissive, so `max()` is the strictest.
@@ -78,12 +80,19 @@ pub struct Capability {
 impl Capability {
     #[must_use]
     pub fn new(kind: CapabilityKind, target: impl Into<String>, mode: Mode) -> Self {
-        Self { kind, target: target.into(), mode, limit: None }
+        Self {
+            kind,
+            target: target.into(),
+            mode,
+            limit: None,
+        }
     }
 
     #[must_use]
     pub fn matches(&self, kind: CapabilityKind, target: &str) -> bool {
-        self.kind == kind && kind != CapabilityKind::Unknown && pattern_matches(&self.target, target)
+        self.kind == kind
+            && kind != CapabilityKind::Unknown
+            && pattern_matches(&self.target, target)
     }
 }
 
@@ -117,11 +126,17 @@ impl CapabilitySet {
     /// matches (which callers must treat as deny).
     #[must_use]
     pub fn grant(&self, kind: CapabilityKind, target: &str) -> Option<Mode> {
-        self.0.iter().filter(|c| c.matches(kind, target)).map(|c| c.mode).max()
+        self.0
+            .iter()
+            .filter(|c| c.matches(kind, target))
+            .map(|c| c.mode)
+            .max()
     }
 
     pub fn of_kind(&self, kind: CapabilityKind) -> impl Iterator<Item = &Capability> {
-        self.0.iter().filter(move |c| c.kind == kind && c.mode != Mode::Deny)
+        self.0
+            .iter()
+            .filter(move |c| c.kind == kind && c.mode != Mode::Deny)
     }
 
     #[must_use]
@@ -144,11 +159,13 @@ impl CapabilitySet {
             if c.kind == CapabilityKind::Unknown {
                 return Err(c.clone());
             }
-            // A parent deny on anything the child pattern could reach blocks it.
-            let parent_denies = self.0.iter().any(|p| {
+            // Any stricter parent rule overlapping the child rule must remain
+            // effective. A broad allow must not erase a narrow approval rule.
+            let parent_stricter = self.0.iter().any(|p| {
                 p.kind == c.kind
-                    && p.mode == Mode::Deny
-                    && (pattern_covers(&p.target, &c.target) || pattern_covers(&c.target, &p.target))
+                    && p.mode > c.mode
+                    && (pattern_covers(&p.target, &c.target)
+                        || pattern_covers(&c.target, &p.target))
             });
             let covered = self.0.iter().any(|p| {
                 p.kind == c.kind
@@ -156,11 +173,13 @@ impl CapabilitySet {
                     && p.mode <= c.mode
                     && pattern_covers(&p.target, &c.target)
                     && match c.kind {
-                        CapabilityKind::SessionSpawn => c.limit.unwrap_or(0) <= p.limit.unwrap_or(0),
+                        CapabilityKind::SessionSpawn => {
+                            c.limit.unwrap_or(0) <= p.limit.unwrap_or(0)
+                        }
                         _ => true,
                     }
             });
-            if parent_denies || !covered {
+            if parent_stricter || !covered {
                 return Err(c.clone());
             }
         }
@@ -179,8 +198,14 @@ mod tests {
 
     #[test]
     fn patterns() {
-        assert!(pattern_matches("origin:refs/heads/agent/*", "origin:refs/heads/agent/fix"));
-        assert!(!pattern_matches("origin:refs/heads/agent/*", "origin:refs/heads/main"));
+        assert!(pattern_matches(
+            "origin:refs/heads/agent/*",
+            "origin:refs/heads/agent/fix"
+        ));
+        assert!(!pattern_matches(
+            "origin:refs/heads/agent/*",
+            "origin:refs/heads/main"
+        ));
         assert!(pattern_matches("*", "anything"));
         assert!(pattern_matches("exact", "exact"));
         assert!(!pattern_matches("exact", "exactly"));
@@ -197,9 +222,18 @@ mod tests {
             cap(K::GitPush, "origin:refs/heads/main", Mode::Deny),
             cap(K::GitPush, "origin:refs/heads/release/*", Mode::Approval),
         ]);
-        assert_eq!(set.grant(K::GitPush, "origin:refs/heads/feature"), Some(Mode::Allow));
-        assert_eq!(set.grant(K::GitPush, "origin:refs/heads/main"), Some(Mode::Deny));
-        assert_eq!(set.grant(K::GitPush, "origin:refs/heads/release/1"), Some(Mode::Approval));
+        assert_eq!(
+            set.grant(K::GitPush, "origin:refs/heads/feature"),
+            Some(Mode::Allow)
+        );
+        assert_eq!(
+            set.grant(K::GitPush, "origin:refs/heads/main"),
+            Some(Mode::Deny)
+        );
+        assert_eq!(
+            set.grant(K::GitPush, "origin:refs/heads/release/1"),
+            Some(Mode::Approval)
+        );
         assert_eq!(set.grant(K::GitPush, "upstream:refs/heads/x"), None);
         assert_eq!(set.grant(K::NetEgress, "example.com:443"), None);
     }
@@ -218,7 +252,10 @@ mod tests {
             cap(K::FsWrite, "workspace", Mode::Allow),
             cap(K::NetEgress, "api.anthropic.com:443", Mode::Allow),
             cap(K::GitPush, "origin:refs/heads/agent/*", Mode::Approval),
-            Capability { limit: Some(2), ..cap(K::SessionSpawn, "child", Mode::Allow) },
+            Capability {
+                limit: Some(2),
+                ..cap(K::SessionSpawn, "child", Mode::Allow)
+            },
         ]);
         // Fine: narrower or equal.
         let ok = CapabilitySet(vec![
@@ -232,13 +269,20 @@ mod tests {
         let wider = CapabilitySet(vec![cap(K::GitPush, "origin:*", Mode::Approval)]);
         assert!(parent.check_subset(&wider).is_err());
         // Approval downgraded to allow.
-        let looser = CapabilitySet(vec![cap(K::GitPush, "origin:refs/heads/agent/x", Mode::Allow)]);
+        let looser = CapabilitySet(vec![cap(
+            K::GitPush,
+            "origin:refs/heads/agent/x",
+            Mode::Allow,
+        )]);
         assert!(parent.check_subset(&looser).is_err());
         // Kind the parent doesn't have.
         let other = CapabilitySet(vec![cap(K::GpuUse, "*", Mode::Allow)]);
         assert!(parent.check_subset(&other).is_err());
         // Spawn limit above the parent's.
-        let spawn = CapabilitySet(vec![Capability { limit: Some(5), ..cap(K::SessionSpawn, "child", Mode::Allow) }]);
+        let spawn = CapabilitySet(vec![Capability {
+            limit: Some(5),
+            ..cap(K::SessionSpawn, "child", Mode::Allow)
+        }]);
         assert!(parent.check_subset(&spawn).is_err());
     }
 
@@ -250,6 +294,24 @@ mod tests {
         ]);
         let child = CapabilitySet(vec![cap(K::GitPush, "origin:refs/heads/*", Mode::Allow)]);
         assert!(parent.check_subset(&child).is_err());
+    }
+
+    #[test]
+    fn parent_approval_cannot_be_downgraded_by_child() {
+        let parent = CapabilitySet(vec![
+            cap(K::GitPush, "origin:*", Mode::Allow),
+            cap(K::GitPush, "origin:refs/heads/release/*", Mode::Approval),
+        ]);
+        let broad = CapabilitySet(vec![cap(K::GitPush, "origin:*", Mode::Allow)]);
+        let exact = CapabilitySet(vec![cap(
+            K::GitPush,
+            "origin:refs/heads/release/v1",
+            Mode::Allow,
+        )]);
+        let approved = CapabilitySet(vec![cap(K::GitPush, "origin:*", Mode::Approval)]);
+        assert!(parent.check_subset(&broad).is_err());
+        assert!(parent.check_subset(&exact).is_err());
+        assert!(parent.check_subset(&approved).is_ok());
     }
 
     #[test]

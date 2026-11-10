@@ -13,14 +13,17 @@ use std::io;
 use std::net::{TcpListener, TcpStream};
 use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use cerynth_security::confine::{LandlockLevel, apply_landlock, apply_seccomp};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(name = "cerynth-guard-exec", about = "Confine this process with Landlock + seccomp, then exec CMD")]
+#[command(
+    name = "cerynth-guard-exec",
+    about = "Confine this process with Landlock + seccomp, then exec CMD"
+)]
 struct Cli {
     /// Read-only path (repeatable).
     #[arg(long = "ro")]
@@ -44,7 +47,7 @@ fn pipe(mut from: impl io::Read, mut to: impl io::Write) {
     let _ = io::copy(&mut from, &mut to);
 }
 
-fn handle(tcp: TcpStream, socket: &PathBuf) -> io::Result<()> {
+fn handle(tcp: TcpStream, socket: &Path) -> io::Result<()> {
     let unix = UnixStream::connect(socket)?;
     let (tcp_r, unix_w) = (tcp.try_clone()?, unix.try_clone()?);
     std::thread::spawn(move || {
@@ -54,10 +57,10 @@ fn handle(tcp: TcpStream, socket: &PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-fn forward(port: u16, socket: &PathBuf) -> io::Result<()> {
+fn forward(port: u16, socket: &Path) -> io::Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     for conn in listener.incoming().flatten() {
-        let socket = socket.clone();
+        let socket = socket.to_path_buf();
         std::thread::spawn(move || {
             let _ = handle(conn, &socket);
         });
@@ -76,9 +79,15 @@ fn main() -> ExitCode {
     match apply_landlock(&cli.ro, &cli.rw) {
         Ok(LandlockLevel::Full) => {}
         Ok(level) if std::env::var_os("CERYNTH_GUARD_ALLOW_PARTIAL_LANDLOCK").is_some() => {
-            eprintln!("cerynth-guard-exec: warning: Landlock {level:?}, continuing because CERYNTH_GUARD_ALLOW_PARTIAL_LANDLOCK is set");
+            eprintln!(
+                "cerynth-guard-exec: warning: Landlock {level:?}, continuing because CERYNTH_GUARD_ALLOW_PARTIAL_LANDLOCK is set"
+            );
         }
-        Ok(level) => return fail(format!("Landlock is {level:?} on this kernel; refusing to run the agent with fewer layers")),
+        Ok(level) => {
+            return fail(format!(
+                "Landlock is {level:?} on this kernel; refusing to run the agent with fewer layers"
+            ));
+        }
         Err(e) => return fail(format!("Landlock failed: {e:#}")),
     }
     if let Err(e) = apply_seccomp() {
@@ -93,9 +102,15 @@ fn main() -> ExitCode {
             };
         }
         // A separate process, so exec'ing the agent below doesn't kill it.
-        let me = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("/run/agent/cerynth-guard-exec"));
+        let me = std::env::current_exe()
+            .unwrap_or_else(|_| PathBuf::from("/run/agent/cerynth-guard-exec"));
         if let Err(e) = Command::new(me)
-            .args(["--forward-only", "--egress-port", &port.to_string(), "--egress-socket"])
+            .args([
+                "--forward-only",
+                "--egress-port",
+                &port.to_string(),
+                "--egress-socket",
+            ])
             .arg(socket)
             .spawn()
         {
