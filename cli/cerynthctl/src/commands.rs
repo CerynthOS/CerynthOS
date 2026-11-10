@@ -14,6 +14,22 @@ pub fn parse_command(args: &[String]) -> Option<Request> {
 
         "restart" => Some(Request::Restart),
 
+        "rollback" => {
+            if args.len() < 3 {
+                return None;
+            }
+
+            let profile = match args[2].as_str() {
+                "balanced" => Profile::Balanced,
+                "interactive" => Profile::Interactive,
+                "performance" => Profile::Performance,
+                "background" => Profile::Background,
+                _ => return None,
+            };
+
+            Some(Request::Rollback(profile))
+        }
+
         "profile" => {
             if args.len() < 3 {
                 return None;

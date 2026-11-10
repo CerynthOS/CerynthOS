@@ -141,6 +141,11 @@ impl ScxBackend {
 
         let process_alive = unsafe { libc::kill(pid as i32, 0) == 0 };
 
+        // Safety: `libc::kill` with signal 0 does not send a signal; it only
+        // checks for the existence of the process. `pid` came from a
+        // previously spawned `Child` whose ID we observed, so it is a valid
+        // `pid_t` value.
+
         if !process_alive {
             return false;
         }
@@ -413,6 +418,10 @@ impl Backend for ScxBackend {
             .ok_or_else(|| "no scheduler is currently running".to_string())?;
 
         // First attempt graceful termination.
+        //
+        // Safety: `libc::kill` with SIGTERM requests termination of the
+        // scheduler process we spawned. `pid` is valid because it was
+        // obtained from `child.id()` after a successful `spawn()`.
         if unsafe { libc::kill(pid as i32, libc::SIGTERM) } != 0 {
             let error = std::io::Error::last_os_error();
 
@@ -437,6 +446,10 @@ impl Backend for ScxBackend {
 
                 Ok(None) => {
                     if Instant::now() >= deadline {
+                        // Safety: `libc::kill` with SIGKILL forcibly terminates
+                        // the scheduler process after a graceful shutdown
+                        // deadline. `pid` is valid because it was obtained from
+                        // `child.id()` after a successful `spawn()`.
                         if unsafe { libc::kill(pid as i32, libc::SIGKILL) } != 0 {
                             let error = std::io::Error::last_os_error();
 

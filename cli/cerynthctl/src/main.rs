@@ -19,6 +19,7 @@ fn main() {
         println!("  cerynthctl start");
         println!("  cerynthctl stop");
         println!("  cerynthctl restart");
+        println!("  cerynthctl rollback <balanced|interactive|performance|background>");
         println!("  cerynthctl profile get");
         println!("  cerynthctl profile set <balanced|interactive|performance|background>");
         println!("  cerynthctl adaptation pause");

@@ -22,6 +22,8 @@ pub fn execute(request: Request) -> std::io::Result<ResponseEnvelope> {
         Request::Stop => SocketRequest::Stop,
 
         Request::Restart => SocketRequest::Restart,
+
+        Request::Rollback(profile) => SocketRequest::Rollback { profile },
     };
 
     let envelope = RequestEnvelope::new(socket_request);

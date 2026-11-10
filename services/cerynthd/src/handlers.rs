@@ -1,4 +1,5 @@
 use crate::backend::Backend;
+use crate::backends::RollbackResult;
 use cerynth_ipc::{Request, Response};
 
 pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) -> Response {
@@ -51,6 +52,11 @@ pub fn handle_request<B: Backend + ?Sized>(backend: &mut B, request: Request) ->
         Request::Restart => match backend.restart() {
             Ok(()) => Response::Success,
             Err(e) => Response::Error(e),
+        },
+
+        Request::Rollback(profile) => match backend.rollback(profile) {
+            RollbackResult::Success { .. } => Response::Success,
+            RollbackResult::Failed { error, .. } => Response::Error(error),
         },
     }
 }

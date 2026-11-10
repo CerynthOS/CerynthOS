@@ -19,6 +19,8 @@ pub enum Request {
     Start,
     Stop,
     Restart,
+    /// Roll back to a previously known-good scheduler profile.
+    Rollback(Profile),
 }
 
 /// Request messages sent over the IPC socket.
@@ -31,11 +33,15 @@ pub enum SocketRequest {
 
     GetProfile,
 
-    SetProfile { profile: Profile },
+    SetProfile {
+        profile: Profile,
+    },
 
     GetAdaptationMode,
 
-    SetAdaptationMode { mode: AdaptationMode },
+    SetAdaptationMode {
+        mode: AdaptationMode,
+    },
 
     PauseAdaptation,
 
@@ -46,6 +52,11 @@ pub enum SocketRequest {
     Stop,
 
     Restart,
+
+    /// Roll back to a previously known-good scheduler profile.
+    Rollback {
+        profile: Profile,
+    },
 
     Shutdown,
 
@@ -75,6 +86,8 @@ impl From<SocketRequest> for Request {
 
             SocketRequest::Restart => Request::Restart,
 
+            SocketRequest::Rollback { profile } => Request::Rollback(profile),
+
             SocketRequest::Shutdown | SocketRequest::Ping => Request::Status,
         }
     }
@@ -94,6 +107,7 @@ impl SocketRequest {
             SocketRequest::Start => "start",
             SocketRequest::Stop => "stop",
             SocketRequest::Restart => "restart",
+            SocketRequest::Rollback { .. } => "rollback",
             SocketRequest::Shutdown => "shutdown",
             SocketRequest::Ping => "ping",
         }

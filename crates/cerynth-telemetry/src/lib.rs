@@ -31,6 +31,7 @@ pub struct SystemSnapshot {
     pub total_tasks: u64,
     pub context_switches: u64,
     pub context_switch_rate: f64,
+    pub process_creation_rate: f64,
     pub short_lived_process_rate: f64,
     pub interrupts: u64,
     pub memory_used_bytes: u64,
@@ -126,6 +127,11 @@ impl ProcTelemetrySource {
         // sysconf(_SC_CLK_TCK) is the only portable way to learn the
         // kernel's USER_HZ, which /proc/[pid]/stat and /proc/stat ticks
         // are expressed in; it cannot fail on Linux in practice.
+        //
+        // Safety: `libc::sysconf` is safe to call with a valid, documented
+        // name argument (`_SC_CLK_TCK`) on Linux. It returns -1 only on
+        // invalid input, which cannot happen here; we guard against the
+        // impossible case by falling back to 100.0.
         let clk_tck = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
         Self {
             prev_cpu: None,
@@ -274,7 +280,7 @@ impl TelemetrySource for ProcTelemetrySource {
 
         self.prev_context_switches = Some(context_switches);
 
-        let _process_creation_rate = match self.prev_processes {
+        let process_creation_rate = match self.prev_processes {
             Some(prev) if elapsed_secs > 0.0 => {
                 processes_created.saturating_sub(prev) as f64 / elapsed_secs
             }
@@ -379,6 +385,7 @@ impl TelemetrySource for ProcTelemetrySource {
             total_tasks,
             context_switches,
             context_switch_rate,
+            process_creation_rate,
             short_lived_process_rate,
             interrupts,
             memory_used_bytes,
