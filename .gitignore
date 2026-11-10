@@ -1,5 +1,7 @@
 # Rust
 /target/
+# any crate-local build or test output
+target/
 **/*.rs.bk
 
 # Upstream source trees
