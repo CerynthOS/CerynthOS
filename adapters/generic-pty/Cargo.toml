@@ -1,0 +1,15 @@
+[package]
+name = "cerynth-adapter-generic-pty"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cerynth-agent-api = { path = "../../crates/cerynth-agent-api" }
+anyhow.workspace = true
+portable-pty = "0.9"
+async-trait.workspace = true
+
+[lints]
+workspace = true

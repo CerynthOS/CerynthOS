@@ -1,0 +1,17 @@
+[package]
+name = "cerynth-adapter-cli-harnesses"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cerynth-agent-api = { path = "../../crates/cerynth-agent-api" }
+async-trait.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+[Unit]
+Description=Cerynth shared inference coordinator
+Documentation=file:/usr/share/doc/cerynth/agent-runtime.md
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/cerynth/cerynth-inferenced --directory %S/cerynth/inferenced serve --concurrency 1 --listen 127.0.0.1:11435
+StateDirectory=cerynth/inferenced
+StateDirectoryMode=0700
+MemoryHigh=6G
+MemoryMax=8G
+UMask=0077
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=default.target

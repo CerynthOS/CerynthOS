@@ -1,0 +1,26 @@
+{
+  "source_artifact": "guard-parent-guard-smoke.json",
+  "source_sha256": "acbf270ff7bed50a2824ebca7c7a613ba8104dca2dbd39aa583d9770dc977588",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "kind": "p3-p2-real-guard-integration",
+    "guard_revision": "e592fa47797179ad24a99fc76143be48191a7649",
+    "boundary": "guard_systemd",
+    "profile_digest": "4763f8d8f83dcacba0607a0860165483fb1cb0e69ad92eb5259e67127a18a7a6",
+    "checks": {
+      "host_file_hidden": true,
+      "network_denied": true,
+      "seccomp_filter": true,
+      "agent_cannot_approve": true,
+      "cwd": "/workspace"
+    },
+    "child_escalation_denied": true,
+    "child_before_parent_cleanup": true,
+    "unavailable_guard_no_fallback": true,
+    "authorization_cleanup_verified": true,
+    "cloud_requests": 0,
+    "limitations": [
+      "Offline generic commands only; native inference gateway bridge requires shared contract review"
+    ]
+  }
+}

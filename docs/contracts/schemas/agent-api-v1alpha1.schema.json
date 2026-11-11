@@ -1,0 +1,1205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Request",
+  "type": "object",
+  "required": [
+    "operation",
+    "version"
+  ],
+  "properties": {
+    "operation": {
+      "$ref": "#/definitions/Operation"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ArtifactKind": {
+      "type": "string",
+      "enum": [
+        "file",
+        "diff",
+        "test_result",
+        "task_result"
+      ]
+    },
+    "GuardCapability": {
+      "type": "object",
+      "required": [
+        "kind",
+        "target"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "mode": {
+          "default": "allow",
+          "allOf": [
+            {
+              "$ref": "#/definitions/GuardCapabilityMode"
+            }
+          ]
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GuardCapabilityMode": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "approval",
+        "deny"
+      ]
+    },
+    "GuardPolicy": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuardCapability"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "HarnessKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "generic_pty",
+            "open_code",
+            "hermes",
+            "codex",
+            "claude_code",
+            "acp"
+          ]
+        },
+        {
+          "description": "Endpoint smoke test, with no tools or agent process.",
+          "type": "string",
+          "enum": [
+            "inference_probe"
+          ]
+        }
+      ]
+    },
+    "IsolationPolicy": {
+      "type": "string",
+      "enum": [
+        "required",
+        "unisolated"
+      ]
+    },
+    "LaunchRequest": {
+      "type": "object",
+      "required": [
+        "program"
+      ],
+      "properties": {
+        "args": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "initial_input": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "program": {
+          "type": "string"
+        },
+        "pty": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModelConfig": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "cloud_consent": {
+          "default": false,
+          "type": "boolean"
+        },
+        "disable_thinking": {
+          "default": false,
+          "type": "boolean"
+        },
+        "endpoint_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "default": "local",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ModelMode"
+            }
+          ]
+        },
+        "name": {
+          "description": "Exact backend model identity, without a harness-provider prefix or credential.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModelMode": {
+      "type": "string",
+      "enum": [
+        "local",
+        "cloud"
+      ]
+    },
+    "NetworkPolicy": {
+      "type": "string",
+      "enum": [
+        "deny",
+        "host"
+      ]
+    },
+    "Operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "spec",
+            "type"
+          ],
+          "properties": {
+            "spec": {
+              "$ref": "#/definitions/SessionSpec"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "create"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "list"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "status"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "prompt",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "infer"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "cancel"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "models"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "adapters"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "harness",
+            "type"
+          ],
+          "properties": {
+            "harness": {
+              "$ref": "#/definitions/HarnessKind"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "discover_harness"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "launch",
+            "operation_id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "launch": {
+              "$ref": "#/definitions/LaunchRequest"
+            },
+            "operation_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "start"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "input",
+            "operation_id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "input": {
+              "type": "string"
+            },
+            "operation_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "harness_start"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "input",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "input": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "input"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "stop"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "limit",
+            "offset",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "limit": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0.0
+            },
+            "offset": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "output"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "after",
+            "id",
+            "type"
+          ],
+          "properties": {
+            "after": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "events"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "process_tree"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "parent",
+            "spec",
+            "task",
+            "type"
+          ],
+          "properties": {
+            "parent": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "spec": {
+              "$ref": "#/definitions/SessionSpec"
+            },
+            "task": {
+              "$ref": "#/definitions/TaskAssignment"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "delegate"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "content",
+            "recipient",
+            "sender",
+            "type"
+          ],
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "recipient": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "sender": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "send_message"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "messages"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "left",
+            "right",
+            "type"
+          ],
+          "properties": {
+            "left": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "right": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "authorize_sharing"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "project",
+            "type"
+          ],
+          "properties": {
+            "project": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "graph"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "phase",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "phase": {
+              "$ref": "#/definitions/WorkloadPhase"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "set_phase"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "worktree"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "kind",
+            "path",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "$ref": "#/definitions/ArtifactKind"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "collect_artifact"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "artifacts"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "diagnostics"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "inventory"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "device_id",
+            "id",
+            "memory_bytes",
+            "priority",
+            "type"
+          ],
+          "properties": {
+            "device_id": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "memory_bytes": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "priority": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gpu_submit"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "gpu_jobs"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "job_id",
+            "succeeded",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "job_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "succeeded": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gpu_finish"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "requested",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "requested": {
+              "$ref": "#/definitions/ResourceBudget"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "request_resources"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "pid",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "pid": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "observe"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "request",
+            "sponsor",
+            "type"
+          ],
+          "properties": {
+            "request": true,
+            "sponsor": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "a2a"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "archive"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "cleanup"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ResourceBudget": {
+      "type": "object",
+      "properties": {
+        "cpu_weight": {
+          "default": 100,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "gpu_memory_bytes": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "inference_concurrency": {
+          "default": 2,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_subagents": {
+          "default": 4,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "memory_high_bytes": {
+          "default": 1073741824,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "memory_max_bytes": {
+          "default": 2147483648,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "tasks_max": {
+          "default": 128,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "timeout_seconds": {
+          "default": 300,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuntimeSpec": {
+      "type": "object",
+      "properties": {
+        "budget": {
+          "default": {
+            "cpu_weight": 100,
+            "gpu_memory_bytes": 0,
+            "inference_concurrency": 2,
+            "max_subagents": 4,
+            "memory_high_bytes": 1073741824,
+            "memory_max_bytes": 2147483648,
+            "tasks_max": 128,
+            "timeout_seconds": 300
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/ResourceBudget"
+            }
+          ]
+        },
+        "capabilities": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "guard": {
+          "description": "A present policy requires Person 2's Guard profile; never falls back.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/GuardPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isolation": {
+          "default": "required",
+          "allOf": [
+            {
+              "$ref": "#/definitions/IsolationPolicy"
+            }
+          ]
+        },
+        "message_peers": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "network": {
+          "default": "deny",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NetworkPolicy"
+            }
+          ]
+        },
+        "parent_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "project": {
+          "default": "default",
+          "type": "string"
+        },
+        "require_cgroup": {
+          "default": true,
+          "type": "boolean"
+        },
+        "task": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TaskAssignment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionSpec": {
+      "type": "object",
+      "required": [
+        "harness",
+        "model",
+        "name",
+        "workspace"
+      ],
+      "properties": {
+        "harness": {
+          "$ref": "#/definitions/HarnessKind"
+        },
+        "model": {
+          "$ref": "#/definitions/ModelConfig"
+        },
+        "name": {
+          "type": "string"
+        },
+        "runtime": {
+          "default": {
+            "budget": {
+              "cpu_weight": 100,
+              "gpu_memory_bytes": 0,
+              "inference_concurrency": 2,
+              "max_subagents": 4,
+              "memory_high_bytes": 1073741824,
+              "memory_max_bytes": 2147483648,
+              "tasks_max": 128,
+              "timeout_seconds": 300
+            },
+            "capabilities": [],
+            "guard": null,
+            "isolation": "required",
+            "message_peers": [],
+            "network": "deny",
+            "parent_id": null,
+            "project": "default",
+            "require_cgroup": true,
+            "task": null
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/RuntimeSpec"
+            }
+          ]
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TaskAssignment": {
+      "type": "object",
+      "required": [
+        "completion_criteria",
+        "expected_output",
+        "id",
+        "objective"
+      ],
+      "properties": {
+        "completion_criteria": {
+          "type": "string"
+        },
+        "dependencies": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "expected_output": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "objective": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkloadPhase": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "inference",
+        "tool",
+        "compile",
+        "batch",
+        "approval_wait",
+        "cleanup"
+      ]
+    }
+  }
+}

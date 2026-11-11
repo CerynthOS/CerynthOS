@@ -1,0 +1,860 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Session",
+  "type": "object",
+  "required": [
+    "boundary",
+    "created_at_ms",
+    "events",
+    "id",
+    "owner_uid",
+    "spec",
+    "state",
+    "updated_at_ms"
+  ],
+  "properties": {
+    "boundary": {
+      "$ref": "#/definitions/ExecutionBoundary"
+    },
+    "created_at_ms": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SessionEvent"
+      }
+    },
+    "execution": {
+      "default": {
+        "allocation_id": null,
+        "artifacts": [],
+        "cgroup_unit": null,
+        "cleanup_pending": false,
+        "exit_code": null,
+        "failure_reason": null,
+        "guard_cleanup_pending": false,
+        "guard_profile_digest": null,
+        "guard_socket": null,
+        "harness_events": [],
+        "messages": [],
+        "mode": "integrated",
+        "operations": [],
+        "phase": "idle",
+        "process": null,
+        "workspace_preparing": false,
+        "worktree": null
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/ExecutionRecord"
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "owner_uid": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "spec": {
+      "$ref": "#/definitions/SessionSpec"
+    },
+    "state": {
+      "$ref": "#/definitions/SessionState"
+    },
+    "updated_at_ms": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AgentMessage": {
+      "type": "object",
+      "required": [
+        "content",
+        "id",
+        "recipient",
+        "sender",
+        "timestamp_ms"
+      ],
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recipient": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sender": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "Artifact": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "$ref": "#/definitions/ArtifactKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "ArtifactKind": {
+      "type": "string",
+      "enum": [
+        "file",
+        "diff",
+        "test_result",
+        "task_result"
+      ]
+    },
+    "ExecutionBoundary": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "process_group",
+            "bubblewrap",
+            "bubblewrap_systemd"
+          ]
+        },
+        {
+          "description": "Person 2's fail-closed profile, supervised inside a systemd scope.",
+          "type": "string",
+          "enum": [
+            "guard_systemd"
+          ]
+        },
+        {
+          "description": "Metadata and endpoint requests only. No sandbox, cgroup, or GPU limit.",
+          "type": "string",
+          "enum": [
+            "unenforced_prototype"
+          ]
+        }
+      ]
+    },
+    "ExecutionRecord": {
+      "type": "object",
+      "properties": {
+        "allocation_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "artifacts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artifact"
+          }
+        },
+        "cgroup_unit": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cleanup_pending": {
+          "default": false,
+          "type": "boolean"
+        },
+        "exit_code": {
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32"
+        },
+        "failure_reason": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "guard_cleanup_pending": {
+          "default": false,
+          "type": "boolean"
+        },
+        "guard_profile_digest": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "guard_socket": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness_events": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NormalizedHarnessEvent"
+          }
+        },
+        "messages": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentMessage"
+          }
+        },
+        "mode": {
+          "default": "integrated",
+          "allOf": [
+            {
+              "$ref": "#/definitions/SessionMode"
+            }
+          ]
+        },
+        "operations": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationRecord"
+          }
+        },
+        "phase": {
+          "default": "idle",
+          "allOf": [
+            {
+              "$ref": "#/definitions/WorkloadPhase"
+            }
+          ]
+        },
+        "process": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProcessIdentity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "workspace_preparing": {
+          "default": false,
+          "type": "boolean"
+        },
+        "worktree": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "GuardCapability": {
+      "type": "object",
+      "required": [
+        "kind",
+        "target"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "mode": {
+          "default": "allow",
+          "allOf": [
+            {
+              "$ref": "#/definitions/GuardCapabilityMode"
+            }
+          ]
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GuardCapabilityMode": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "approval",
+        "deny"
+      ]
+    },
+    "GuardPolicy": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuardCapability"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "HarnessKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "generic_pty",
+            "open_code",
+            "hermes",
+            "codex",
+            "claude_code",
+            "acp"
+          ]
+        },
+        {
+          "description": "Endpoint smoke test, with no tools or agent process.",
+          "type": "string",
+          "enum": [
+            "inference_probe"
+          ]
+        }
+      ]
+    },
+    "IsolationPolicy": {
+      "type": "string",
+      "enum": [
+        "required",
+        "unisolated"
+      ]
+    },
+    "ModelConfig": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "cloud_consent": {
+          "default": false,
+          "type": "boolean"
+        },
+        "disable_thinking": {
+          "default": false,
+          "type": "boolean"
+        },
+        "endpoint_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "default": "local",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ModelMode"
+            }
+          ]
+        },
+        "name": {
+          "description": "Exact backend model identity, without a harness-provider prefix or credential.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModelMode": {
+      "type": "string",
+      "enum": [
+        "local",
+        "cloud"
+      ]
+    },
+    "NetworkPolicy": {
+      "type": "string",
+      "enum": [
+        "deny",
+        "host"
+      ]
+    },
+    "NormalizedHarnessEvent": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sequence"
+      ],
+      "properties": {
+        "cache_write_tokens": {
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "cached_input_tokens": {
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "exit_code": {
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32"
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "sequence": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "tool_call_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "OperationRecord": {
+      "type": "object",
+      "required": [
+        "fingerprint",
+        "id",
+        "status"
+      ],
+      "properties": {
+        "fingerprint": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "$ref": "#/definitions/OperationStatus"
+        }
+      }
+    },
+    "OperationStatus": {
+      "type": "string",
+      "enum": [
+        "started",
+        "completed",
+        "failed",
+        "unknown"
+      ]
+    },
+    "ProcessIdentity": {
+      "type": "object",
+      "required": [
+        "boot_id",
+        "pid",
+        "process_group",
+        "start_ticks"
+      ],
+      "properties": {
+        "boot_id": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "process_group": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "start_ticks": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResourceBudget": {
+      "type": "object",
+      "properties": {
+        "cpu_weight": {
+          "default": 100,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "gpu_memory_bytes": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "inference_concurrency": {
+          "default": 2,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_subagents": {
+          "default": 4,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "memory_high_bytes": {
+          "default": 1073741824,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "memory_max_bytes": {
+          "default": 2147483648,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "tasks_max": {
+          "default": 128,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "timeout_seconds": {
+          "default": 300,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuntimeSpec": {
+      "type": "object",
+      "properties": {
+        "budget": {
+          "default": {
+            "cpu_weight": 100,
+            "gpu_memory_bytes": 0,
+            "inference_concurrency": 2,
+            "max_subagents": 4,
+            "memory_high_bytes": 1073741824,
+            "memory_max_bytes": 2147483648,
+            "tasks_max": 128,
+            "timeout_seconds": 300
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/ResourceBudget"
+            }
+          ]
+        },
+        "capabilities": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "guard": {
+          "description": "A present policy requires Person 2's Guard profile; never falls back.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/GuardPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isolation": {
+          "default": "required",
+          "allOf": [
+            {
+              "$ref": "#/definitions/IsolationPolicy"
+            }
+          ]
+        },
+        "message_peers": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "network": {
+          "default": "deny",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NetworkPolicy"
+            }
+          ]
+        },
+        "parent_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "project": {
+          "default": "default",
+          "type": "string"
+        },
+        "require_cgroup": {
+          "default": true,
+          "type": "boolean"
+        },
+        "task": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TaskAssignment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionEvent": {
+      "type": "object",
+      "required": [
+        "reason",
+        "sequence",
+        "state",
+        "timestamp_ms"
+      ],
+      "properties": {
+        "reason": {
+          "description": "Fixed runtime reason codes; prompts and model responses are never persisted.",
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "state": {
+          "$ref": "#/definitions/SessionState"
+        },
+        "timestamp_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionMode": {
+      "type": "string",
+      "enum": [
+        "managed",
+        "integrated",
+        "observed"
+      ]
+    },
+    "SessionSpec": {
+      "type": "object",
+      "required": [
+        "harness",
+        "model",
+        "name",
+        "workspace"
+      ],
+      "properties": {
+        "harness": {
+          "$ref": "#/definitions/HarnessKind"
+        },
+        "model": {
+          "$ref": "#/definitions/ModelConfig"
+        },
+        "name": {
+          "type": "string"
+        },
+        "runtime": {
+          "default": {
+            "budget": {
+              "cpu_weight": 100,
+              "gpu_memory_bytes": 0,
+              "inference_concurrency": 2,
+              "max_subagents": 4,
+              "memory_high_bytes": 1073741824,
+              "memory_max_bytes": 2147483648,
+              "tasks_max": 128,
+              "timeout_seconds": 300
+            },
+            "capabilities": [],
+            "guard": null,
+            "isolation": "required",
+            "message_peers": [],
+            "network": "deny",
+            "parent_id": null,
+            "project": "default",
+            "require_cgroup": true,
+            "task": null
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/RuntimeSpec"
+            }
+          ]
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionState": {
+      "type": "string",
+      "enum": [
+        "created",
+        "preparing",
+        "starting",
+        "running",
+        "waiting_for_inference",
+        "waiting_for_tool",
+        "waiting_for_approval",
+        "pausing",
+        "paused",
+        "resuming",
+        "completing",
+        "completed",
+        "failed",
+        "cancelled",
+        "recovering"
+      ]
+    },
+    "TaskAssignment": {
+      "type": "object",
+      "required": [
+        "completion_criteria",
+        "expected_output",
+        "id",
+        "objective"
+      ],
+      "properties": {
+        "completion_criteria": {
+          "type": "string"
+        },
+        "dependencies": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "expected_output": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "objective": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkloadPhase": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "inference",
+        "tool",
+        "compile",
+        "batch",
+        "approval_wait",
+        "cleanup"
+      ]
+    }
+  }
+}

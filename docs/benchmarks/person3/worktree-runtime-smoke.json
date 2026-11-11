@@ -1,0 +1,18 @@
+{
+  "source_artifact": "worktree-runtime-smoke.json",
+  "source_sha256": "507067f6a7287e259497d7e031b400d537447ffef714488c7d99f23492b8bfcf",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "kind": "real-host-worktree-smoke",
+    "checkout_filters": "disabled",
+    "hook_not_executed": true,
+    "filter_not_executed": true,
+    "source_config_unchanged": true,
+    "repeat_returns_existing": true,
+    "prepared_session_launches": true,
+    "source_workspace_unchanged": true,
+    "boundary": "bubblewrap_systemd",
+    "state": "completed",
+    "cloud_requests": 0
+  }
+}

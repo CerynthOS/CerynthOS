@@ -1,0 +1,25 @@
+[Unit]
+Description=Cerynth agent session supervisor
+Documentation=file:/usr/share/doc/cerynth/agent-runtime.md
+Wants=cerynth-inferenced.service
+After=cerynth-inferenced.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/cerynth/cerynth-agentd --directory %S/cerynth/agentd serve
+StateDirectory=cerynth/agentd
+StateDirectoryMode=0700
+MemoryHigh=384M
+MemoryMax=512M
+Environment=CERYNTH_INFERENCE_DIR=%S/cerynth/inferenced
+Environment=CERYNTH_INFERENCE_HTTP=http://127.0.0.1:11435
+UMask=0077
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=default.target

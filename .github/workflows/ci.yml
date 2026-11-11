@@ -22,6 +22,16 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo check --workspace --all-targets
       - run: cargo test --workspace
+      - name: Agent runtime strict lint
+        run: >-
+          cargo clippy --locked
+          -p cerynth-agent-api -p cerynth-agent-protocols
+          -p cerynth-adapter-cli-harnesses -p cerynth-adapter-generic-pty
+          -p cerynth-model-api -p cerynth-resources
+          -p cerynth-agentd -p cerynth-inferenced
+          --all-targets -- -D warnings
+      - name: Agent contract drift
+        run: scripts/check-agent-contracts.sh
   shell:
     runs-on: ubuntu-24.04
     steps:

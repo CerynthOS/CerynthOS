@@ -1,0 +1,31 @@
+{
+  "logical_cpus": 24,
+  "cpu_model": "13th Gen Intel(R) Core(TM) i7-13700HX",
+  "memory_total_bytes": 16449400832,
+  "kernel": "7.2.9-arch1-1",
+  "gpus": [
+    {
+      "name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+      "vendor": "nvidia",
+      "driver": "615.78.08",
+      "total_bytes": 8546942976,
+      "used_bytes": 41943040,
+      "utilization_percent": 31,
+      "enforcement": "monitoring",
+      "mig_status": "[N/A]",
+      "mps_status": "not_configured_or_verified"
+    },
+    {
+      "name": "card1",
+      "vendor": "intel",
+      "driver": "i915",
+      "total_bytes": null,
+      "used_bytes": null,
+      "utilization_percent": null,
+      "enforcement": "monitoring",
+      "mig_status": "not_applicable",
+      "mps_status": "not_applicable"
+    }
+  ],
+  "diagnostics": []
+}

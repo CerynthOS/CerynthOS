@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-11",
+  "baseline": "6a6f0183216eb609e2d0f5acda89b0ec61a41a64",
+  "workspace_tests": {
+    "command": "cargo test --locked --workspace",
+    "passed": 215,
+    "failed": 0,
+    "ignored": 3,
+    "log_sha256": "a25aec5922e77b1304f8481a5cb4a33552a52454b824065bad794b95a10c1778"
+  },
+  "strict_clippy": {
+    "packages": [
+      "cerynth-agent-api",
+      "cerynth-model-api",
+      "cerynth-resources",
+      "cerynth-agent-protocols",
+      "cerynth-adapter-generic-pty",
+      "cerynth-adapter-cli-harnesses",
+      "cerynth-agentd",
+      "cerynth-inferenced"
+    ],
+    "all_targets": true,
+    "warnings_denied": true,
+    "passed": true
+  },
+  "compiler": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "format_check": true,
+  "request_and_session_schema_drift_check": true,
+  "shellcheck_new_scripts": true,
+  "python_smoke_tool_syntax": true,
+  "debug_staging": true,
+  "systemd_user_unit_verification": true,
+  "live_services_installed": false
+}

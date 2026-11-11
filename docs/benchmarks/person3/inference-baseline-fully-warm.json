@@ -1,0 +1,225 @@
+{
+  "source_artifact": "inference-baseline-fully-warm.json",
+  "source_sha256": "862c822c09e86bf12961c8afd021013358e32d16d01b40e709316358ebc80be9",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "kind": "real-local-ollama-smoke",
+    "model": "qwen3:0.6b",
+    "trials": [
+      {
+        "trial": 0,
+        "wall_seconds": 0.06265982700278983,
+        "requests": [
+          {
+            "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 0.039273,
+              "request_ms": 45.808971,
+              "tokens_per_second": 291.1631969719027,
+              "ttft_ms": 39.74258
+            },
+            "response_nonempty": true
+          },
+          {
+            "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 45.784668,
+              "request_ms": 11.142804,
+              "tokens_per_second": 619.1950464396285,
+              "ttft_ms": 8.536686
+            },
+            "response_nonempty": true
+          }
+        ]
+      },
+      {
+        "trial": 1,
+        "wall_seconds": 0.022454322999692522,
+        "requests": [
+          {
+            "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 0.019974,
+              "request_ms": 10.243267,
+              "tokens_per_second": 632.7111673521038,
+              "ttft_ms": 7.452837000000001
+            },
+            "response_nonempty": true
+          },
+          {
+            "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 10.382908,
+              "request_ms": 10.787422,
+              "tokens_per_second": 635.7279084551813,
+              "ttft_ms": 7.745957000000001
+            },
+            "response_nonempty": true
+          }
+        ]
+      },
+      {
+        "trial": 2,
+        "wall_seconds": 0.02980135400139261,
+        "requests": [
+          {
+            "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 0.023008,
+              "request_ms": 14.96358,
+              "tokens_per_second": 592.0663114268798,
+              "ttft_ms": 11.750154
+            },
+            "response_nonempty": true
+          },
+          {
+            "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+            "metrics": {
+              "generated_tokens": 2,
+              "queue_ms": 15.195757,
+              "request_ms": 13.194072,
+              "tokens_per_second": 617.4745291756715,
+              "ttft_ms": 10.335348
+            },
+            "response_nonempty": true
+          }
+        ]
+      }
+    ],
+    "cuda_contention": null,
+    "metrics": {
+      "failures": 0,
+      "p50_ms": 21.17033,
+      "p95_ms": 56.927472,
+      "samples": [
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.039273,
+            "request_ms": 45.808971,
+            "tokens_per_second": 291.1631969719027,
+            "ttft_ms": 39.74258
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+          "trace_id": "840984e6-a3b7-4b90-ae93-b6377184f8f9"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 45.784668,
+            "request_ms": 11.142804,
+            "tokens_per_second": 619.1950464396285,
+            "ttft_ms": 8.536686
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+          "trace_id": "adcc4971-bd03-4a56-8bd2-5bb402afe8d0"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.019974,
+            "request_ms": 10.243267,
+            "tokens_per_second": 632.7111673521038,
+            "ttft_ms": 7.452837000000001
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+          "trace_id": "90bfba11-c291-4178-abbf-6f74358162df"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 10.382908,
+            "request_ms": 10.787422,
+            "tokens_per_second": 635.7279084551813,
+            "ttft_ms": 7.745957000000001
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+          "trace_id": "80699a3f-2e55-4a2f-9d6f-f2b82b2eca06"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.023008,
+            "request_ms": 14.96358,
+            "tokens_per_second": 592.0663114268798,
+            "ttft_ms": 11.750154
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "74fae525-4c2d-47a1-a0c9-4b26daacc35f",
+          "trace_id": "0eed16dc-2d7e-446a-8833-d90242509889"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 15.195757,
+            "request_ms": 13.194072,
+            "tokens_per_second": 617.4745291756715,
+            "ttft_ms": 10.335348
+          },
+          "model": "qwen3:0.6b",
+          "session_id": "d0e15530-865f-4a64-93f0-72ab9e450283",
+          "trace_id": "453fddc8-1328-4a59-8303-08383a7d7a05"
+        }
+      ]
+    },
+    "loaded_models": {
+      "models": [
+        {
+          "context_length": 16384,
+          "details": {
+            "families": [
+              "qwen3"
+            ],
+            "family": "qwen3",
+            "format": "gguf",
+            "parameter_size": "751.63M",
+            "parent_model": "",
+            "quantization_level": "Q4_K_M"
+          },
+          "digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+          "expires_at": "2026-11-10T13:58:11.255973434+05:30",
+          "model": "qwen3:0.6b",
+          "name": "qwen3:0.6b",
+          "size": 2396321218,
+          "size_vram": 2396321218
+        }
+      ]
+    },
+    "model_details": {
+      "families": [
+        "qwen3"
+      ],
+      "family": "qwen3",
+      "format": "gguf",
+      "parameter_size": "751.63M",
+      "parent_model": "",
+      "quantization_level": "Q4_K_M"
+    },
+    "capabilities": [
+      "completion",
+      "tools",
+      "thinking"
+    ],
+    "revoked_token_rejected": true,
+    "cloud_requests": 0,
+    "limitations": [
+      "Synthetic prompt; not a coding-agent completion benchmark",
+      "Single shared backend; separate-model comparison is not measured here"
+    ]
+  }
+}

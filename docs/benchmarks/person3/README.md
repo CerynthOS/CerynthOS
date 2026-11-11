@@ -1,0 +1,19 @@
+# Person 3 measured evidence
+
+These JSON files preserve public synthetic measurements from November 10–11,
+2026. The [validation report](../../integration/2026-11-11-person3-runtime.md)
+describes procedures, failures and limits. This is one development host, not
+research-grade evidence of general OS or cache-policy performance.
+
+Numerical experiment files retain cold/warmup samples, all measured trials and
+reported engine counters. Wrappers identify the ignored source artifact and its
+SHA-256. Runtime smoke copies omit transient process/session/cgroup identity.
+Hardware omits device UUIDs and process records. Harness summaries omit raw
+prompts/output, retain failures and identify the verification method. Token
+counts are usage measurements, never credential values.
+
+Reproduce with the scripts under `tools/` and the pinned versions/prerequisites
+in the [runtime guide](../../runtime/agent-runtime.md). Fresh results will vary;
+preserve failures and use new artifact names when changing conditions. Sanitized
+summaries are intentionally smaller than private raw artifacts, and do not
+establish full trace/audit completeness.
