@@ -1,12 +1,16 @@
 //! Unprivileged managed agent supervisor and session registry.
 
+pub mod a2a_http;
 mod gateway;
+mod gpu;
 mod guard;
 mod harnesses;
 mod inference;
+mod native_guard;
 mod orchestration;
 mod process;
 mod registry;
+pub mod remote;
 mod supervisor;
 mod workspace;
 
@@ -54,6 +58,7 @@ pub struct AgentService {
     native_opencode: Option<cerynth_agent_protocols::opencode::OpenCodeClient>,
     guard_control: Option<cerynth_agent_protocols::guard::GuardClient>,
     guard_cleanup_lock: Mutex<()>,
+    native_guards: Mutex<std::collections::BTreeMap<Uuid, native_guard::OwnedGuard>>,
 }
 
 impl AgentService {
@@ -89,6 +94,7 @@ impl AgentService {
                 })
                 .transpose()?,
             guard_cleanup_lock: Mutex::new(()),
+            native_guards: Mutex::new(std::collections::BTreeMap::new()),
             native_opencode: std::env::var("CERYNTH_OPENCODE_URL")
                 .ok()
                 .map(|url| {
@@ -112,6 +118,10 @@ impl AgentService {
             Operation::Create { spec } => Ok(serde_json::to_value(
                 self.runtime.lock().await.registry.create(spec)?,
             )?),
+            Operation::Retry {
+                id,
+                acknowledge_prior_effects,
+            } => self.retry_session(id, acknowledge_prior_effects).await,
             Operation::List => self.session_records(None).await,
             Operation::Status { id } => self.session_records(Some(id)).await,
             Operation::Models => Ok(serde_json::to_value(self.backend.models().await?)?),
@@ -165,15 +175,7 @@ impl AgentService {
                 self.authorize_sharing(left, right).await
             }
             Operation::Graph { project } => self.graph(&project).await,
-            Operation::SetPhase { id, phase } => {
-                let session = self.runtime.lock().await.registry.update(id, |s| {
-                    ensure!(!s.state.is_terminal(), "session is terminal");
-                    s.execution.phase = phase;
-                    registry::Registry::record_event(s, "workload_phase_reported");
-                    Ok(())
-                })?;
-                Ok(serde_json::to_value(session)?)
-            }
+            Operation::SetPhase { id, phase } => self.set_phase(id, phase).await,
             Operation::Worktree { id } => self.worktree(id).await,
             Operation::CollectArtifact { id, path, kind } => {
                 self.collect_artifact(id, path, kind).await
@@ -193,6 +195,7 @@ impl AgentService {
             Operation::Archive { id } => self.archive_session(id).await,
             Operation::Cleanup { id } => self.cleanup_session(id).await,
             operation @ (Operation::Inventory
+            | Operation::GpuRun { .. }
             | Operation::GpuSubmit { .. }
             | Operation::GpuJobs
             | Operation::GpuFinish { .. }
@@ -200,8 +203,14 @@ impl AgentService {
         }
     }
 
-    async fn resource_operation(&self, operation: Operation) -> Result<Value> {
+    async fn resource_operation(self: &Arc<Self>, operation: Operation) -> Result<Value> {
         match operation {
+            Operation::GpuRun {
+                id,
+                job_id,
+                operation_id,
+                launch,
+            } => self.run_gpu(id, job_id, operation_id, launch).await,
             Operation::Inventory => {
                 Ok(serde_json::to_value(cerynth_resources::inventory().await?)?)
             }
@@ -490,6 +499,7 @@ pub async fn serve_with_policy(
         allow_unisolated,
     )?);
     service.recover_inference_grants().await;
+    service.recover_native_guard_secrets().await?;
     service.release_guard_sessions().await?;
     let socket = directory.join("agentd.sock");
     if let Ok(metadata) = std::fs::symlink_metadata(&socket) {

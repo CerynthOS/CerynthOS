@@ -29,10 +29,24 @@ fn normalized_event(
 
 use crate::AgentService;
 
+fn normalize_acp(value: &Value) -> Vec<cerynth_agent_api::NormalizedHarnessEvent> {
+    let update = &value["params"]["update"];
+    let kind = match update["sessionUpdate"].as_str() {
+        Some("tool_call") => "harness_tool_started",
+        Some("tool_call_update") if update["status"] == "failed" => "harness_tool_failed",
+        Some("tool_call_update") if update["status"] == "completed" => "harness_tool_completed",
+        _ => return Vec::new(),
+    };
+    vec![normalized_event(kind, update["toolCallId"].as_str(), None)]
+}
+
 pub fn normalize(line: &[u8]) -> Vec<cerynth_agent_api::NormalizedHarnessEvent> {
     let Ok(value) = serde_json::from_slice::<Value>(line) else {
         return Vec::new();
     };
+    if value["type"] == "acp_update" {
+        return normalize_acp(&value);
+    }
     let mut events = Vec::new();
     let event_type = value["type"].as_str().unwrap_or_default();
     let mut push = |kind: &str, id: Option<&str>, usage: Option<&Value>| {
@@ -153,6 +167,18 @@ pub fn executable(name: &str) -> Option<PathBuf> {
 }
 
 pub async fn launch(session: &Session, input: String) -> Result<LaunchRequest> {
+    if session.spec.runtime.transport != cerynth_agent_api::HarnessTransport::CliJsonl {
+        return Ok(
+            cerynth_adapter_cli_harnesses::protocol::OpenCodeProtocolAdapter {
+                native_program: executable("opencode")
+                    .ok_or_else(|| anyhow::anyhow!("OpenCode is not installed"))?,
+                bridge_program: protocol_bridge()?,
+                transport: session.spec.runtime.transport,
+            }
+            .prepare_launch(session, cerynth_agent_api::AdapterInput::Prompt(input))
+            .await?,
+        );
+    }
     let name = match session.spec.harness {
         HarnessKind::OpenCode => "opencode",
         HarnessKind::Hermes => "hermes",
@@ -167,6 +193,14 @@ pub async fn launch(session: &Session, input: String) -> Result<LaunchRequest> {
     }
     .prepare_launch(session, cerynth_agent_api::AdapterInput::Prompt(input))
     .await?)
+}
+
+pub(crate) fn protocol_bridge() -> Result<PathBuf> {
+    std::env::var_os("CERYNTH_HARNESS_BRIDGE")
+        .map(PathBuf::from)
+        .unwrap_or(std::env::current_exe()?.with_file_name("cerynth-harness-bridge"))
+        .canonicalize()
+        .map_err(Into::into)
 }
 
 impl AgentService {
@@ -229,9 +263,16 @@ impl AgentService {
             if name == "opencode" && self.native_opencode.is_some() {
                 capabilities.push(cerynth_agent_api::AdapterCapability::Discovery);
             }
+            let protocol_transports =
+                if name == "opencode" && path.is_some() && protocol_bridge().is_ok() {
+                    vec!["open_code_http", "open_code_acp"]
+                } else {
+                    Vec::new()
+                };
             descriptors.push(
                 json!({"name":name,"path":path,"installed":path.is_some(),"version":version,
                 "transport":"supervised_cli_jsonl","capabilities":capabilities,
+                "optional_transports":protocol_transports,
                 "authentication":authentication,"native_pause_resume":false,
                 "cloud_credentials_inherited":false}),
             );
@@ -309,6 +350,10 @@ mod tests {
 
     #[test]
     fn native_tool_failures_ids_and_usage_remain_distinct_without_raw_content() {
+        let acp = normalize(br#"{"type":"acp_update","params":{"update":{"sessionUpdate":"tool_call_update","toolCallId":"acp-tool","status":"failed","rawOutput":{"token":"secret"}}}}"#);
+        assert_eq!(acp[0].kind, "harness_tool_failed");
+        assert_eq!(acp[0].tool_call_id.as_deref(), Some("acp-tool"));
+        assert!(!serde_json::to_string(&acp).unwrap().contains("secret"));
         let failed=normalize(br#"{"type":"tool_use","part":{"callID":"call_native","state":{"status":"error","input":{"api_key":"secret"},"error":"private command"}}}"#);
         assert_eq!(failed[0].kind, "harness_tool_failed");
         assert_eq!(failed[0].tool_call_id.as_deref(), Some("call_native"));

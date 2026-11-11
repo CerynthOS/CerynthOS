@@ -62,18 +62,48 @@ def main():
     parser.add_argument("--binary", default="target/debug/cerynth-agentd")
     parser.add_argument("--harness", choices=["codex", "open_code", "hermes"], default="codex")
     parser.add_argument("--model", default="qwen3:0.6b")
+    parser.add_argument("--transport", choices=["cli_jsonl", "open_code_http", "open_code_acp"], default="cli_jsonl")
     parser.add_argument("--timeout", type=int, default=90)
+    parser.add_argument("--fixture-style", choices=["compact", "spaced"], default="compact")
+    parser.add_argument("--task-file", help="Explicit owner-selected synthetic task text; {workspace} expands to the guest workspace")
     parser.add_argument("--output", default="artifacts/person3/harness-smoke.json")
     parser.add_argument("--brokered", action="store_true")
+    parser.add_argument("--worktree", action="store_true")
+    parser.add_argument("--native-guard", action="store_true", help="Use the opt-in pinned Guard inference gateway; OpenCode root sessions only")
+    parser.add_argument("--guardd", default="target/debug/cerynth-guardd")
+    parser.add_argument("--guard-exec", default="target/debug/cerynth-guard-exec")
     parser.add_argument("--inference-binary", default="target/debug/cerynth-inferenced")
     args = parser.parse_args()
+    if args.native_guard:
+        assert args.brokered and args.harness == "open_code" and not args.worktree
     with tempfile.TemporaryDirectory(prefix="cerynth-harness-smoke-") as root:
         root = Path(root)
         state, workspace = root / "state", root / "workspace"
         workspace.mkdir()
         subprocess.run(["git", "init", "--quiet", str(workspace)], check=True)
-        (workspace / "add.py").write_text("def add(a,b): return a-b\n")
+        (workspace / "add.py").write_text("def add(a,b): return a-b\n" if args.fixture_style == "compact"
+            else "def add(a, b):\n    return a - b\n")
+        if args.worktree:
+            subprocess.run(["git", "-C", str(workspace), "add", "add.py"], check=True)
+            subprocess.run(["git", "-C", str(workspace), "-c", "core.hooksPath=/dev/null",
+                "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "public fixture"], check=True)
         owner_env = os.environ.copy()
+        guard_policy = None
+        if args.native_guard:
+            import shutil
+            source = owner_env.get("CERYNTH_OPENCODE_BINARY") or shutil.which("opencode")
+            assert source, "Configure CERYNTH_OPENCODE_BINARY"
+            native_directory = root / "native-bin"; native_directory.mkdir()
+            native = native_directory / "opencode"
+            os.link(Path(source).resolve(), native)
+            owner_env["CERYNTH_OPENCODE_BINARY"] = str(native)
+            owner_env["CERYNTH_GUARDD_BINARY"] = str(Path(args.guardd).resolve())
+            owner_env["CERYNTH_GUARD_EXEC_BINARY"] = str(Path(args.guard_exec).resolve())
+            guard_policy = {"native_inference": True, "capabilities": [
+                {"kind": "fs.read", "target": "workspace"}, {"kind": "fs.write", "target": "workspace"},
+                {"kind": "fs.read", "target": str(native_directory)},
+                {"kind": "inference.use", "target": "cerynth"},
+                {"kind": "credential.use", "target": "inference-session"}]}
         inference_daemon = None
         inference_directory = root / "inference"
         if args.brokered:
@@ -107,30 +137,41 @@ def main():
                 "name": "local-harness-smoke", "harness": args.harness,
                 "workspace": str(workspace), "model": {"name": args.model,"disable_thinking": True,
                     "endpoint_id": "local" if args.brokered else None},
-                "runtime": {"network": "host", "budget": {"timeout_seconds": args.timeout}}}})
+                "runtime": {"transport": args.transport, "network": "deny" if args.native_guard else "host",
+                    "guard": guard_policy, "budget": {"timeout_seconds": args.timeout,
+                    "max_subagents": 0 if args.native_guard else 3}}}})
             session_id = session["id"]
+            if args.worktree:
+                workspace = Path(rpc(state, {"type":"worktree","id":session_id})["path"])
             before = inference_rpc(inference_directory, True, {"type":"registry","endpoint_id":"local","model":args.model}) if args.brokered else None
+            task_path = Path("/workspace/add.py") if args.native_guard else workspace / "add.py"
+            task = (Path(args.task_file).read_text().replace("{workspace}", str(task_path.parent)) if args.task_file else
+                f"Use the available tools to read and edit the exact file {task_path}. Its add(a,b) function currently subtracts. Fix it to return a+b, then run python3 to verify add(2,3)==5. Execute the edit and test using tools. Do not use the network or describe commands for me to execute.")
             rpc(state, {"type": "harness_start", "id": session_id, "operation_id": str(uuid.uuid4()),
-                        "input": f"Use the available tools to read and edit the exact file {workspace / 'add.py'}. Its add(a,b) function currently subtracts. Fix it to return a+b, then run python3 to verify add(2,3)==5. Execute the edit and test using tools. Do not use the network or describe commands for me to execute."})
+                        "input": task})
             deadline = time.monotonic() + args.timeout + 15
             while True:
                 status = rpc(state, {"type": "status", "id": session_id})
-                if status["state"] in ["completed", "failed", "cancelled"]:
+                if status["state"] in ["completed", "failed", "cancelled"] and not status["execution"]["guard_cleanup_pending"]:
                     break
                 if time.monotonic() > deadline:
                     raise TimeoutError("harness supervisor did not terminate")
                 time.sleep(0.1)
             verification = verify_task(state, workspace)
             output = rpc(state, {"type": "output", "id": session_id, "offset": 0, "limit": 32768})
-            report = {"kind": "real-local-harness-smoke", "harness": args.harness, "model": args.model,
-                      "state": status["state"], "exit_code": status["execution"]["exit_code"],
+            report = {"kind": "real-local-harness-smoke", "harness": args.harness, "model": args.model, "transport": args.transport,
+                      "native_guard": args.native_guard,
+                      "fixture_style": args.fixture_style,
+                      "task_prompt_sha256": __import__("hashlib").sha256(task.encode()).hexdigest(),
+                      "state": status["state"], "exit_code": status["execution"]["exit_code"], "worktree": args.worktree,
                       "coding_task_verified": verification["fixed_cases_passed"], "verification":verification,"boundary": status["boundary"],
                       "events": status["events"], "harness_events": status["execution"]["harness_events"],
                       "synthetic_task_output": output["text"],
                       "inference_metrics": inference_rpc(inference_directory, True, {"type":"metrics"}) if args.brokered else None,
                       "model_observations": {"before":before,"after":inference_rpc(inference_directory, True,
                           {"type":"registry","endpoint_id":"local","model":args.model})} if args.brokered else None,
-                      "network_policy": "explicit host networking to reach local Ollama; no egress isolation claim"}
+                      "network_policy": "Guard network namespace with fixed credential-injecting inference gateway" if args.native_guard
+                          else "explicit host networking to reach local Ollama; no egress isolation claim"}
             dest = Path(args.output)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(report, indent=2) + "\n")

@@ -130,7 +130,7 @@ def main():
             parent = create(root / "parent", capabilities=[{"kind": "session.spawn", "target": "child", "limit": 1}],
                             budget={"memory_max_bytes": 4 * 1024**3, "inference_concurrency": 4})
             start(parent, "/usr/bin/sleep", ["60"])
-            bad = create(root / "bad-child", parent=parent, capabilities=[{"kind": "gpu.use", "target": "*"}])
+            bad = create(root / "bad-child", parent=parent, capabilities=[{"kind": "fs.read", "target": "/sys"}])
             try:
                 start(bad, "/usr/bin/true", [])
                 raise AssertionError("Guard allowed child capability escalation")
@@ -161,7 +161,7 @@ def main():
                 "boundary": finished["boundary"], "profile_digest": finished["execution"]["guard_profile_digest"],
                 "checks": evidence, "child_escalation_denied": True, "child_before_parent_cleanup": True,
                 "unavailable_guard_no_fallback": True, "authorization_cleanup_verified": True,
-                "cloud_requests": 0, "limitations": ["Offline generic commands only; native inference gateway bridge requires shared contract review"]}
+                "cloud_requests": 0, "limitations": ["This fixture covers offline generic commands; tools/native_guard_runtime_smoke.py covers the opt-in native inference gateway"]}
             output = Path(args.output)
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(json.dumps(report, indent=2) + "\n")

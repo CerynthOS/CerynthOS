@@ -35,15 +35,21 @@
         "cleanup_pending": false,
         "exit_code": null,
         "failure_reason": null,
+        "gpu_authorization": null,
+        "gpu_cleanup_pending": false,
+        "gpu_job_id": null,
         "guard_cleanup_pending": false,
         "guard_profile_digest": null,
         "guard_socket": null,
         "harness_events": [],
         "messages": [],
         "mode": "integrated",
+        "native_guard_unit": null,
         "operations": [],
         "phase": "idle",
         "process": null,
+        "retry": null,
+        "retry_session_id": null,
         "workspace_preparing": false,
         "worktree": null
       },
@@ -217,6 +223,29 @@
             "null"
           ]
         },
+        "gpu_authorization": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/GpuAuthorizationReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gpu_cleanup_pending": {
+          "default": false,
+          "type": "boolean"
+        },
+        "gpu_job_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
         "guard_cleanup_pending": {
           "default": false,
           "type": "boolean"
@@ -257,6 +286,13 @@
             }
           ]
         },
+        "native_guard_unit": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "operations": {
           "default": [],
           "type": "array",
@@ -283,6 +319,25 @@
             }
           ]
         },
+        "retry": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetryLineage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retry_session_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
         "workspace_preparing": {
           "default": false,
           "type": "boolean"
@@ -293,6 +348,33 @@
             "string",
             "null"
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "GpuAuthorizationReceipt": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "launch_sha256",
+        "policy_enforcement",
+        "request_id"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "launch_sha256": {
+          "type": "string"
+        },
+        "policy_enforcement": {
+          "description": "Guard's policy-decision label; the runtime separately gates owned launch.",
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid"
         }
       },
       "additionalProperties": false
@@ -346,6 +428,10 @@
           "items": {
             "$ref": "#/definitions/GuardCapability"
           }
+        },
+        "native_inference": {
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -370,6 +456,14 @@
             "inference_probe"
           ]
         }
+      ]
+    },
+    "HarnessTransport": {
+      "type": "string",
+      "enum": [
+        "cli_jsonl",
+        "open_code_http",
+        "open_code_acp"
       ]
     },
     "IsolationPolicy": {
@@ -606,6 +700,31 @@
       },
       "additionalProperties": false
     },
+    "RetryLineage": {
+      "type": "object",
+      "required": [
+        "attempt",
+        "previous_session_id",
+        "root_session_id"
+      ],
+      "properties": {
+        "attempt": {
+          "description": "Three owner-sponsored retries maximum; no automatic process replay.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "previous_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "root_session_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false
+    },
     "RuntimeSpec": {
       "type": "object",
       "properties": {
@@ -697,6 +816,14 @@
               "type": "null"
             }
           ]
+        },
+        "transport": {
+          "default": "cli_jsonl",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HarnessTransport"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -776,7 +903,8 @@
             "parent_id": null,
             "project": "default",
             "require_cgroup": true,
-            "task": null
+            "task": null,
+            "transport": "cli_jsonl"
           },
           "allOf": [
             {

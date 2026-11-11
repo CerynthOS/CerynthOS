@@ -17,6 +17,22 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Experimental loopback A2A task subset, bound to one owner-authorized sponsor.
+    A2aGateway {
+        #[arg(long, default_value = "127.0.0.1:0")]
+        listen: std::net::SocketAddr,
+        #[arg(long)]
+        sponsor: Uuid,
+        #[arg(long)]
+        credential_file: PathBuf,
+    },
+    /// Fixed SSH entry point; accepts exactly one versioned JSON frame on stdin.
+    Relay,
+    /// Explicit owner invocation; never imports SSH agent keys or local SSH config.
+    Remote {
+        config: PathBuf,
+        request: PathBuf,
+    },
     Serve {
         /// Ollama origin. Configure Ollama with `OLLAMA_NO_CLOUD=1` for local-only operation.
         #[arg(long, default_value = "http://127.0.0.1:11434")]
@@ -109,6 +125,8 @@ async fn shutdown() {
 }
 
 #[tokio::main]
+// Keep the exhaustive owner CLI operation mapping in one place.
+#[allow(clippy::too_many_lines)]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let directory = cli
@@ -123,6 +141,32 @@ async fn main() -> Result<()> {
         })
         .context("set --directory or XDG_STATE_HOME")?;
     let operation = match cli.command {
+        Command::A2aGateway {
+            listen,
+            sponsor,
+            credential_file,
+        } => {
+            return cerynth_agentd::a2a_http::serve(
+                directory,
+                listen,
+                sponsor,
+                credential_file,
+                shutdown(),
+            )
+            .await;
+        }
+        Command::Relay => {
+            let response = cerynth_agentd::remote::relay(&directory, tokio::io::stdin()).await?;
+            println!("{}", serde_json::to_string(&response)?);
+            return Ok(());
+        }
+        Command::Remote { config, request } => {
+            let config = serde_json::from_slice(&std::fs::read(config)?)?;
+            let operation = serde_json::from_slice(&std::fs::read(request)?)?;
+            let result = cerynth_agentd::remote::request(&config, operation).await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
+            return Ok(());
+        }
         Command::Serve {
             endpoint,
             allow_unisolated,

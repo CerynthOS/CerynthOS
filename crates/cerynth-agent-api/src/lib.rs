@@ -142,8 +142,33 @@ impl SessionSpec {
             return Err("workspace must be an absolute path".into());
         }
         self.runtime.validate()?;
-        if self.runtime.guard.is_some() && self.harness != HarnessKind::GenericPty {
-            return Err("Guard integration currently supports generic_pty commands; native inference bridge is pending".into());
+        if self.runtime.transport != HarnessTransport::CliJsonl
+            && self.harness != HarnessKind::OpenCode
+        {
+            return Err("this protocol transport requires the OpenCode harness".into());
+        }
+        if let Some(guard) = &self.runtime.guard {
+            if guard.native_inference {
+                if self.harness != HarnessKind::OpenCode
+                    || self.model.endpoint_id.is_none()
+                    || self.runtime.parent_id.is_some()
+                    || self.runtime.budget.max_subagents != 0
+                    || guard
+                        .capabilities
+                        .iter()
+                        .any(|c| matches!(c.kind.as_str(), "gpu.use" | "session.spawn"))
+                    || !["inference.use", "credential.use"].iter().all(|kind| {
+                        guard
+                            .capabilities
+                            .iter()
+                            .any(|c| c.kind == *kind && c.mode == GuardCapabilityMode::Allow)
+                    })
+                {
+                    return Err("native Guard inference requires a root OpenCode session, a configured endpoint, explicit inference/credential grants and max_subagents=0; delegation/GPU device access is unsupported".into());
+                }
+            } else if self.harness != HarnessKind::GenericPty {
+                return Err("offline Guard profiles support generic_pty; select native_inference explicitly for OpenCode".into());
+            }
         }
         if self.model.mode == ModelMode::Cloud && !self.model.cloud_consent {
             return Err("cloud model configuration requires explicit consent".into());
@@ -256,6 +281,10 @@ pub enum Operation {
     Create {
         spec: SessionSpec,
     },
+    Retry {
+        id: Uuid,
+        acknowledge_prior_effects: bool,
+    },
     List,
     Status {
         id: Uuid,
@@ -345,6 +374,12 @@ pub enum Operation {
         priority: i32,
     },
     GpuJobs,
+    GpuRun {
+        id: Uuid,
+        job_id: Uuid,
+        operation_id: Uuid,
+        launch: LaunchRequest,
+    },
     GpuFinish {
         id: Uuid,
         job_id: Uuid,
@@ -395,5 +430,54 @@ mod tests {
         let spec = serde_json::json!({"name":"test", "harness":"inference_probe",
             "workspace":"/tmp", "model":{"name":"test"}, "security":{"sandbox":"required"}});
         assert!(serde_json::from_value::<SessionSpec>(spec).is_err());
+    }
+
+    #[test]
+    fn native_guard_requires_bounded_root_and_exact_gateway_authority() {
+        let value = serde_json::json!({"name":"native", "harness":"open_code",
+            "workspace":"/workspace", "model":{"name":"public-model", "endpoint_id":"local"},
+            "runtime":{"guard":{"native_inference":true,"capabilities":[
+                {"kind":"inference.use","target":"cerynth"},
+                {"kind":"credential.use","target":"inference-session"}]},
+                "budget":{"max_subagents":0}}});
+        let spec: SessionSpec = serde_json::from_value(value.clone()).unwrap();
+        assert!(spec.validate().is_ok());
+        for change in [
+            "harness",
+            "parent",
+            "children",
+            "endpoint",
+            "credential",
+            "grant",
+            "gpu",
+        ] {
+            let mut changed = value.clone();
+            match change {
+                "harness" => changed["harness"] = serde_json::json!("hermes"),
+                "parent" => changed["runtime"]["parent_id"] = serde_json::json!(Uuid::new_v4()),
+                "children" => changed["runtime"]["budget"]["max_subagents"] = serde_json::json!(1),
+                "endpoint" => changed["model"]["endpoint_id"] = serde_json::Value::Null,
+                "credential" => {
+                    changed["runtime"]["guard"]["capabilities"][1]["target"] =
+                        serde_json::json!("provider-key");
+                }
+                "grant" => {
+                    changed["runtime"]["guard"]["capabilities"][0]["mode"] =
+                        serde_json::json!("approval");
+                }
+                "gpu" => changed["runtime"]["guard"]["capabilities"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(serde_json::json!({"kind":"gpu.use","target":"*"})),
+                _ => unreachable!(),
+            }
+            assert!(
+                serde_json::from_value::<SessionSpec>(changed)
+                    .unwrap()
+                    .validate()
+                    .is_err(),
+                "{change}"
+            );
+        }
     }
 }

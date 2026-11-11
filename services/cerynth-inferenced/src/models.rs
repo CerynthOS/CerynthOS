@@ -5,6 +5,20 @@ use serde_json::{Value, json};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 impl Coordinator {
+    pub(crate) fn placement(
+        request: &cerynth_model_api::placement::PlacementRequest,
+        targets: &[cerynth_model_api::placement::PlacementTarget],
+        observations: &[cerynth_model_api::placement::SwitchObservation],
+    ) -> Result<Value> {
+        let now = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
+        Ok(serde_json::to_value(cerynth_model_api::placement::plan(
+            request,
+            targets,
+            observations,
+            now,
+        )?)?)
+    }
+
     pub(crate) async fn registry(
         &self,
         endpoint_id: String,

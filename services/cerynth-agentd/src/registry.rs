@@ -117,12 +117,19 @@ impl Registry {
         let mut recovered = registry.snapshot.clone();
         for session in recovered.sessions.values_mut() {
             if session.execution.cleanup_pending
+                || session.execution.gpu_cleanup_pending
                 || session.execution.workspace_preparing
+                || (session.execution.guard_cleanup_pending
+                    && session.execution.native_guard_unit.is_some())
                 || (session.state != SessionState::Created && !session.state.is_terminal())
             {
                 crate::process::recover(session)?;
                 session.execution.cleanup_pending = false;
+                session.execution.gpu_cleanup_pending = false;
                 session.execution.workspace_preparing = false;
+                if session.execution.native_guard_unit.is_some() {
+                    session.execution.guard_cleanup_pending = false;
+                }
                 for operation in &mut session.execution.operations {
                     if operation.status == cerynth_agent_api::OperationStatus::Started {
                         operation.status = cerynth_agent_api::OperationStatus::Unknown;
@@ -156,9 +163,64 @@ impl Registry {
         Ok(())
     }
 
-    // Validate all parent constraints before committing a single new identity.
+    pub fn create(&mut self, spec: SessionSpec) -> Result<Session> {
+        self.create_inner(spec, None)
+    }
+
+    pub fn retry(&mut self, id: Uuid, acknowledge_prior_effects: bool) -> Result<Session> {
+        ensure!(
+            acknowledge_prior_effects,
+            "owner must acknowledge prior effects before creating a retry"
+        );
+        let source = self.get(id)?;
+        ensure!(
+            source.execution.mode != cerynth_agent_api::SessionMode::Observed,
+            "observed processes have no owned retry boundary"
+        );
+        if let Some(existing) = source.execution.retry_session_id {
+            return self.get(existing);
+        }
+        ensure!(
+            matches!(source.state, SessionState::Failed | SessionState::Cancelled),
+            "only failed/cancelled sessions may be retried"
+        );
+        ensure!(
+            !source.execution.cleanup_pending
+                && !source.execution.guard_cleanup_pending
+                && !source.execution.gpu_cleanup_pending
+                && !source.execution.workspace_preparing,
+            "finish all cleanup before retrying"
+        );
+        ensure!(
+            source.execution.operations.iter().all(|op| matches!(
+                op.status,
+                cerynth_agent_api::OperationStatus::Completed
+                    | cerynth_agent_api::OperationStatus::Failed
+            )),
+            "unknown operation outcome cannot be retried"
+        );
+        ensure!(
+            source
+                .execution
+                .retry
+                .as_ref()
+                .is_none_or(|retry| retry.attempt < 3),
+            "three-retry limit reached"
+        );
+        ensure!(
+            self.snapshot.sessions.contains_key(&id),
+            "archived retry source is read-only"
+        );
+        self.create_inner(source.spec.clone(), Some(&source))
+    }
+
+    // Validate parent constraints and commit retry lineage/source links atomically.
     #[allow(clippy::too_many_lines)]
-    pub fn create(&mut self, mut spec: SessionSpec) -> Result<Session> {
+    fn create_inner(
+        &mut self,
+        mut spec: SessionSpec,
+        retry_source: Option<&Session>,
+    ) -> Result<Session> {
         spec.validate().map_err(anyhow::Error::msg)?;
         spec.workspace = spec
             .workspace
@@ -249,7 +311,7 @@ impl Registry {
             );
         }
         let timestamp = now_ms();
-        let session = Session {
+        let mut session = Session {
             id: Uuid::new_v4(),
             owner_uid: nix::unistd::getuid().as_raw(),
             spec,
@@ -266,6 +328,27 @@ impl Registry {
             execution: ExecutionRecord::default(),
         };
         let mut snapshot = self.snapshot.clone();
+        if let Some(source) = retry_source {
+            session.execution.retry = Some(cerynth_agent_api::RetryLineage {
+                root_session_id: source
+                    .execution
+                    .retry
+                    .as_ref()
+                    .map_or(source.id, |retry| retry.root_session_id),
+                previous_session_id: source.id,
+                attempt: source
+                    .execution
+                    .retry
+                    .as_ref()
+                    .map_or(1, |retry| retry.attempt + 1),
+            });
+            snapshot
+                .sessions
+                .get_mut(&source.id)
+                .context("retry source disappeared")?
+                .execution
+                .retry_session_id = Some(session.id);
+        }
         snapshot.sessions.insert(session.id, session.clone());
         self.commit(snapshot)?;
         Ok(session)
@@ -327,6 +410,7 @@ impl Registry {
             session.state.is_terminal()
                 && !session.execution.cleanup_pending
                 && !session.execution.guard_cleanup_pending
+                && !session.execution.gpu_cleanup_pending
                 && !session.execution.workspace_preparing,
             "session cleanup is not complete"
         );
@@ -427,6 +511,57 @@ mod tests {
         Ok(tempfile::Builder::new()
             .permissions(fs::Permissions::from_mode(0o700))
             .tempdir()?)
+    }
+
+    #[test]
+    fn retries_require_known_clean_outcomes_and_remain_bounded_across_restarts() -> Result<()> {
+        let directory = private_tempdir()?;
+        let mut registry = Registry::open(directory.path())?;
+        let root = registry.create(spec(directory.path()))?;
+        assert!(registry.retry(root.id, true).is_err());
+        registry.transition(root.id, SessionState::Failed, "fixture_failed")?;
+        assert!(registry.retry(root.id, false).is_err());
+        registry.update(root.id, |session| {
+            session
+                .execution
+                .operations
+                .push(cerynth_agent_api::OperationRecord {
+                    id: Uuid::new_v4(),
+                    fingerprint: "public-fixture".into(),
+                    status: cerynth_agent_api::OperationStatus::Unknown,
+                });
+            Ok(())
+        })?;
+        assert!(registry.retry(root.id, true).is_err());
+        registry.update(root.id, |s| {
+            s.execution.operations[0].status = cerynth_agent_api::OperationStatus::Failed;
+            s.execution.guard_cleanup_pending = true;
+            Ok(())
+        })?;
+        assert!(registry.retry(root.id, true).is_err());
+        registry.update(root.id, |s| {
+            s.execution.guard_cleanup_pending = false;
+            Ok(())
+        })?;
+        let retry = registry.retry(root.id, true)?;
+        assert_eq!(retry.state, SessionState::Created);
+        assert!(retry.execution.process.is_none() && retry.execution.operations.is_empty());
+        assert_eq!(retry.execution.retry.as_ref().unwrap().attempt, 1);
+        assert_eq!(registry.retry(root.id, true)?.id, retry.id);
+        drop(registry);
+        let mut registry = Registry::open(directory.path())?;
+        assert_eq!(registry.retry(root.id, true)?.id, retry.id);
+        let mut previous = retry;
+        for attempt in 2..=3 {
+            registry.transition(previous.id, SessionState::Failed, "fixture_failed")?;
+            previous = registry.retry(previous.id, true)?;
+            let lineage = previous.execution.retry.as_ref().unwrap();
+            assert_eq!(lineage.attempt, attempt);
+            assert_eq!(lineage.root_session_id, root.id);
+        }
+        registry.transition(previous.id, SessionState::Failed, "fixture_failed")?;
+        assert!(registry.retry(previous.id, true).is_err());
+        Ok(())
     }
 
     pub fn spec(directory: &Path) -> SessionSpec {

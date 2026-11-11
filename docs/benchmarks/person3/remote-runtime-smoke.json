@@ -1,0 +1,20 @@
+{
+  "source_artifact": "remote-runtime-smoke.json",
+  "source_sha256": "2cd983091d216ac47d5760b227e86ad7784064e4a0dd225661ba7df7d02846cb",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-ssh-loopback-agent-prototype",
+    "pinned_host_key_verified": true,
+    "wrong_host_key_rejected": true,
+    "explicit_generated_identity": true,
+    "ambient_ssh_auth_disabled": true,
+    "remote_consent_required": true,
+    "managed_payload_executed": true,
+    "operation_replay_did_not_execute": true,
+    "remote_cancel_and_cleanup": true,
+    "boundary": "bubblewrap_systemd",
+    "physical_second_machine_tested": false,
+    "cloud_requests": 0,
+    "network_partition_auto_rollback": false
+  }
+}

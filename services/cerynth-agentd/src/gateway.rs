@@ -1,5 +1,5 @@
 //! Experimental A2A v0.3 JSON-RPC task subset over the owner control API.
-//! This is not an HTTP A2A server or a claim of full protocol conformance.
+//! The optional loopback HTTP gateway delegates here; full conformance is not claimed.
 use crate::AgentService;
 use anyhow::{Context, Result, ensure};
 use cerynth_agent_api::{Session, SessionState, TaskAssignment};
@@ -142,7 +142,18 @@ fn task(session: &Session) -> Value {
         SessionState::WaitingForTool => "input-required",
         _ => "working",
     };
+    let artifacts: Vec<_> = session
+        .execution
+        .artifacts
+        .iter()
+        .map(|artifact| {
+            json!({"artifactId":artifact.id,"name":artifact.path.to_string_lossy(),
+            "parts":[{"kind":"data","data":{"sha256":artifact.sha256,
+                "size_bytes":artifact.size_bytes,"cerynth_kind":artifact.kind}}],
+            "metadata":{"contents_included":false}})
+        })
+        .collect();
     json!({"kind":"task","id":session.id,"contextId":session.spec.runtime.project,
-        "status":{"state":state},"artifacts":session.execution.artifacts,
+        "status":{"state":state},"artifacts":artifacts,
         "metadata":{"cerynth_task_completion_verified":false,"automatic_execution":false}})
 }

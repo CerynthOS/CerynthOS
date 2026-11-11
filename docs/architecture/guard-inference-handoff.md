@@ -1,47 +1,56 @@
-# Guard and inference identity handoff
+# Guard and inference identity integration
 
-Date: 2026-11-11. Status: proposed integration; not an approved shared contract.
+Date: 2026-11-11. Status: implemented opt-in development slice; shared semantics
+remain subject to team review. The weekly plan is unchanged.
 
-The offline integration uses Guard revision
-`e592fa47797179ad24a99fc76143be48191a7649`. It does not support native model
-traffic yet. Guard's gateway strips incoming authorization, while `inferenced`
-requires a per-session credential. Giving every gateway one shared grant would
-erase session attribution and defeat per-session model/concurrency policy.
+The runtime uses Person 2's existing Guard configuration and wire protocol at
+`e592fa47797179ad24a99fc76143be48191a7649`, without modifying or merging it.
+Each native root gets a dedicated Guard gateway holding only that root's
+short-lived coordinator grant. The upstream provider credential stays in
+`inferenced`. Neither credential is passed to the agent.
 
-The required behavior is a trusted binding from a registered Guard session to
-an immutable coordinator grant. Agents must never select another session ID,
-upstream token, trust domain, model allowlist or remote provider. Administrative
-and approval sockets must stay outside the agent namespace.
+```mermaid
+flowchart LR
+    A[OpenCode namespace] -->|fixed local forwarder| G[Owned per-root Guard gateway]
+    G -->|root-specific narrow grant| I[Inference coordinator]
+    I -->|service-only credential if configured| M[Authorized model backend]
+```
 
-Proposed responsibilities:
+The gateway removes incoming authorization and identity headers and injects its
+own immutable grant. The coordinator authenticates that grant, limits models,
+queues requests under session/project budgets, and records actual session identity.
+There is no administrative HTTP route. The agent namespace cannot reach host
+loopback endpoints directly or mount the control/gateway directories.
 
-| Component | Responsibility |
-| --- | --- |
-| agentd | Register the same session UUID with Guard and the coordinator; journal both leases before starting; bind exact model/endpoint/action details; revoke on failure/exit |
-| Guard | Authenticate the namespace's fixed gateway, enforce permitted remote routes and method/path bounds, remove agent-supplied authorization and identity headers |
-| Trusted gateway integration | Attach the matching short-lived upstream grant outside the namespace; reject mismatched identity, expiry and origin; never expose the owner control API |
-| inferenced | Authenticate the grant, enforce model and session/parent/project/global limits, apply origin/trust-domain policy and record actual request identity |
+`runtime.guard.native_inference: true` requires an OpenCode root session, a named
+coordinator endpoint, `max_subagents: 0`, and explicit allow grants for
+`inference.use: cerynth` and `credential.use: inference-session`. Native child
+delegation, arbitrary endpoint selection, provider credential exposure and GPU
+device grants are unsupported in this mode. Offline generic Guard sessions retain
+their existing inheritance integration.
 
-Two implementation options remain to evaluate: an explicit per-session upstream
-credential binding in Guard, or a narrowly scoped per-session trusted bridge
-outside the namespace. A bridge would need bounded lifetime/resources, an
-unforgeable gateway-to-bridge binding and failure cleanup. A plain unauthenticated
-shared loopback proxy does not establish that binding. This document changes no
-Guard wire fields and does not assume either option is accepted.
+There are at most two private native gateways. Each has its own systemd scope,
+96/128 MiB memory high/max thresholds, CPUWeight 50, TasksMax 128 and kernel
+parent-death protection. Scope and authority preparation are journalled before
+launch; the final cancellation check and physical process ownership transfer
+share the runtime lock. A cancellation during provisioning cannot later launch
+the agent. Terminal cleanup ends the Guard registration and stops the exact
+owned gateway scope. Startup recovery empties both scopes and revokes the old
+grant before serving clients.
 
-Before native launch is enabled, exercise these concrete acceptance cases:
+The provisioning file is owner-only and removed once Guard loads its vault.
+Interrupted provisioning is scrubbed during recovery. It contains a revocable
+session grant, never a provider key. Private audit/configuration files remain
+for inspection; operators must manage retained evidence storage.
 
-1. Two Guard sessions use one local backend with distinct grants and observable
-   session/parent/project limits; no administrative socket or host credential is visible.
-2. Session A supplies B's identity, bearer token and model selection in headers/body;
-   its request is denied or remains attributed strictly to A.
-3. Denied domains, unapproved cloud destinations and non-inference routes remain
-   denied even when the agent can run arbitrary shell code.
-4. Revocation, deadline, coordinator restart, Guard restart and daemon death release
-   the correct leases and stop streams without a weaker network fallback.
-5. A permission denial produces a fixed audit reason without prompt/token leakage.
-6. A real coding task and its independent checker run inside the intended boundaries;
-   process exit, tool evidence and verified task results are reported separately.
+`tools/native_guard_runtime_smoke.py` uses the actual pinned Guard binaries and
+an adversarial synthetic harness. It verifies two roots, forged identity headers,
+model denial, host network/files/control denial, credential invisibility,
+startup cancellation, SIGKILL recovery and grant/scope cleanup. Actual OpenCode
+and Ollama trials also ran inside this boundary; failed coding results are
+retained separately from successful transport and security checks.
 
-Team review is needed to stabilize shared semantics. The missing implementation
-and tests are outstanding engineering work, not completed by this proposal.
+This is not authoritative deduplication of arbitrary external harness tools.
+Native provider/endpoint variants, delegated native gateways and production
+security review remain outstanding. No teammate approval is inferred from the
+working local integration.

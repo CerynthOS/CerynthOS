@@ -1,9 +1,10 @@
 # CacheWeaver backend study
 
-Researched 2026-11-10. vLLM 0.25.0 and LMCache 0.3.7 documentation are versioned
-references below. SGLang and vLLM's newer offload guide are rolling documentation;
-their exact installed release must be pinned before a live integration. None of
-these three engines has been benchmarked by Cerynth on this host.
+Research began 2026-11-10; local evaluation updated 2026-11-11. The original
+LMCache 0.3.7 references below are background. Actual experiments used vLLM 0.25.0,
+SGLang 0.5.16 and LMCache 0.5.6 with Python 3.12.14 and PyTorch 2.11.0.
+The [measured continuation report](../integration/2026-11-11-person3-continuation.md)
+records outcomes, failed configurations and exact limits.
 
 ## Reuse the engine's cache machinery
 
@@ -13,9 +14,12 @@ references and the free/eviction queue belong to the engine. Cerynth should
 coordinate requests and budgets rather than editing these structures. A common
 model name or similar text does not establish an identical reusable token prefix.
 An owner-derived `cache_salt` can separate reuse groups; agents must not choose a
-different group's salt. Cerynth currently rejects client-supplied salts and uses
-separate backend origins for different trust domains; it does not claim verified
-engine-level multi-tenant cache isolation.
+different group's salt. Cerynth rejects client-supplied salts and retains separate
+backend-origin trust-domain bindings. An explicit local vLLM native-prefix mode
+injects an opaque per-grant salt. Real coordinator requests verified miss/hit/miss/hit
+across two grants and rejected forged salts and revoked credentials. This scoped
+result does not establish isolation of LMCache, SGLang, arbitrary remote operators
+or every cache-related timing side channel.
 [vLLM 0.25.0 prefix design](https://docs.vllm.ai/en/v0.25.0/design/prefix_caching/).
 
 The newer vLLM offload connector supports a CPU tier and optional additional
@@ -79,7 +83,26 @@ have distinct leading fixture IDs. No model is downloaded and no other backend
 is stopped or unloaded. A repeated-prompt timing difference is not by itself a
 verified cache-hit measurement.
 
-## Controlled engine evaluation still required
+## Local engine results and remaining controlled evaluation
+
+`tools/engine_cache_benchmark.py` runs a bounded owned engine against an offline
+Qwen3-0.6B checkpoint with no host credentials. Nine fresh/repeat pairs per
+condition cover three prefix sizes. Both engines completed enabled/disabled
+native-cache runs with all fixed answers correct. Engine counters establish
+native prefix reuse. A separate LMCache run disabled native prefix caching,
+used a 256 MiB CPU cache and restored three 256-token chunks. Its native wheel
+extension failed ABI import under this pinned Torch; the connector ran using
+available fallback paths. This is a compatibility limitation, not a clean native
+extension result. Transfer measurements and overhead regressions are retained.
+
+[Raw selected trials](../benchmarks/person3/engine-cache-comparison.json) include
+per-condition observations and dispersion. Very short outputs, three trials,
+fixed engine order and one active workstation prevent general throughput claims.
+The Cerynth recommendation policy was not applied to the engine.
+
+Upstream separates ABI, connector and model compatibility; release numbers alone
+are insufficient. [LMCache compatibility](https://docs.lmcache.ai/getting_started/compatibility.html),
+[installation](https://docs.lmcache.ai/getting_started/installation.html).
 
 For each supported engine/version, use identical model artifacts, tokenizer,
 dtype/quantization, context capacity, device and concurrency. Test short and long

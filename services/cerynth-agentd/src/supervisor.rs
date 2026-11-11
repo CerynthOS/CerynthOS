@@ -142,11 +142,9 @@ impl AgentService {
                 .worktree
                 .as_ref()
                 .unwrap_or(&session.spec.workspace);
-            ensure!(
-                session.spec.runtime.isolation != IsolationPolicy::Required
-                    || !self.directory.canonicalize()?.starts_with(workspace),
-                "workspace would expose the management directory"
-            );
+            if session.spec.runtime.isolation == IsolationPolicy::Required {
+                self.check_control_workspace(workspace)?;
+            }
             ensure!(
                 !runtime.registry.list().iter().any(|other| other.id != id
                     && other.state != SessionState::Created
@@ -185,8 +183,9 @@ impl AgentService {
         };
         let result = async {
             let mut plan = plan;
-            self.bind_guard(&session, &launch, &mut plan).await?;
             self.bind_inference(&session, &mut plan).await?;
+            self.bind_guard(&session, &launch, &mut plan).await?;
+            let session = self.runtime.lock().await.registry.get(id)?;
             self.spawn_worker(id, operation_id, session, plan, launch)
                 .await
         }
@@ -249,6 +248,11 @@ impl AgentService {
         let (input_send, mut input_receive) = mpsc::channel::<Vec<u8>>(8);
         let (cancel, mut cancelled) = watch::channel(false);
         let mut io_tasks = Vec::new();
+        let mut runtime = self.runtime.lock().await;
+        ensure!(
+            runtime.registry.get(id)?.state == SessionState::Starting,
+            "launch was cancelled before process creation"
+        );
         let (identity, wait): (
             cerynth_agent_api::ProcessIdentity,
             tokio::task::JoinHandle<Result<i32>>,
@@ -344,7 +348,6 @@ impl AgentService {
         drop(output_send);
         let pid = identity.pid;
         {
-            let mut runtime = self.runtime.lock().await;
             runtime.registry.update(id, |s| {
                 s.execution.process = Some(identity.clone());
                 s.execution.cleanup_pending = true;
@@ -379,6 +382,7 @@ impl AgentService {
                 },
             );
         }
+        drop(runtime);
         if let Some(input) = launch.initial_input {
             // An early exit can close stdin; the worker must still reap and
             // report that exit rather than abandoning process ownership.
@@ -422,7 +426,7 @@ impl AgentService {
             };
             process::signal_group(&identity, Signal::SIGTERM);
             if exit_code.is_none() { tokio::time::sleep(Duration::from_millis(200)).await; }
-            let cleaned = tokio::task::spawn_blocking(move || process::recover(&recovery)).await.is_ok_and(|result| result.is_ok());
+            let cleaned = tokio::task::spawn_blocking(move || process::recover_agent(&recovery)).await.is_ok_and(|result| result.is_ok());
             if !wait.is_finished() { let _ = tokio::time::timeout(Duration::from_secs(2), &mut wait).await; }
             let cleaned = cleaned && wait.is_finished();
             if tokio::time::timeout(Duration::from_secs(2), &mut output_task).await.is_err() {
@@ -456,6 +460,7 @@ impl AgentService {
             // exits normally or reaches its deadline without an explicit stop.
             let _ = crate::orchestration::cancel_tree(&mut runtime, id, false, "parent_exited");
             drop(runtime);
+            let _=service.finish_gpu(id, exit_code==Some(0) && cleaned).await;
             let _=service.release_guard_sessions().await;
         });
         guard.0 = None;

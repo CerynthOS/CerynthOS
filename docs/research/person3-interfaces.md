@@ -7,7 +7,7 @@ status are separate columns. Provider authentication is never assumed transferab
 
 | Harness | Official integration surfaces | Lifecycle and output | Tools / subagents | Cerynth status |
 | --- | --- | --- | --- | --- |
-| OpenCode | Headless HTTP server/OpenAPI, CLI JSON, ACP | Sessions, prompts, message history, event stream, abort | Native tool events and agent facilities; native child sessions need explicit mapping | CLI launch plan plus bounded HTTP client; real CLI tried at 1.19.5; coding success is verified separately |
+| OpenCode | Headless HTTP server/OpenAPI, CLI JSON, ACP | Sessions, prompts, message history, event stream, abort | Native tool events and agent facilities; native child sessions need explicit mapping | Managed CLI, password-protected owned HTTP server and streamed ACP v1 paths exercised at 1.19.5; HTTP history includes intermediate tool messages; coding success checked separately |
 | Hermes | CLI, ACP stdio, native Python interfaces | One-shot query/file input, JSONL where supported, native resume | Harness-native delegation/tooling; not equivalent to OS child budgets | Pinned 0.23.1 launches inside Bubblewrap/systemd and uses authenticated local inference; observed tool failures prevent claiming verified coding success |
 | Codex | Exec JSONL, app-server protocol, SDK | Turns/threads, local history, interrupt/resume depend on interface | Structured execution/results/usage; native collaboration is not automatic Cerynth delegation | Installed 0.167.0 exercised with local Ollama; explicit provider override and daemon isolation required |
 | Claude Code | Programmatic CLI/Agent SDK | Print mode, streaming JSON, session resume; CLI exit status alone does not verify task success | SDK permissions and native subagents; trusted OS enforcement remains separate | CLI launch plan and version discovery; installed 2.1.312; cloud execution/credential broker not exercised |
@@ -37,7 +37,7 @@ than assuming current examples apply unchanged to a 1.x binary.
 | --- | --- | --- |
 | ACP v1 | Client-to-agent sessions, prompts, updates, permissions | Bounded client negotiates version/capabilities; no FS/terminal capabilities advertised; ungranted permission requests are denied |
 | MCP 2025-11-25 | Tools, resources, prompts, negotiated protocol | Initialization envelope is pinned; the authoritative tool broker is not implemented by this track |
-| A2A 0.3.0 | Inter-agent task/message interoperability | Experimental owner-API subset for message/send and task get/cancel; no public HTTP server or full conformance claim |
+| A2A 0.3.0 | Inter-agent task/message interoperability | Owner-API subset plus explicit loopback HTTP gateway and Agent Card; sponsor-bound credential, message deduplication and task get/cancel; no automatic execution or full conformance claim |
 | OpenAI-compatible HTTP | Model inference transport | Configured endpoint, allowlisted model, explicit remote consent, TLS for remote routing; API subsets vary by backend |
 | Cerynth Unix API | Trusted owner control, sessions, resources, diagnostics | Separate version from frozen scheduler IPC; agent sandboxes must not see this socket |
 
@@ -84,11 +84,13 @@ domains, and compares observed reload/recompute costs against supported transfer
 costs. Offloading is recommended only when a caller advertises that capability.
 Ollama does not acquire a new KV offload API merely because this policy exists.
 
-The host's default Python is 3.14.8 and torch, vLLM, SGLang, and LMCache are not
-installed. No vLLM/SGLang/LMCache throughput or offload result is claimed.
-Separate environments and backend-specific capability tests are required before
-choosing those engines. Current measurements cover real Ollama endpoint behavior
-and report failed coding workflows alongside successful inference requests.
+The host's default Python is 3.14.8. Dedicated Python 3.12.14 environments now
+exercise vLLM 0.25.0, SGLang 0.5.16 and LMCache 0.5.6 with PyTorch 2.11.0.
+Both native caches reported repeat hits. LMCache performed measured CPU offload
+and retrieval through its connector, with a native-extension ABI failure and
+fallback limitation explicitly retained. These small synthetic runs establish
+specific interoperability, not a general performance advantage. See the
+[continuation report](../integration/2026-11-11-person3-continuation.md).
 
 Sources for subsequent engine evaluation:
 [vLLM](https://docs.vllm.ai/), [SGLang](https://docs.sglang.ai/),

@@ -3,10 +3,10 @@
   "baseline": "6a6f0183216eb609e2d0f5acda89b0ec61a41a64",
   "workspace_tests": {
     "command": "cargo test --locked --workspace",
-    "passed": 215,
+    "passed": 228,
     "failed": 0,
     "ignored": 3,
-    "log_sha256": "a25aec5922e77b1304f8481a5cb4a33552a52454b824065bad794b95a10c1778"
+    "log_sha256": "879ba5fcd62e6ddb3c18597996fd2658678de4fab1176561eaef862a467ce660"
   },
   "strict_clippy": {
     "packages": [
@@ -21,7 +21,8 @@
     ],
     "all_targets": true,
     "warnings_denied": true,
-    "passed": true
+    "passed": true,
+    "log_sha256": "d3f5965d656b2a5497183e7cde6adb48f41b32154386a643c7d4e0d2c208cdbd"
   },
   "compiler": "rustc 1.99.0 (b940084d7 2026-09-28)",
   "format_check": true,
@@ -30,5 +31,6 @@
   "python_smoke_tool_syntax": true,
   "debug_staging": true,
   "systemd_user_unit_verification": true,
-  "live_services_installed": false
+  "live_services_installed": false,
+  "debug_staging_includes_native_protocol_bridge": true
 }

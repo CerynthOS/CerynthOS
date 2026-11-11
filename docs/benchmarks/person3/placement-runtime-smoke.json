@@ -1,0 +1,41 @@
+{
+  "source_artifact": "placement-runtime-smoke.json",
+  "source_sha256": "472d75cdf7aa5c27faf48c02a41bcab610d906a2a6544145a050bacd2b737d26",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "measured-cost-owner-placement-smoke",
+    "model": "qwen3:0.6b",
+    "baseline_sha256": "0160cb9b6c4024e1af098cf6aa09af94b6bd4553e110491423e938470181477f",
+    "measured_load_ms": [
+      4086.292864,
+      4552.161181,
+      4647.947984
+    ],
+    "required_resident_bytes": 2396321218,
+    "weight_file_bytes": 522653767,
+    "plan": {
+      "advisory": true,
+      "assessments": [
+        {
+          "action": "load",
+          "reason": "calibrated_capacity_available",
+          "switch_estimate": {
+            "maximum_ms": 4647.947984,
+            "median_ms": 4552.161181,
+            "minimum_ms": 4086.292864,
+            "samples": 3
+          },
+          "target_id": "local-gpu"
+        }
+      ],
+      "changed_system_state": false,
+      "selected": "local-gpu"
+    },
+    "active_model_protected": true,
+    "stale_telemetry_queued": true,
+    "cross_domain_target_denied": true,
+    "data_plane_cannot_plan": true,
+    "cloud_requests": 0,
+    "physical_model_placement_changed": false
+  }
+}

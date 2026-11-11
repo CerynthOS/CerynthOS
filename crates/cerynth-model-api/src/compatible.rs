@@ -12,6 +12,18 @@ pub struct CompatibleEndpoint {
     pub cloud_consent: bool,
     /// Name of a service environment variable. Never a literal credential.
     pub credential_env: Option<String>,
+    #[serde(default)]
+    pub cache_isolation: CacheIsolation,
+}
+
+/// Owner-declared backend support; generic compatible APIs prove no cache isolation.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CacheIsolation {
+    #[default]
+    SharedTrustDomain,
+    /// Validated with vLLM 0.25.0 chat requests; never inferred from HTTP compatibility.
+    VllmPerGrantSalt,
 }
 
 #[derive(Clone)]
@@ -19,6 +31,8 @@ pub struct CompatibleClient {
     client: Client,
     url: Url,
     credential: Option<String>,
+    cache_isolation: CacheIsolation,
+    cache_salt: Option<String>,
 }
 
 impl CompatibleClient {
@@ -42,6 +56,10 @@ impl CompatibleClient {
         ensure!(
             (local && url.scheme() == "http") || (spec.cloud_consent && url.scheme() == "https"),
             "remote inference requires explicit consent and HTTPS"
+        );
+        ensure!(
+            spec.cache_isolation == CacheIsolation::SharedTrustDomain || local,
+            "vLLM cache salting requires an explicitly configured local backend"
         );
         if !url.path().ends_with('/') {
             url.set_path(&format!("{}/", url.path()));
@@ -67,7 +85,39 @@ impl CompatibleClient {
                 .build()?,
             url,
             credential,
+            cache_isolation: spec.cache_isolation,
+            cache_salt: None,
         })
+    }
+
+    /// Bind an owner-authorized opaque grant scope, never a client-selected salt.
+    #[must_use]
+    pub fn for_cache_scope(&self, scope: String) -> Self {
+        let mut scoped = self.clone();
+        if scoped.cache_isolation == CacheIsolation::VllmPerGrantSalt {
+            scoped.cache_salt = Some(scope);
+        }
+        scoped
+    }
+
+    fn scoped_body(&self, mut body: serde_json::Value) -> Result<serde_json::Value> {
+        ensure!(
+            body.get("cache_salt")
+                .is_none_or(serde_json::Value::is_null),
+            "cache salt must be assigned by the coordinator"
+        );
+        if self.cache_isolation == CacheIsolation::VllmPerGrantSalt {
+            let salt = self
+                .cache_salt
+                .as_ref()
+                .context("cache-isolated backend requires a grant scope")?;
+            ensure!(
+                salt.len() == 64 && salt.bytes().all(|c| c.is_ascii_hexdigit()),
+                "invalid private cache scope"
+            );
+            body["cache_salt"] = serde_json::json!(salt);
+        }
+        Ok(body)
     }
 
     /// # Errors
@@ -79,10 +129,12 @@ impl CompatibleClient {
         max_tokens: u32,
     ) -> Result<(InferenceResult, InferenceMetrics)> {
         let start = std::time::Instant::now();
-        let mut request = self.client.post(self.url.join("chat/completions")?).json(
-            &serde_json::json!({"model":model,"messages":[{"role":"user","content":prompt}],
-                "max_tokens":max_tokens,"stream":false}),
-        );
+        let body = self.scoped_body(serde_json::json!({"model":model,
+            "messages":[{"role":"user","content":prompt}], "max_tokens":max_tokens,"stream":false}))?;
+        let mut request = self
+            .client
+            .post(self.url.join("chat/completions")?)
+            .json(&body);
         if let Some(credential) = &self.credential {
             request = request.bearer_auth(credential);
         }
@@ -142,6 +194,12 @@ impl CompatibleClient {
             matches!(route, "chat/completions" | "responses"),
             "unsupported compatible route"
         );
+        ensure!(
+            route == "chat/completions"
+                || self.cache_isolation == CacheIsolation::SharedTrustDomain,
+            "cache-isolated Responses transport has not been validated"
+        );
+        let body = self.scoped_body(body)?;
         let mut request = self.client.post(self.url.join(route)?).json(&body);
         if let Some(credential) = &self.credential {
             request = request.bearer_auth(credential);

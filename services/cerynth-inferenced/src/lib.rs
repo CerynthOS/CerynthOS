@@ -142,6 +142,11 @@ pub enum AdminOperation {
         model: Option<String>,
     },
     CachedModels,
+    PlanPlacement {
+        request: cerynth_model_api::placement::PlacementRequest,
+        targets: Vec<cerynth_model_api::placement::PlacementTarget>,
+        observations: Vec<cerynth_model_api::placement::SwitchObservation>,
+    },
     Discover {
         candidates: Vec<String>,
     },
@@ -253,6 +258,11 @@ impl Coordinator {
                 json!({"models":self.state.lock().await.models,"source":"last_observation_not_live"}),
             ),
             AdminOperation::Discover { candidates } => Self::discover(candidates).await,
+            AdminOperation::PlanPlacement {
+                request,
+                targets,
+                observations,
+            } => Self::placement(&request, &targets, &observations),
             AdminOperation::Configure { endpoint } => self.configure(endpoint).await,
             AdminOperation::Register { grant } => self.register(grant).await,
             AdminOperation::Revoke { session_id } => {
@@ -530,11 +540,13 @@ impl Coordinator {
                     && request.priority >= -100,
                 "model or priority is not authorized"
             );
-            (
-                grant.spec.clone(),
-                state.endpoints[&grant.spec.endpoint_id].1.clone(),
-                grant.revoked.subscribe(),
-            )
+            let backend = match state.endpoints[&grant.spec.endpoint_id].1.clone() {
+                Backend::Compatible(client) => Backend::Compatible(
+                    client.for_cache_scope(format!("{:x}", Sha256::digest(grant.token_hash))),
+                ),
+                backend @ Backend::Ollama(_) => backend,
+            };
+            (grant.spec.clone(), backend, grant.revoked.subscribe())
         };
         let work = async {
             let _lifecycle = self.lifecycle.read().await;
@@ -877,6 +889,7 @@ mod persistence_tests {
             url: "https://example.invalid/v1".into(),
             cloud_consent: false,
             credential_env: None,
+            cache_isolation: cerynth_model_api::compatible::CacheIsolation::SharedTrustDomain,
         };
         assert!(
             coordinator

@@ -61,6 +61,32 @@ pub(crate) fn cancel_tree(
 }
 
 impl AgentService {
+    pub(crate) async fn set_phase(
+        &self,
+        id: Uuid,
+        phase: cerynth_agent_api::WorkloadPhase,
+    ) -> Result<Value> {
+        let session = self.runtime.lock().await.registry.update(id, |s| {
+            ensure!(!s.state.is_terminal(), "session is terminal");
+            s.execution.phase = phase;
+            Registry::record_event(s, "workload_phase_reported");
+            Ok(())
+        })?;
+        Ok(serde_json::to_value(session)?)
+    }
+    pub(crate) async fn retry_session(
+        &self,
+        id: Uuid,
+        acknowledge_prior_effects: bool,
+    ) -> Result<Value> {
+        Ok(serde_json::to_value(
+            self.runtime
+                .lock()
+                .await
+                .registry
+                .retry(id, acknowledge_prior_effects)?,
+        )?)
+    }
     pub(crate) async fn session_records(&self, id: Option<Uuid>) -> Result<Value> {
         self.refresh_observed().await?;
         let runtime = self.runtime.lock().await;

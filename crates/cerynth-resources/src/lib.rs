@@ -194,6 +194,10 @@ pub struct GpuJob {
     pub sequence: u64,
     pub admitted_at_ms: Option<u64>,
     pub enforcement: EnforcementLevel,
+    #[serde(default)]
+    pub supervised: bool,
+    #[serde(default)]
+    pub cleanup_pending: bool,
 }
 
 #[derive(Default)]
@@ -256,6 +260,8 @@ impl GpuBroker {
                 sequence: self.sequence,
                 admitted_at_ms: None,
                 enforcement: EnforcementLevel::CooperativeReservation,
+                supervised: false,
+                cleanup_pending: false,
             },
         );
         self.schedule(now_ms);
@@ -265,6 +271,7 @@ impl GpuBroker {
     pub fn schedule(&mut self, now_ms: u64) {
         for job in self.jobs.values_mut() {
             if job.state == JobState::Admitted
+                && !job.cleanup_pending
                 && job.admitted_at_ms.is_some_and(|start| {
                     now_ms.saturating_sub(start) >= job.request.timeout_seconds.saturating_mul(1000)
                 })
@@ -315,6 +322,45 @@ impl GpuBroker {
     /// Returns an error for unknown jobs or invalid state changes.
     pub fn finish(&mut self, id: Uuid, state: JobState, now_ms: u64) -> Result<GpuJob> {
         ensure!(
+            self.jobs.get(&id).is_some_and(|job| !job.supervised),
+            "supervised GPU jobs require verified process cleanup"
+        );
+        self.finalize(id, state, now_ms)
+    }
+
+    /// Bind an admitted lease to supervisor-owned execution. A live or unknown
+    /// process keeps its reservation even after the nominal lease deadline.
+    /// # Errors
+    /// Rejects expired, queued, duplicate or unknown leases.
+    pub fn bind_process(&mut self, id: Uuid, now_ms: u64) -> Result<GpuJob> {
+        self.schedule(now_ms);
+        let job = self
+            .jobs
+            .get_mut(&id)
+            .ok_or_else(|| anyhow::anyhow!("unknown GPU job"))?;
+        ensure!(
+            job.state == JobState::Admitted && !job.supervised,
+            "GPU lease is not available for execution"
+        );
+        job.supervised = true;
+        job.cleanup_pending = true;
+        job.admitted_at_ms = Some(now_ms);
+        Ok(job.clone())
+    }
+
+    /// Called only after the supervisor verifies its owned execution boundary is empty.
+    /// # Errors
+    /// Rejects ordinary reservations and already completed jobs.
+    pub fn finish_supervised(&mut self, id: Uuid, state: JobState, now_ms: u64) -> Result<GpuJob> {
+        ensure!(
+            self.jobs.get(&id).is_some_and(|job| job.supervised),
+            "GPU job is not supervised"
+        );
+        self.finalize(id, state, now_ms)
+    }
+
+    fn finalize(&mut self, id: Uuid, state: JobState, now_ms: u64) -> Result<GpuJob> {
+        ensure!(
             matches!(
                 state,
                 JobState::Completed | JobState::Cancelled | JobState::Failed
@@ -330,6 +376,7 @@ impl GpuBroker {
             "GPU job already terminal"
         );
         job.state = state;
+        job.cleanup_pending = false;
         let result = job.clone();
         self.schedule(now_ms);
         Ok(result)
@@ -388,6 +435,42 @@ mod tests {
         broker.schedule(1002);
         assert_eq!(broker.jobs[&high.id].state, JobState::Expired);
         assert_eq!(broker.jobs[&low.id].state, JobState::Admitted);
+        Ok(())
+    }
+
+    #[test]
+    fn owned_execution_cannot_expire_or_be_manually_released_before_cleanup() -> Result<()> {
+        let mut broker = GpuBroker::new(20);
+        broker.update_devices(vec![GpuDevice {
+            id: "gpu".into(),
+            name: "fixture".into(),
+            vendor: "fixture".into(),
+            driver: None,
+            total_bytes: Some(100),
+            used_bytes: Some(10),
+            utilization_percent: None,
+            enforcement: EnforcementLevel::Monitoring,
+            mig_status: "unsupported".into(),
+            mps_status: "unsupported".into(),
+        }]);
+        let request = GpuRequest {
+            session_id: Uuid::new_v4(),
+            device_id: "gpu".into(),
+            memory_bytes: 50,
+            priority: 0,
+            timeout_seconds: 1,
+        };
+        let owned = broker.submit(request.clone(), 0)?;
+        broker.bind_process(owned.id, 0)?;
+        assert!(broker.bind_process(owned.id, 0).is_err());
+        let next = broker.submit(request, 1)?;
+        broker.schedule(5000);
+        assert_eq!(broker.jobs[&owned.id].state, JobState::Admitted);
+        assert_eq!(broker.jobs[&next.id].state, JobState::Queued);
+        assert!(broker.finish(owned.id, JobState::Completed, 5001).is_err());
+        broker.finish_supervised(owned.id, JobState::Cancelled, 5002)?;
+        assert!(!broker.jobs[&owned.id].cleanup_pending);
+        assert_eq!(broker.jobs[&next.id].state, JobState::Admitted);
         Ok(())
     }
 }

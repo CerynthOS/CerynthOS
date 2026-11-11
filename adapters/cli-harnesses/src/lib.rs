@@ -1,4 +1,5 @@
 //! Pinned native CLI launch plans; the supervisor retains process and policy ownership.
+pub mod protocol;
 use cerynth_agent_api::{
     AdapterCapability, AdapterDescriptor, AdapterInput, HarnessAdapter, HarnessKind, LaunchRequest,
     Session, Unsupported,

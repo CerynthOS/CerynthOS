@@ -16,6 +16,18 @@ impl OpenCodeClient {
     /// # Errors
     /// Returns an error for non-loopback origins, URL credentials, or missing explicit authentication.
     pub fn new(origin: &str, password_env: Option<&str>) -> Result<Self> {
+        let password = password_env
+            .map(std::env::var)
+            .transpose()
+            .context("configured OpenCode credential unavailable")?;
+        Self::with_password(origin, password)
+    }
+
+    /// # Errors
+    /// Returns an error for an invalid origin or an empty/oversized password.
+    /// This constructor lets an owned bridge supply an ephemeral credential
+    /// without mutating the process environment.
+    pub fn with_password(origin: &str, password: Option<String>) -> Result<Self> {
         let origin = Url::parse(origin)?;
         ensure!(
             origin.scheme() == "http"
@@ -32,10 +44,12 @@ impl OpenCodeClient {
                 && origin.path() == "/",
             "OpenCode must use an HTTP numeric loopback origin without URL credentials"
         );
-        let password = password_env
-            .map(std::env::var)
-            .transpose()
-            .context("configured OpenCode credential unavailable")?;
+        ensure!(
+            password
+                .as_ref()
+                .is_none_or(|p| !p.is_empty() && p.len() <= 4096),
+            "invalid OpenCode password"
+        );
         Ok(Self {
             client: Client::builder()
                 .no_proxy()

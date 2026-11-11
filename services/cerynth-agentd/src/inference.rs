@@ -11,6 +11,9 @@ pub(crate) struct InferenceControl {
 }
 
 impl InferenceControl {
+    pub(crate) fn directory(&self) -> &std::path::Path {
+        &self.directory
+    }
     pub fn from_environment() -> Result<Option<Self>> {
         match (
             std::env::var_os("CERYNTH_INFERENCE_DIR"),
@@ -124,6 +127,17 @@ impl AgentService {
         let token = response["token"]
             .as_str()
             .context("coordinator returned no session credential")?;
+        if session
+            .spec
+            .runtime
+            .guard
+            .as_ref()
+            .is_some_and(|guard| guard.native_inference)
+        {
+            return self
+                .bind_native_guard(session, token, &control.http_origin, plan)
+                .await;
+        }
         let url = format!("{}/v1", control.http_origin.trim_end_matches('/'));
         match session.spec.harness {
             HarnessKind::OpenCode => {
@@ -236,4 +250,28 @@ fn replace_codex_args(args: &[String], url: &str) -> Result<Vec<String>> {
         "-".into(),
     ]);
     Ok(prefix)
+}
+
+#[cfg(test)]
+mod control_boundary_tests {
+    use super::*;
+
+    #[test]
+    fn generic_workspaces_cannot_mount_separately_configured_inference_control() -> Result<()> {
+        let root = tempfile::tempdir()?;
+        let workspace = root.path().join("workspace");
+        let separate = root.path().join("allowed");
+        std::fs::create_dir(&workspace)?;
+        std::fs::create_dir(&separate)?;
+        let directory = workspace.join("inference-control");
+        crate::registry::private_directory(&directory)?;
+        let mut service = AgentService::open(&root.path().join("agent"), "http://127.0.0.1:11434")?;
+        service.inference_control = Some(InferenceControl {
+            directory,
+            http_origin: "http://127.0.0.1:11435".into(),
+        });
+        assert!(service.check_control_workspace(&workspace).is_err());
+        assert!(service.check_control_workspace(&separate).is_ok());
+        Ok(())
+    }
 }

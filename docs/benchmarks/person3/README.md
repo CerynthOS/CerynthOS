@@ -17,3 +17,11 @@ in the [runtime guide](../../runtime/agent-runtime.md). Fresh results will vary;
 preserve failures and use new artifact names when changing conditions. Sanitized
 summaries are intentionally smaller than private raw artifacts, and do not
 establish full trace/audit completeness.
+
+The continuation adds pinned vLLM/SGLang native-cache comparisons, real LMCache
+CPU transfers with an ABI/fallback limitation, actual coordinator salt checks,
+native Guard identity, supervised CUDA, evidence collection, A2A and SSH results.
+`additional-harness-trials.json` and the cross-harness files retain failed task
+outcomes separately from successful transport/boundary checks. Re-export these
+selected public fixtures with `python3 tools/publish_person3_evidence.py` after
+running the corresponding tools; ignored raw backend logs are never published.

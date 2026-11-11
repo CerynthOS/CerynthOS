@@ -22,7 +22,8 @@ timestamps, lifecycle, boundary, bounded events, and execution evidence. Its
 identity survives process exit. Execution evidence includes PID/start tick/boot
 ID, allocation UUID, scope unit, parent/task identities, operation ledger,
 messages, artifacts, worktree preparation journal, normalized harness events,
-Guard profile digest and pending process/authorization cleanup state.
+Guard profile digest, private gateway ownership, supervised GPU authorization,
+bounded retry lineage and pending process/authorization/GPU cleanup state.
 
 ```json
 {
@@ -48,7 +49,8 @@ Guard profile digest and pending process/authorization cleanup state.
 ```
 
 Runtime and budget fields have defaults. Default networking is `deny`; `host`
-above is explicit and needed for current localhost inference. Names/models are
+above is explicit for ordinary localhost inference; native Guard inference can
+retain denied host networking. Names/models are
 1–256 bytes without control characters. Workspaces must exist. The owner supplies
 root grants. Children inherit a subset of capabilities, sharing peers,
 network/isolation authority, individual limits and bounded total memory/GPU/
@@ -57,7 +59,10 @@ aggregate parent kernel limits.
 
 Harness values: `inference_probe`, `generic_pty`, `open_code`, `hermes`, `codex`,
 `claude_code`, `acp`. ACP is a negotiated transport library; selecting `acp` does
-not yet provide a daemon launch recipe. An endpoint probe performs no tools and
+not itself select a daemon recipe. For OpenCode, `runtime.transport` selects
+`cli_jsonl` (default), `open_code_http`, or `open_code_acp`; ACP v1 initialization,
+sessions, prompt updates and permission denial are wired through the supervised
+bridge. An endpoint probe performs no tools and
 uses only the daemon's local Ollama origin. Named endpoints use the coordinator
 for supported native harnesses. Cloud mode requires explicit session consent
 and an owner-configured consented remote endpoint.
@@ -79,8 +84,11 @@ and an owner-configured consented remote endpoint.
 | completed, failed, cancelled | none |
 
 Schema pause/resume states are not an adapter capability guarantee. Daemon
-adapters currently offer cancellation, not native pause/resume. A retry uses a
-new session. Unknown completion after a crash remains unknown; issued operations
+adapters currently offer cancellation, not native pause/resume. Owner `retry`
+creates a new unstarted session, requires acknowledgement of prior effects,
+complete cleanup and known operation outcomes, and bounds lineage to three
+retries. Source/new UUID linkage commits atomically and deduplicates repeated
+requests after restart. It is not automatic replay. Unknown completion after a crash remains unknown; issued operations
 never silently replay. Parent termination cancels descendants. Harness completion
 is a process outcome; task correctness requires independent artifact/test checks.
 
@@ -91,10 +99,19 @@ Boundary labels are `unenforced_prototype`, `process_group`, `bubblewrap`,
 They describe actual controls, not a security audit.
 Observed processes never acquire kill authority or a sandbox label.
 
-`runtime.guard` explicitly requires Guard for an offline `generic_pty` launch.
+`runtime.guard` explicitly requires Guard. Offline launches use `generic_pty`.
 Supported typed grants are `fs.read`, `fs.write`, `session.spawn`, `tool.exec`,
-and `gpu.use`, with bounded target/mode/optional spawn limit. Inference/egress/
-credential grants and native harness launches through Guard are rejected.
+and `gpu.use`, with bounded target/mode/optional spawn limit. `gpu.use` requires
+an admitted `gpu_run` job; ordinary `start` cannot expose GPU nodes. A lease is
+retained through verified process cleanup and cannot be freed manually mid-job.
+Guard's advisory GPU decision and agentd's enforced launch gate are recorded
+separately; VRAM remains cooperative.
+
+`native_inference: true` supports only OpenCode roots with a named inference
+endpoint, zero subagents and explicit allow grants for `inference.use: cerynth`
+and `credential.use: inference-session`. Each root's private Guard service holds
+only its revocable coordinator grant outside the namespace. Native delegation,
+arbitrary credential names, endpoint targets and GPU profiles are rejected.
 Registration/cleanup ambiguity remains recorded; there is no weaker fallback.
 Worktree preparation must finish before creating a Guard session. This optional
 field does not imply all generic or native processes use Guard.

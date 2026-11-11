@@ -154,6 +154,35 @@ fn systemctl_bounded(args: &[&str]) -> Result<std::process::Output> {
 }
 
 pub fn recover(session: &Session) -> Result<()> {
+    recover_agent(session)?;
+    if let Some(unit) = &session.execution.native_guard_unit {
+        ensure!(
+            *unit == guard_unit_name(session.id),
+            "invalid owned Guard unit"
+        );
+        stop_scope(unit)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn guard_unit_name(id: uuid::Uuid) -> String {
+    format!("cerynth-guard-{id}.scope")
+}
+
+pub(crate) fn stop_scope(unit: &str) -> Result<()> {
+    let result = systemctl_bounded(&["--user", "stop", unit])?;
+    if !result.status.success() {
+        let state =
+            systemctl_bounded(&["--user", "show", "--property=LoadState", "--value", unit])?;
+        ensure!(
+            state.status.success() && state.stdout == b"not-found\n",
+            "owned scope cleanup failed"
+        );
+    }
+    Ok(())
+}
+
+pub fn recover_agent(session: &Session) -> Result<()> {
     if session.execution.mode == cerynth_agent_api::SessionMode::Observed {
         return Ok(());
     }
@@ -322,6 +351,7 @@ pub fn prepare(
                 program.to_string_lossy().into_owned(),
             ]);
         }
+        append_protocol_dependencies(session, &program, &mut args)?;
         args.extend([
             "--bind".into(),
             workspace.to_string_lossy().into_owned(),
@@ -383,7 +413,7 @@ fn launch_environment(session: &Session) -> Vec<(String, String)> {
     ];
     if session.spec.harness == cerynth_agent_api::HarnessKind::OpenCode {
         let model = &session.spec.model.name;
-        let config = serde_json::json!({"enabled_providers":["ollama"],"provider":{"ollama":{
+        let config = serde_json::json!({"model":format!("ollama/{model}"),"small_model":format!("ollama/{model}"),"enabled_providers":["ollama"],"provider":{"ollama":{
             "npm":"@ai-sdk/openai-compatible","name":"Local Ollama",
             "options":{"baseURL":"http://127.0.0.1:11434/v1"},
             "models":{model:{"name":model,"options":{"reasoningEffort":"none"},"limit":{"context":16384,"output":2048}}}}},
@@ -407,6 +437,29 @@ fn launch_environment(session: &Session) -> Vec<(String, String)> {
         environment.push(("OPENAI_API_KEY".into(), "local-no-key".into()));
     }
     environment
+}
+
+fn append_protocol_dependencies(
+    session: &Session,
+    program: &Path,
+    args: &mut Vec<String>,
+) -> Result<()> {
+    if session.spec.runtime.transport != cerynth_agent_api::HarnessTransport::CliJsonl {
+        ensure!(
+            program == crate::harnesses::protocol_bridge()?,
+            "protocol launch requires the configured bridge"
+        );
+        let native = crate::harnesses::executable("opencode")
+            .context("OpenCode installation unavailable")?;
+        if !native.starts_with("/usr") {
+            args.extend([
+                "--ro-bind".into(),
+                native.to_string_lossy().into_owned(),
+                native.to_string_lossy().into_owned(),
+            ]);
+        }
+    }
+    Ok(())
 }
 
 fn append_hermes_dependencies(

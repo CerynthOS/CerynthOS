@@ -111,6 +111,7 @@ pub enum WorkloadPhase {
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct RuntimeSpec {
+    pub transport: HarnessTransport,
     pub project: String,
     pub parent_id: Option<Uuid>,
     pub task: Option<TaskAssignment>,
@@ -127,6 +128,7 @@ pub struct RuntimeSpec {
 impl Default for RuntimeSpec {
     fn default() -> Self {
         Self {
+            transport: HarnessTransport::CliJsonl,
             project: "default".into(),
             parent_id: None,
             task: None,
@@ -139,6 +141,17 @@ impl Default for RuntimeSpec {
             guard: None,
         }
     }
+}
+
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum HarnessTransport {
+    #[default]
+    CliJsonl,
+    OpenCodeHttp,
+    OpenCodeAcp,
 }
 
 impl RuntimeSpec {
@@ -180,6 +193,8 @@ impl RuntimeSpec {
 #[serde(deny_unknown_fields)]
 pub struct GuardPolicy {
     #[serde(default)]
+    pub native_inference: bool,
+    #[serde(default)]
     pub capabilities: Vec<GuardCapability>,
 }
 
@@ -211,10 +226,15 @@ impl GuardPolicy {
     pub fn validate(&self) -> Result<(), String> {
         if self.capabilities.len() > 32
             || self.capabilities.iter().any(|cap| {
-                !matches!(
+                !(matches!(
                     cap.kind.as_str(),
                     "fs.read" | "fs.write" | "session.spawn" | "tool.exec" | "gpu.use"
-                ) || cap.target.is_empty()
+                ) || (self.native_inference
+                    && matches!(
+                        (cap.kind.as_str(), cap.target.as_str()),
+                        ("inference.use", "cerynth") | ("credential.use", "inference-session")
+                    )))
+                    || cap.target.is_empty()
                     || cap.target.len() > 4096
                     || cap.target.chars().any(char::is_control)
                     || cap
@@ -223,7 +243,7 @@ impl GuardPolicy {
             })
         {
             return Err(
-                "invalid Guard grants; inference/egress/credentials require a reviewed bridge"
+                "invalid Guard grants; native inference requires its explicit supported target and credential"
                     .into(),
             );
         }
@@ -282,7 +302,15 @@ pub struct ProcessIdentity {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
+// Independent process, authorization, workspace and GPU cleanup journals can
+// be pending simultaneously; these are not mutually exclusive lifecycle states.
+#[allow(clippy::struct_excessive_bools)]
 pub struct ExecutionRecord {
+    pub retry: Option<RetryLineage>,
+    pub retry_session_id: Option<Uuid>,
+    pub gpu_job_id: Option<Uuid>,
+    pub gpu_cleanup_pending: bool,
+    pub gpu_authorization: Option<GpuAuthorizationReceipt>,
     pub mode: SessionMode,
     pub process: Option<ProcessIdentity>,
     pub allocation_id: Option<Uuid>,
@@ -297,9 +325,29 @@ pub struct ExecutionRecord {
     pub harness_events: Vec<NormalizedHarnessEvent>,
     pub cleanup_pending: bool,
     pub guard_socket: Option<PathBuf>,
+    pub native_guard_unit: Option<String>,
     pub guard_cleanup_pending: bool,
     pub guard_profile_digest: Option<String>,
     pub workspace_preparing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RetryLineage {
+    pub root_session_id: Uuid,
+    pub previous_session_id: Uuid,
+    /// Three owner-sponsored retries maximum; no automatic process replay.
+    pub attempt: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GpuAuthorizationReceipt {
+    pub request_id: Uuid,
+    pub job_id: Uuid,
+    pub launch_sha256: String,
+    /// Guard's policy-decision label; the runtime separately gates owned launch.
+    pub policy_enforcement: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]

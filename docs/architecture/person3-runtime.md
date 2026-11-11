@@ -56,7 +56,9 @@ credentials, change budgets, or unload models. Revocation cancels queued/client
 requests; an engine may continue computation after disconnect.
 
 OpenCode, Codex and Hermes launch plans bind to the proxy using a narrowly scoped
-token. Current HTTP access requires explicitly enabled host networking. HTTP
+token. Ordinary HTTP access requires explicitly enabled host networking; the
+opt-in native Guard path keeps its grant in a private per-root gateway outside
+the namespace and denies direct host networking. HTTP
 routes preserve messages/tools, enforce bounded stateless inference, and retain
 admission leases until streaming completion, cancellation or deadline. Session,
 ancestor and owner-configured project limits all apply through the coordinator.
@@ -67,6 +69,10 @@ trust domains are rejected on the same backend origin, including endpoint
 aliases and reassignment after revocation. This is conservative routing policy;
 it is not proof that two independently configured remote origins share no
 engine-side cache. Operators remain responsible for actual backend separation.
+An explicitly configured local vLLM native-prefix capability adds opaque per-grant
+salts to both data planes. Actual coordinator requests verified distinct scopes;
+agent-selected salts and unvalidated Responses transport are denied. This does
+not validate LMCache/external KV or SGLang isolation.
 
 ## Process and workspace ownership
 
@@ -75,6 +81,9 @@ process-group identity, boot ID, start tick, allocation ID, and optional scope
 unit. Duplicate operation IDs return existing evidence and do not reexecute;
 changed details under the same ID are rejected. Unknown completion after a
 crash remains unknown; retries do not replay external effects automatically.
+Owner-sponsored retry drafts have atomic predecessor/new-session links, a
+three-retry bound and explicit prior-effect acknowledgement. Unknown operations,
+observed processes and pending cleanup are rejected.
 The launch ledger does not deduplicate arbitrary tools inside an external
 harness; those require Person 2's authoritative tool broker.
 
@@ -84,8 +93,8 @@ home, process/user/IPC/UTS namespaces, and either denied networking or explicitl
 requested host networking. A network-enabled session does not receive domain
 filtering. GPU device nodes are not automatically passed into this profile.
 The optional Guard path uses Person 2's actual profile and seccomp launcher;
-the default Bubblewrap path does not acquire those controls. Credential issuance
-and native-harness inference through Guard remain unfinished integrations.
+the default Bubblewrap path does not acquire those controls. OpenCode roots can
+use the opt-in fixed native inference gateway described below.
 Namespace isolation is not a full security review.
 
 Scopes receive CPUWeight, MemoryHigh, MemoryMax, TasksMax, and control-group kill
@@ -113,6 +122,17 @@ Artifact collection anchors `openat2` at the workspace directory, rejects
 symlink/traversal paths, hashes bounded content, and stores an immutable private
 snapshot. File, diff, test-result, and task-result kinds label evidence; the
 runtime does not infer a passing test from a filename or harness exit code.
+The owner evidence collector computes a diff from immutable snapshots and runs
+explicit assertions in a separate managed session. Its receipt records actual
+process outcome and detects candidate changes by the checker.
+
+Supervised GPU execution binds a cooperative lease to a Guard-authorized launch
+fingerprint. It retains that lease through process/scope cleanup; manual release
+or expiry cannot free capacity while an owned job remains. Guard's advisory
+policy-decision label remains distinct from agentd's enforced launch gate. The
+device profile exposes supported GPU nodes without per-device or VRAM partitioning.
+Placement recommendations use calibrated memory/switch costs and fresh telemetry;
+no engine eviction or physical placement change occurs automatically.
 
 ## Events and recovery
 
@@ -132,7 +152,9 @@ Managed launch payloads arm `setpriv --pdeathsig KILL` before checking the origi
 supervisor PID. A late child cannot begin the payload after daemon death. This
 complements scope recovery rather than replacing process-generation checks.
 This does not provide transparent harness resume, external-action rollback, or
-remote process recovery.
+automatic recovery across network partitions. An optional explicitly invoked SSH
+relay uses a dedicated key and pinned host identity, with no ambient SSH agent,
+forwarding or multiplexing. Only loopback sshd interoperability was tested.
 
 ## Guard integration at a pinned revision
 
@@ -142,7 +164,7 @@ remote process recovery.
 changing its contract. `runtime.guard` explicitly selects Guard; any registration,
 profile or transport failure fails the launch, with no weaker fallback.
 
-The implemented slice supports offline `generic_pty` commands. The runtime
+The offline slice supports `generic_pty` commands. The runtime
 registers the same session/parent UUIDs, requests a launch profile, records its
 digest, and runs its argv in an owned systemd scope. Guard evaluates child
 capability inheritance. Management directories are excluded from filesystem
@@ -151,17 +173,24 @@ before parents. Ambiguous registration/cleanup remains pending and blocks archiv
 `cleanup UUID` retries it. A real pinned-Guard smoke test verifies workspace access,
 host-file/network/approval isolation, seccomp, child-escalation denial and cleanup.
 
-Native inference through Guard is not implemented. The existing gateway strips
-agent authorization headers; passing a coordinator token in ordinary agent
-configuration therefore cannot establish the intended trusted identity. The
-[handoff proposal](guard-inference-handoff.md) specifies the remaining credential
-binding and integration tests. It is a proposal, not a team agreement.
+Opt-in native inference uses a bounded private Guard service per OpenCode root,
+holding only its narrow coordinator grant. It uses the existing pinned protocol,
+strips agent authorization and never exposes provider credentials to the namespace.
+Two-root isolation, cancellation during provisioning and crash cleanup were tested
+against actual Guard. Native child/GPU profiles remain unsupported in this mode.
+The [integration design](guard-inference-handoff.md) records exact limits; a
+working local implementation does not imply team approval.
+
+The separate optional loopback A2A HTTP gateway binds its credential to one
+sponsor and exposes text task drafts/get/cancel plus an Agent Card. Lower-trust
+metadata cannot select authority or initiate arbitrary execution. It is a 0.3
+subset with explicit unsupported features, not a full-conformance claim.
 
 All CLI adapters now implement the same capability-negotiated preparation trait;
 the [adapter decision record](adr-agent-adapter-ownership.md) explains why the
 supervisor owns execution and security rather than duplicating them in plugins.
 
-## Cross-track review requests (P3-010, P3-019, P3-020, P3-021)
+## Cross-track review requests (P3-010, P3-019, P3-021, P3-099)
 
 These are proposed handoffs, not claims of agreement:
 
@@ -172,7 +201,7 @@ These are proposed handoffs, not claims of agreement:
 | Person 4 | Consume versioned events and resource observations | Cursor/gap handling, source/provenance, unavailable metrics, true enforcement labels |
 
 Person 1's shared allocation/pressure API and Person 4's consumer are not present
-in this checkout. Person 2's pinned branch is integrated for the offline slice
-described above; native inference and authoritative tool-effect deduplication
-remain incomplete. No messages were sent to teammates and no review or approval
+in this checkout. Person 2's pinned branch is integrated for the offline and
+bounded native inference slices above; authoritative arbitrary-tool-effect
+deduplication remains incomplete. No messages were sent to teammates and no review or approval
 has been fabricated.

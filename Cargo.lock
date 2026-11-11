@@ -492,6 +492,7 @@ name = "cerynth-agentd"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "cerynth-adapter-cli-harnesses",
  "cerynth-adapter-generic-pty",
  "cerynth-agent-api",

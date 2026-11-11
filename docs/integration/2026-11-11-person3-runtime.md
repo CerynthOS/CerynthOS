@@ -3,7 +3,9 @@
 Date: November 11, 2026. Branch: `feat/person3-agent-runtime`. Upstream main:
 `6a6f0183216eb609e2d0f5acda89b0ec61a41a64`. Measurements were collected on
 November 10–11. This is a development validation report, not public-alpha or
-cross-track acceptance. The weekly plan is unchanged.
+cross-track acceptance. The weekly plan is unchanged. Additional integrations,
+engine experiments and failed task outcomes are detailed in the
+[continuation report](2026-11-11-person3-continuation.md).
 
 ## Implemented runtime
 
@@ -19,13 +21,14 @@ The ordinary launch path uses Bubblewrap plus systemd. The optional Guard path
 integrates Person 2's actual branch revision
 `e592fa47797179ad24a99fc76143be48191a7649` for offline generic commands. Its
 source was built in an ignored detached worktree, without changing or merging
-that branch. Native harness inference through Guard remains unfinished.
+that branch. A subsequent opt-in OpenCode root gateway now binds native model
+traffic to a private per-root grant; see the continuation for exact limits.
 
 ## Automated and actual-host checks
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `cargo test --locked --workspace` | 215 passed, 0 failed, 3 upstream doctest examples ignored | [Automated result](../benchmarks/person3/automated-validation.json) |
+| `cargo test --locked --workspace` | 228 passed, 0 failed, 3 upstream doctest examples ignored | [Automated result](../benchmarks/person3/automated-validation.json) |
 | Strict Clippy, all targets of all eight new packages | Passed with warnings denied | Same automated result; upstream workspace manifest warning remains outside new-package code |
 | Format, generated schemas, shell/Python syntax and staging | Passed; both user units pass `systemd-analyze --user verify` with staged executable paths | Same automated result; no live service installation |
 | Managed namespace/scope and SIGKILL recovery | Host fixture hidden, network denied, effective limits read back; restart empties scope and preserves unknown operation outcome | [Runtime result](../benchmarks/person3/runtime-parent-guard-smoke.json) |
@@ -117,19 +120,18 @@ fixed order and six requests per condition are insufficient for a useful
 contention-performance conclusion. No GPU partition, preemption or VRAM
 enforcement is claimed. MIG is unavailable on this host; MPS was not configured.
 
-The [engine study](../research/cacheweaver-backends.md) documents native prefix
-caches and offloading. vLLM, SGLang and LMCache have not been installed/benchmarked
-in a supported environment. The metadata recommendation policy has tests but
-does not perform engine KV transfers, and no comparison against engine defaults
-has been measured.
+The [engine study](../research/cacheweaver-backends.md) and
+[continuation](2026-11-11-person3-continuation.md) now include actual vLLM/SGLang
+native cache and LMCache CPU transfer experiments, with failures and compatibility
+limits retained. The Cerynth metadata policy still does not actuate engine KV
+transfers; no Cerynth policy performance gain has been demonstrated.
 
 ## Remaining acceptance
 
 The [112-task ledger](../roadmap/person3-tasks.md) is the status source. Outstanding
 work includes Person 1's resource/pressure interface and nested kernel accounting,
-native inference identity through Guard, integrated native API/ACP control,
-authoritative arbitrary-tool effect deduplication, real GPU-job lifecycle,
-advanced engine/cache evaluation, consented mixed cloud workflows, the desktop
+authoritative arbitrary-tool effect deduplication, model-residency actuation,
+broader cache/privacy validation, consented mixed cloud workflows, the desktop
 consumer, and image/release integration. The local prototypes do not substitute
 for team agreement or release review.
 

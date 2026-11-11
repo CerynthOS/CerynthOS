@@ -72,11 +72,27 @@ impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> AcpClient<R, W> {
         params: Value,
         updates: &mut Vec<Value>,
     ) -> Result<Value> {
+        self.call_with_handler(method, params, &mut |update| {
+            ensure!(updates.len() < 256, "ACP update buffer exceeds limit");
+            updates.push(update.clone());
+            Ok(())
+        })
+        .await
+    }
+
+    async fn call_with_handler(
+        &mut self,
+        method: &str,
+        params: Value,
+        handle: &mut (impl FnMut(&Value) -> Result<()> + Send),
+    ) -> Result<Value> {
         self.next_id += 1;
         let id = self.next_id;
         self.send(json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))
             .await?;
         tokio::time::timeout(Duration::from_secs(120), async {
+            let mut update_bytes = 0;
+            let mut update_count = 0;
             loop {
                 let message = self.read().await?;
                 ensure!(message["jsonrpc"] == "2.0", "invalid ACP JSON-RPC version");
@@ -95,11 +111,13 @@ impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> AcpClient<R, W> {
                                 "error":{"code":-32601,"message":"capability not granted by Cerynth"}})).await?;
                         }
                     } else if method == "session/update" {
-                        ensure!(updates.len() < 256, "ACP update buffer exceeds limit");
+                        update_bytes += serde_json::to_vec(&message)?.len();
+                        update_count += 1;
+                        ensure!(update_bytes <= 4 * 1024 * 1024 && update_count <= 4096, "ACP update stream exceeds limit");
                         if let Some(session) = &self.session_id {
                             ensure!(message["params"]["sessionId"] == *session, "ACP update session mismatch");
                         }
-                        updates.push(message["params"].clone());
+                        handle(&message["params"])?;
                     }
                 }
             }
@@ -198,6 +216,30 @@ impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> AcpClient<R, W> {
             )
             .await?;
         Ok((result, updates))
+    }
+
+    /// Stream bounded updates as they arrive without retaining the full turn.
+    /// # Errors
+    /// Returns an error for invalid input, peer failure, or a rejected update.
+    pub async fn prompt_streaming(
+        &mut self,
+        text: &str,
+        handle: &mut (impl FnMut(&Value) -> Result<()> + Send),
+    ) -> Result<Value> {
+        let id = self
+            .session_id
+            .clone()
+            .context("ACP session is not initialized")?;
+        ensure!(
+            !text.is_empty() && text.len() <= 32768,
+            "invalid ACP prompt"
+        );
+        self.call_with_handler(
+            "session/prompt",
+            json!({"sessionId":id,"prompt":[{"type":"text","text":text}]}),
+            handle,
+        )
+        .await
     }
 
     /// # Errors

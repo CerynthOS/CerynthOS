@@ -133,6 +133,7 @@ fn checkout_plan(
     helper.id = Uuid::new_v4();
     helper.spec.workspace = path.into();
     helper.spec.harness = HarnessKind::GenericPty;
+    helper.spec.runtime.transport = cerynth_agent_api::HarnessTransport::CliJsonl;
     helper.execution.worktree = None;
     helper.spec.runtime.isolation = IsolationPolicy::Required;
     helper.spec.runtime.require_cgroup = true;

@@ -77,11 +77,13 @@ async fn authorize(
     if model.is_some_and(|model| !grant.spec.allowed_models.contains(model)) {
         return Err(reject(StatusCode::FORBIDDEN, "model is not authorized"));
     }
-    Ok((
-        grant.spec.clone(),
-        state.endpoints[&grant.spec.endpoint_id].1.clone(),
-        grant.revoked.subscribe(),
-    ))
+    let backend = match state.endpoints[&grant.spec.endpoint_id].1.clone() {
+        Backend::Compatible(client) => Backend::Compatible(
+            client.for_cache_scope(format!("{:x}", Sha256::digest(grant.token_hash))),
+        ),
+        backend @ Backend::Ollama(_) => backend,
+    };
+    Ok((grant.spec.clone(), backend, grant.revoked.subscribe()))
 }
 
 async fn forward(

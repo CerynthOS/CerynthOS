@@ -76,6 +76,10 @@
           "items": {
             "$ref": "#/definitions/GuardCapability"
           }
+        },
+        "native_inference": {
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -100,6 +104,14 @@
             "inference_probe"
           ]
         }
+      ]
+    },
+    "HarnessTransport": {
+      "type": "string",
+      "enum": [
+        "cli_jsonl",
+        "open_code_http",
+        "open_code_acp"
       ]
     },
     "IsolationPolicy": {
@@ -205,6 +217,30 @@
               "type": "string",
               "enum": [
                 "create"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "acknowledge_prior_effects",
+            "id",
+            "type"
+          ],
+          "properties": {
+            "acknowledge_prior_effects": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "retry"
               ]
             }
           },
@@ -816,6 +852,40 @@
           "required": [
             "id",
             "job_id",
+            "launch",
+            "operation_id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "job_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "launch": {
+              "$ref": "#/definitions/LaunchRequest"
+            },
+            "operation_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gpu_run"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "job_id",
             "succeeded",
             "type"
           ],
@@ -1099,6 +1169,14 @@
               "type": "null"
             }
           ]
+        },
+        "transport": {
+          "default": "cli_jsonl",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HarnessTransport"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -1141,7 +1219,8 @@
             "parent_id": null,
             "project": "default",
             "require_cgroup": true,
-            "task": null
+            "task": null,
+            "transport": "cli_jsonl"
           },
           "allOf": [
             {

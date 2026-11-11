@@ -1,0 +1,37 @@
+{
+  "source_artifact": "cross-harness-runtime-smoke-diagnostic.json",
+  "source_sha256": "54fbb9f4313191566a9e0c6713202779562e5568c6e37cad7f5bd33517b3e5f5",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-local-cross-harness-delegation-experiment",
+    "model": "qwen2.5:3b",
+    "trials": [
+      {
+        "harness": "open_code",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": true,
+        "tool_events": 3,
+        "isolated_worktree": true
+      },
+      {
+        "harness": "hermes",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": false,
+        "tool_events": 2,
+        "isolated_worktree": true
+      }
+    ],
+    "both_harness_tasks_verified": false,
+    "parent_child_graph_verified": true,
+    "shared_inference_global_concurrency": 1,
+    "source_repository_unchanged": true,
+    "grants_and_processes_cleaned": true,
+    "routing": "explicit owner role-to-harness assignment; no autonomous capability expansion",
+    "network": "explicit host networking; no network-isolation claim",
+    "cloud_requests": 0
+  }
+}

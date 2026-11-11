@@ -32,6 +32,52 @@ fn session(kind: HarnessKind) -> Session {
 }
 
 #[tokio::test]
+async fn protocol_plans_keep_native_server_in_the_supervised_launch_and_prompt_off_argv() {
+    use cerynth_adapter_cli_harnesses::protocol::OpenCodeProtocolAdapter;
+    use cerynth_agent_api::HarnessTransport;
+    for transport in [
+        HarnessTransport::OpenCodeHttp,
+        HarnessTransport::OpenCodeAcp,
+    ] {
+        let adapter = OpenCodeProtocolAdapter {
+            native_program: "/usr/bin/opencode".into(),
+            bridge_program: "/usr/lib/cerynth/cerynth-harness-bridge".into(),
+            transport,
+        };
+        let mut session = session(HarnessKind::OpenCode);
+        session.spec.runtime.transport = transport;
+        let launch = adapter
+            .prepare_launch(
+                &session,
+                AdapterInput::Prompt("private-protocol-prompt".into()),
+            )
+            .await
+            .unwrap();
+        assert_eq!(launch.program, adapter.bridge_program);
+        assert_eq!(launch.args[1], "/usr/bin/opencode");
+        assert_eq!(launch.args[2], "org/model:quant");
+        assert!(
+            launch
+                .args
+                .iter()
+                .all(|a| !a.contains("private-protocol-prompt"))
+        );
+        assert_eq!(
+            launch.initial_input.as_deref(),
+            Some("private-protocol-prompt")
+        );
+        session.spec.harness = HarnessKind::Hermes;
+        assert!(session.spec.validate().is_err());
+        assert!(
+            adapter
+                .prepare_launch(&session, AdapterInput::Prompt("fixture".into()))
+                .await
+                .is_err()
+        );
+    }
+}
+
+#[tokio::test]
 async fn native_adapters_do_not_place_prompts_in_argv_or_advertise_unsupported_control() {
     for kind in [
         HarnessKind::OpenCode,

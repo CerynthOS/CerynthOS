@@ -16,10 +16,11 @@ scripts/check-agent-contracts.sh
 Use Linux with `/proc`, cgroups v2, a working systemd user manager, and Bubblewrap
 at `/usr/bin/bwrap`, Git, and util-linux `setpriv` with `--pdeathsig` support.
 Build/install `cerynth-worktree-checkout` beside `cerynth-agentd`; Cargo builds both
-service binaries by default. A GPU is optional. The default namespace profile denies
-network access. A session using a localhost inference server currently needs
-explicit `network: host`; this grants host networking, including external
-destinations, and is not domain-restricted networking.
+service binaries by default, including `cerynth-harness-bridge`. A GPU is optional.
+The default namespace profile denies network access. Ordinary native launches need
+explicit `network: host` for localhost inference; that includes external destinations.
+The opt-in native Guard mode below provides a fixed inference gateway while
+keeping the agent's host networking denied.
 
 Install a supported harness separately. Tested development versions are OpenCode
 1.19.5, Hermes 0.23.1, Codex 0.167.0, and Ollama 0.35.0. Claude Code 2.1.312
@@ -30,7 +31,13 @@ Owner environment overrides select absolute executable paths:
 `CERYNTH_OPENCODE_BINARY`, `CERYNTH_HERMES_BINARY`, `CERYNTH_CODEX_BINARY`,
 `CERYNTH_CLAUDE_BINARY`. Hermes needs a pinned source installation with its `.venv`;
 `CERYNTH_HERMES_INSTALL` optionally selects that tree. It is mounted read-only.
-No harness or model is downloaded by the supervisor.
+No harness or model is downloaded by the supervisor. `runtime.transport` defaults
+to `cli_jsonl`. OpenCode additionally supports `open_code_http` and
+`open_code_acp`, using the adjacent bridge binary. HTTP owns a password-protected
+loopback OpenCode server and collects tool/history events after the turn. ACP
+streams v1 updates, advertises no host filesystem/terminal/MCP capabilities, and
+denies ungranted client operations. These transports do not advertise native
+pause/resume or automatic subagent mapping.
 
 ## Start local inference and the services
 
@@ -144,6 +151,15 @@ explicitly. Child budgets and grants cannot exceed their parent. Parent exit
 cancels descendants. Message sharing requires a separate owner authorization.
 Creating a child does not automatically start its harness.
 
+Owner operation `{"type":"retry","id":"SESSION_UUID","acknowledge_prior_effects":true}`
+creates an unstarted retry session with the original specification and durable
+lineage. It permits three retries, only for failed/cancelled owned sessions with
+known operation outcomes and complete cleanup. Repeating the request returns the
+same new UUID, including after restart. Unknown outcomes and observed processes
+are rejected. This does not repeat tools or undo prior effects; the owner must
+inspect the old work before explicitly launching the new attempt. Prepare a new
+worktree when needed; a previous worktree is not silently reused.
+
 Use `worktree UUID` before launch for a separate Git workspace. Registration
 disables hooks/fsmonitor/fetching; a separately sandboxed checkout helper disables
 clean/smudge/process filters, denies networking and limits writable Git metadata
@@ -155,6 +171,14 @@ Git operations needing the original repository's private
 metadata may fail inside the isolated profile; do not expose the whole host
 checkout as a workaround. Artifacts are bounded, hashed snapshots opened beneath
 the workspace without symlinks. Artifact labels do not prove tests passed.
+
+`tools/collect_task_evidence.py` accepts a terminal managed session, one relative
+candidate path, an explicit owner baseline and an owner-selected test LaunchRequest.
+It snapshots the child output/candidate, computes a text diff without running Git
+hooks or filters, and runs the checker in a fresh network-denied managed session.
+The test receipt records the actual exit, launch fingerprint, boundary, source
+task/parent and whether the checker changed the candidate. Passing means only
+that the owner's specified assertions exited zero; failed results are retained.
 
 Archive a terminal session only after cleanup completes:
 
@@ -195,8 +219,19 @@ the session. The runtime records the Guard profile digest and labels the actual
 boundary `guard_systemd`. Registration, launch and cleanup failures never fall
 back to the ordinary profile. Child authority is checked by Guard as well as local
 budget validation; authorizations end only after process cleanup, children first.
-Native harness inference, egress grants and credential issuance through Guard
-remain unsupported. See the [handoff proposal](../architecture/guard-inference-handoff.md).
+OpenCode roots can opt into a private native inference gateway, without changing
+Person 2's pinned protocol. Set `native_inference: true`, a model `endpoint_id`,
+`network: deny`, and `budget.max_subagents: 0`. Explicitly allow `inference.use`
+target `cerynth` and `credential.use` target `inference-session`, in addition to
+workspace grants and any required read-only native-binary directory. Set owner
+overrides `CERYNTH_GUARDD_BINARY` and `CERYNTH_GUARD_EXEC_BINARY` if the pinned
+binaries are not beside agentd. The runtime starts at most two bounded gateways,
+each holding only its root's revocable grant outside the namespace. Provider
+credentials remain in the inference service. A regular-file Landlock grant can
+produce a partial profile on this pinned Guard; grant only the intended dedicated
+binary directory, or let Guard fail closed. Do not enable partial Landlock.
+Native delegation and GPU grants are unsupported in this mode. See the
+[integration design and limits](../architecture/guard-inference-handoff.md).
 
 ## Model and GPU control
 
@@ -233,12 +268,60 @@ fallback. Backend origin bindings cannot be reassigned to a different trust
 domain across revocation/restart. Use genuinely isolated engines for distinct
 trust domains; URL differences alone do not prove cache isolation.
 
+A local compatible endpoint may explicitly select
+`"cache_isolation":"vllm_per_grant_salt"`. For vLLM 0.25.0 native prefix caching,
+the coordinator then injects a private salt derived from the authenticated grant
+on both data planes. Agents cannot supply their own salt. Credential rotation
+also rotates the cache scope. Responses transport is rejected in this mode;
+only chat was validated. Origin/trust-domain restrictions remain in force.
+This is an owner-declared, backend-specific capability, not automatic detection.
+Do not select it for Ollama, SGLang, LMCache/external KV connectors or an unverified
+server: their cache keys were not validated by this integration.
+
 `cerynth-hardware` reports CPU, RAM, driver and GPU observations. GPU admission
-reserves a desktop margin and tracks cooperative reservations. It does not
-launch arbitrary CUDA jobs, preempt them, checkpoint them, or enforce generic
-VRAM limits. MIG/MPS partitioning is not implemented. Unavailable metrics remain
-null. CacheWeaver currently produces experimental metadata-based recommendations;
-it does not control engine KV offload.
+reserves a desktop margin and tracks cooperative reservations. `gpu_run` launches
+an admitted job only under an owned generic Guard session with `gpu.execute`, an
+adequate cooperative budget and explicit `gpu.use: *`. Guard's existing GPU
+profile exposes all supported device nodes, so it is not per-device partitioning.
+Some CUDA jobs require an explicit read grant for `/sys`. Plain `start` cannot
+bypass the admitted-job gate. `gpu_run` fixes job/operation IDs and the launch
+fingerprint, records Guard's decision, and retains the lease until verified scope
+cleanup. A supervised lease cannot expire or be manually freed while its process
+remains. Person 2 labels this non-Git policy decision advisory; agentd separately
+enforces the launch gate and preserves both facts in the receipt. Memory remains
+a cooperative reservation. Preemption, checkpointing, hard VRAM limits and
+MIG/MPS partitions are not implemented.
+
+Owner inference operation `plan_placement` compares fresh device observations,
+protected/active residents, calibrated allocation sizes and measured switching
+samples. It returns advisory choices and cost ranges; stale/unknown or unauthorized
+targets are queued/rejected rather than guessed. It never evicts or moves a model.
+CacheWeaver also remains a recommendation policy; experimental LMCache transfers
+were performed by the engine, not by a new Cerynth KV implementation.
+
+## A2A and optional remote prototype
+
+`agentd a2a-gateway --sponsor UUID --listen 127.0.0.1:PORT --credential-file /private/path/token`
+starts a loopback A2A 0.3 JSON-RPC subset bound to a live sponsor with
+`task.delegate`. The new 0600 credential file is removed on graceful shutdown.
+Its parent must be inside the private agentd control directory, outside workspaces.
+The Agent Card is at `/.well-known/agent-card.json`; authenticated requests use
+`/a2a`. Only text `message/send`, `tasks/get` and `tasks/cancel` are supported.
+Message IDs deduplicate immutable task details. Caller metadata cannot choose
+capabilities, sponsor, credentials or budgets. Submitted tasks are drafts; the
+owner starts execution separately. Streaming, push, file contents and full A2A
+conformance are not advertised. A killed gateway leaves a stale credential file;
+the owner must remove it before an explicit restart, which rotates the token.
+
+`agentd remote CONFIG.json REQUEST.json` sends one versioned request through SSH
+to the fixed `agentd relay` entry point. Configuration requires explicit remote
+consent, a numeric host, dedicated private key, pinned known-hosts file, remote
+binary and private state paths. Ambient SSH config/agent authentication,
+forwarding and connection multiplexing are disabled. The relay calls the remote
+owner socket; this is a powerful owner credential, not an agent capability.
+Only an ephemeral-key loopback sshd was tested, not a physical second machine.
+Transport failure can leave an unknown remote outcome; query the durable operation
+ID before retrying. There is no network-partition rollback or remote kill guarantee.
 
 ## Packaging and verification
 
@@ -258,6 +341,11 @@ or working systemd user scopes. Opt-in host checks:
 ```bash
 python3 tools/agent_runtime_smoke.py
 python3 tools/worktree_runtime_smoke.py
+python3 tools/native_guard_runtime_smoke.py
+python3 tools/gpu_runtime_smoke.py
+python3 tools/task_evidence_runtime_smoke.py
+python3 tools/a2a_runtime_smoke.py
+python3 tools/remote_runtime_smoke.py
 python3 tools/agent_runtime_stress.py --cycles 100
 python3 tools/guard_runtime_smoke.py
 python3 tools/inference_runtime_smoke.py --model qwen3:0.6b

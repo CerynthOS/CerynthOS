@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub mod admission;
 pub mod cache;
 pub mod compatible;
+pub mod placement;
 pub mod registry;
 
 /// Canonical backend origin used to reject aliases that bypass tenancy policy.

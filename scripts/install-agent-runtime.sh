@@ -20,7 +20,7 @@ if [[ "$profile" != debug && "$profile" != release ]]; then
     echo "Profile must be debug or release." >&2
     exit 2
 fi
-for binary in cerynth-agentd cerynth-worktree-checkout cerynth-inferenced cerynth-hardware; do
+for binary in cerynth-agentd cerynth-worktree-checkout cerynth-harness-bridge cerynth-inferenced cerynth-hardware; do
     source_binary="$repo_root/target/$profile/$binary"
     if [[ ! -x "$source_binary" ]]; then
         echo "Missing $source_binary; build the runtime first." >&2

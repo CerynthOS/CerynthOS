@@ -10,7 +10,7 @@ identifies concrete missing behavior or validation. **Pending** has no completed
 acceptance result. No teammate agreement, cloud execution, hard GPU partitioning,
 or unperformed benchmark is inferred from a type, placeholder, or process exit.
 
-Current audit: **75 implemented, 27 partial, 10 pending**.
+Current audit: **87 implemented, 20 partial, 5 pending**.
 These are task-scope labels, not production-readiness percentages.
 
 Evidence references:
@@ -52,7 +52,7 @@ Evidence references:
 | P3-017 | Real local inference endpoint | Implemented | Ollama native streaming and authenticated compatible proxy exercised. |
 | P3-018 | Process trees, exits and failures | Implemented | Boot/PID-generation identity, descendants, exit codes, deadlines and failure reasons. |
 | P3-019 | Connect Person 1 resource API | Partial | Real systemd limits verified; Person 1's per-agent allocation API is absent from this checkout. |
-| P3-020 | Connect Person 2 sandbox/authorization API | Partial | Actual pinned Person 2 Guard profiles, inheritance and cleanup exercised for offline generic commands; native inference identity bridge and authoritative tool mediation remain incomplete. |
+| P3-020 | Connect Person 2 sandbox/authorization API | Implemented | Pinned real Guard sandbox/authorization, offline inheritance and opt-in per-root native inference identity bridge exercised. Model coding failures retained; native delegation/tool-effect dedup remain separately limited. |
 | P3-021 | Publish structured events for Person 4 | Partial | Cursor-based events and provenance implemented; desktop consumer agreement/integration pending. |
 | P3-022 | Startup/termination/cleanup/crash tests | Implemented | SIGKILL/restart, orphan cleanup, parent exit, timeout, PTY and shutdown regressions. |
 
@@ -60,7 +60,7 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-023 | OpenCode supported-API adapter | Partial | CLI integration works; separate HTTP session client exists but is not wired to daemon integrated-session control. |
+| P3-023 | OpenCode supported-API adapter | Implemented | Owned password-protected OpenCode HTTP server wired to create/prompt/abort/history with intermediate tool normalization; actual managed API coding smoke and contract tests. |
 | P3-024 | Hermes adapter | Implemented | Pinned 0.23.1 launches with private home/read-only dependencies, structured tools and brokered local inference; small-model coding failures recorded. |
 | P3-025 | Codex or Claude Code adapter | Implemented | Codex 0.167.0 local execution recipe exercised; Claude recipe detected but authenticated cloud workflow unverified. |
 | P3-026 | Installation and runtime-version detection | Implemented | Owner-selected executable resolution and bounded version probes. |
@@ -70,7 +70,7 @@ Evidence references:
 | P3-030 | Honest cancellation/resumption support | Implemented | Owned-process cancel supported; native resume not advertised; ACP load only when negotiated. |
 | P3-031 | Discover existing sessions | Implemented | Configured authenticated OpenCode API discovery live-tested; same-owner PID observation; no automatic import or sandbox/control claim. Other native discovery is unsupported. |
 | P3-032 | Managed/integrated/observed modes | Implemented | Boundary evidence persisted; observed processes never killed or falsely sandbox-labelled. |
-| P3-033 | ACP-compatible agents | Partial | Negotiated v1 client and permission-denial contract test; daemon ACP execution recipe and real ACP harness acceptance pending. |
+| P3-033 | ACP-compatible agents | Implemented | Supervised OpenCode ACP v1 execution, streamed updates, capability negotiation and denied host operations; real pinned harness exercised, no universal ACP/native-resume guarantee. |
 | P3-034 | Adapter contract tests/unsupported features | Implemented | Shared CLI/PTY adapter contract tests, event fixtures, ACP negotiation/denial tests and explicit unsupported-feature matrix. Live provider/version validation remains separately limited. |
 
 ## Phase 3 — Multi-agent orchestration
@@ -85,8 +85,8 @@ Evidence references:
 | P3-040 | Messaging and structured results | Implemented | Explicit sharing authorization, scoped bounded messages and task-result artifacts. |
 | P3-041 | Graphs/dependencies | Implemented | Delegation/dependency edges; unresolved dependencies block launch. |
 | P3-042 | Git worktrees/workspace mapping | Implemented | Retained per-agent branch/worktree; hooks disabled, filters disabled in network-denied scoped checkout; durable preparation journal and real hostile-hook/filter smoke test. |
-| P3-043 | Child artifacts/diffs/outputs/tests | Partial | Immutable generic snapshots and labels; automatic diff/test extraction and verified result attachment pending. |
-| P3-044 | Cancellation/deadlines/bounded retries | Partial | Recursive cancellation/deadlines implemented; automatic safe bounded retry policy not implemented. |
+| P3-043 | Child artifacts/diffs/outputs/tests | Implemented | Owner collector snapshots child candidate/output, creates immutable diff and test receipts, runs an independent managed checker and detects mutation/symlinks; passing/failed checks tested. Assertions are explicitly owner-selected, not general correctness proof. |
+| P3-044 | Cancellation/deadlines/bounded retries | Implemented | Recursive cancellation/deadlines plus three bounded owner-sponsored retries with atomic UUID links, complete-cleanup/known-outcome checks and restart deduplication. No automatic tool replay. |
 | P3-045 | Prevent duplicate external effects | Partial | Durable launch-operation deduplication survives archive/crash; arbitrary external harness tools require authoritative broker operation IDs. |
 | P3-046 | Concurrent agents/termination/workspace tests | Implemented | Real parent-child termination and active-workspace conflict regression tests. |
 
@@ -122,8 +122,8 @@ Evidence references:
 | P3-067 | Distinguish enforcement levels | Implemented | Monitoring/cooperative labels; no unsupported hard GPU guarantee. |
 | P3-068 | Cooperative VRAM accounting | Implemented | Reservation release/expiration and session budget validation. |
 | P3-069 | Desktop GPU capacity | Implemented | Default 1 GiB admission safety margin; cannot constrain bypassing processes. |
-| P3-070 | GPU lifecycle/cleanup/timeouts/failure | Partial | Reservation lifecycle exists; supervised arbitrary GPU-job execution and process cleanup are not integrated. |
-| P3-071 | GPU authorization | Partial | Owner-granted gpu.execute + session budget checks; Person 2 action authorization missing. |
+| P3-070 | GPU lifecycle/cleanup/timeouts/failure | Implemented | Actual Guard/systemd CUDA job execution; immutable job/operation binding, timeout/cleanup and retained lease until verified scope emptiness. Manual mid-process release denied. |
+| P3-071 | GPU authorization | Implemented | Actual Guard GPU allow/deny decision bound to job and launch hash, plus authoritative agentd launch gate. Guard decision label remains advisory; no hard VRAM claim. |
 | P3-072 | GPU UI allocations/queue | Partial | Owner API exposes reservations and observations; Person 4 consumer not integrated. |
 | P3-073 | CUDA/Python versus local inference | Implemented | Bounded real CUDA bandwidth fixture overlaps real Ollama requests; smoke experiment, no hard-isolation/performance claim. |
 | P3-074 | Evaluate MIG/MPS where available | Partial | MIG reports N/A on this host; MPS not configured/tested; no enforced partition implementation. |
@@ -133,15 +133,15 @@ Evidence references:
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
 | P3-075 | Loading/context-recompute baseline | Implemented | Real cold load, three fresh/repeated pairs at each of three prefix sizes, and six model switches; full engine counters retained without claiming verified cache hits. |
-| P3-076 | Evaluate vLLM/SGLang | Pending | Neither engine is installed or benchmarked in a supported environment. |
+| P3-076 | Evaluate vLLM/SGLang | Implemented | Pinned Python 3.12 environments ran vLLM 0.25.0 and SGLang 0.5.16 on this GPU, matched checkpoint/native prefix enabled-disabled trials, real hit counters, failures and cleanup retained. |
 | P3-077 | Research native KV/prefix caching | Implemented | Primary-source engine study covers vLLM, SGLang and LMCache prefix/KV/offload controls, trust boundaries and version-specific limitations; no invented engine API. |
-| P3-078 | Evaluate LMCache offload/reuse | Pending | No LMCache engine experiment or measured offload behavior. |
+| P3-078 | Evaluate LMCache offload/reuse | Implemented | LMCache 0.5.6 external connector performed bounded CPU offload and three 256-token restores with native prefix caching disabled. Native wheel ABI mismatch/fallback and transfer overhead are documented; not production qualification. |
 | P3-079 | Session residency/cache-hit data | Implemented | Session-correlated before/after typed model residency and native reported cache-token dataset retained in harness-trials.json; lower-trust counters labelled, not independently verified hits. |
 | P3-080 | Retain/evict/offload/recompute policy | Implemented | Metadata policy compares costs, protects active/interactive entries and requires actual offload capability. |
 | P3-081 | Experimental session-aware cache policy | Implemented | Deterministic recommendation policy and tests; it does not execute KV transfers. |
-| P3-082 | Prevent cross-tenant cache leakage | Partial | Conservative origin/trust-domain routing and tests; full backend cache isolation/adversarial verification missing. |
-| P3-083 | Placement/switching-cost estimates | Partial | Cost metadata used by recommendations; measured device placement planner missing. |
-| P3-084 | Compare engine defaults | Pending | No controlled vLLM/SGLang/cache-policy comparison. |
+| P3-082 | Prevent cross-tenant cache leakage | Partial | Conservative origin/domain routing plus actual coordinator-derived per-grant vLLM native-prefix salt miss/hit isolation and forgery/revocation tests. LMCache/SGLang caches and wider authorization/timing leakage remain unverified. |
+| P3-083 | Placement/switching-cost estimates | Implemented | Owner-only advisory placement planner uses fresh device telemetry, authorization, calibrated resident memory and actual switching samples; protects active models and retains outliers. It does not actuate placement. |
+| P3-084 | Compare engine defaults | Partial | Measured latency, short-output completion rate and memory against native prefix enabled/disabled and LMCache CPU offload. No actuated Cerynth session-aware policy versus engine-default comparison. |
 | P3-085 | Consented local/cloud routing evaluation | Partial | Explicit consent enforced; authorized live cloud routing experiment not run. |
 | P3-086 | Publish benchmark/regressions | Implemented | Sanitized numerical samples, cold outliers, CUDA smoke limits, failed coding trials and the validation report are retained in docs/benchmarks/person3; advanced engine comparison remains P3-084. |
 
@@ -157,9 +157,9 @@ Evidence references:
 | P3-092 | Prevent self-authorized higher limits | Implemented | Root grants restricted to owner plane; child subsets and immutable inference grants checked. |
 | P3-093 | Workload phase reports | Implemented | Inference/tool/compile/idle/approval-wait plus cleanup fields; no CPU heuristic pretends semantic certainty. |
 | P3-094 | Person 1 pressure to admission | Pending | Resource pressure stream/contract unavailable in checkout. |
-| P3-095 | Cross-harness routing experiments | Pending | No verified heterogeneous delegated coding workflow. |
-| P3-096 | Supervised A2A gateway | Partial | Owner-sponsored JSON-RPC task subset; no public transport, Agent Card or full protocol-conformance acceptance. |
-| P3-097 | Optional remote execution prototype | Pending | No remote launch/authentication/recovery prototype; local boundaries are not reused as remote guarantees. |
+| P3-095 | Cross-harness routing experiments | Partial | Real OpenCode/Hermes parent-child routing, separate worktrees, shared authenticated queue and fixture hashes exercised. Small-model tool failures mean no verified successful heterogeneous workflow yet. |
+| P3-096 | Supervised A2A gateway | Implemented | Explicit loopback A2A 0.3 HTTP subset with Agent Card, private sponsor-bound credential, text drafts/get/cancel and immutable message dedup. Actual auth/scope/substitution tests; no automatic execution/full conformance claim. |
+| P3-097 | Optional remote execution prototype | Implemented | Opt-in SSH relay with dedicated key, pinned host identity, explicit consent and disabled ambient auth/forwarding; actual rootless loopback sshd launch/replay/cancel cleanup test. No physical second-machine/partition rollback claim. |
 | P3-098 | Fairness/responsiveness tests | Partial | Hierarchical queue tests and responsive owner IPC; full desktop-under-contention benchmark pending. |
 
 ## Phase 8 — Reliability, packaging and alpha
@@ -181,8 +181,9 @@ Evidence references:
 | P3-111 | Publish inference/GPU support matrices | Implemented | Explicit backend, protocol, hardware and enforcement support in research/runtime docs. |
 | P3-112 | Release integration/regression review | Pending | Automated/local checks completed; cross-track release review and alpha acceptance remain outstanding. |
 
-Outstanding work is driven by the explicit acceptance conditions above, not by
-checking every box after scaffolding. The next integration needs Person 1's resource API, the native inference/Guard
-identity bridge and Person 4's event consumer; the research track needs supported
-engine environments and repeated controlled experiments. Authenticated cloud
-work requires an approved provider/account configuration and privacy decision.
+Outstanding work follows the acceptance conditions above. The next shared integration
+needs Person 1's allocation/pressure API and nested accounting, Person 4's event
+consumer, reviewed shared contracts and image/release acceptance. Remaining P3
+engineering includes model-residency actuation, broader cache/privacy validation,
+global reduced-grant resource policy and reliable heterogeneous task completion.
+Cloud acceptance still needs an explicitly authorized provider/account/endpoint.
