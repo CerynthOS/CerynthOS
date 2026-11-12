@@ -128,9 +128,18 @@ impl CliHarnessAdapter {
             ),
             _ => return Err(Unsupported("unsupported native CLI harness")),
         };
+        let mut args: Vec<String> = args.into_iter().map(str::to_owned).collect();
+        if session.spec.runtime.hermes_terminal_profile {
+            // The managed profile is the only visible config. Rules are bypassed;
+            // the read-only profile enables no added plugins, MCP or hooks.
+            if let Some(flag) = args.iter_mut().find(|arg| arg.as_str() == "--safe-mode") {
+                *flag = "--ignore-rules".into();
+            }
+            args.extend(["--toolsets".into(), "terminal".into()]);
+        }
         Ok(LaunchRequest {
             program: self.program.clone(),
-            args: args.into_iter().map(str::to_owned).collect(),
+            args,
             initial_input: Some(input),
             pty: false,
         })

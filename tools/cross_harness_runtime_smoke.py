@@ -26,7 +26,11 @@ def main():
     parser.add_argument("--agentd",default="target/debug/cerynth-agentd")
     parser.add_argument("--inferenced",default="target/debug/cerynth-inferenced")
     parser.add_argument("--model",default="qwen2.5:3b")
+    parser.add_argument("--models-directory",help="Explicitly start an owned local Ollama using existing models")
+    parser.add_argument("--require-success",action="store_true",help="Fail acceptance if either independently checked artifact is missing")
+    parser.add_argument("--simple-copy",action="store_true",help="Use cp for the public copy task; retain native shell approval decisions")
     parser.add_argument("--hermes-call-hint",action="store_true",help="Explicit fixture condition: show the pinned Hermes batch-call shape to the small local model")
+    parser.add_argument("--hermes-terminal-profile",action="store_true",help="Owner selects the official eager terminal tool profile for Hermes")
     parser.add_argument("--output",default="artifacts/person3/cross-harness-runtime-smoke.json")
     args=parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="cerynth-cross-harness-") as temporary:
@@ -46,7 +50,11 @@ def main():
             deadline=time.monotonic()+8
             while not (inference/"control.sock").exists():
                 assert coordinator.poll() is None and time.monotonic()<deadline;time.sleep(.02)
-            inference_rpc(inference,True,{"type":"configure","endpoint":{"kind":"ollama","id":"local","url":"http://127.0.0.1:11434"}})
+            if args.models_directory:
+                inference_rpc(inference,True,{"type":"start_backend","spec":{"id":"local","binary":"/usr/local/bin/ollama",
+                    "models_directory":str(Path(args.models_directory).resolve()),"endpoint":"http://127.0.0.1:11434","context_length":16384,"parallel_requests":1}})
+            else:
+                inference_rpc(inference,True,{"type":"configure","endpoint":{"kind":"ollama","id":"local","url":"http://127.0.0.1:11434"}})
             environment={**os.environ,"CERYNTH_INFERENCE_DIR":str(inference),"CERYNTH_INFERENCE_HTTP":f"http://127.0.0.1:{port}"}
             daemon=subprocess.Popen([str(Path(args.agentd).resolve()),"--directory",str(state),"serve"],
                 env=environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -61,7 +69,7 @@ def main():
             for harness in ["open_code","hermes"]:
                 child=rpc(state,{"type":"delegate","parent":parent["id"],"spec":{"name":"routed-"+harness,"harness":harness,
                     "workspace":str(repository),"model":{"name":args.model,"endpoint_id":"local","disable_thinking":True},
-                    "runtime":{"network":"host","budget":{"timeout_seconds":120,"max_subagents":0}}},
+                    "runtime":{"network":"host","hermes_terminal_profile":harness=="hermes" and args.hermes_terminal_profile,"budget":{"timeout_seconds":120,"max_subagents":0}}},
                     "task":{"id":str(uuid.uuid4()),"objective":"Copy the public fixture using a real tool",
                         "completion_criteria":"result.txt bytes match immutable public fixture","expected_output":"result.txt","dependencies":[]}})
                 worktree=Path(rpc(state,{"type":"worktree","id":child["id"]})["path"])
@@ -70,8 +78,9 @@ def main():
                 "program":"/usr/bin/sleep","args":["170"],"initial_input":None,"pty":False}})
             def execute(route):
                 harness,child,workspace=route
+                command="/usr/bin/cp -- facts.txt result.txt" if args.simple_copy else "/usr/bin/python3 -c \"from pathlib import Path; Path('result.txt').write_text(Path('facts.txt').read_text())\""
                 task=(f"Your workspace is {workspace}. Use the terminal/bash tool to execute this exact command once: "
-                    "/usr/bin/python3 -c \"from pathlib import Path; Path('result.txt').write_text(Path('facts.txt').read_text())\". "
+                    +command+". "
                     "This is a local fixture, not a network task. Do not modify facts.txt. Execute the command using your tool, then report done.")
                 if harness=="hermes" and args.hermes_call_hint:
                     task += " Hermes tool_call expects this argument structure: " + json.dumps({"calls":[{"name":"terminal","arguments":{
@@ -99,10 +108,13 @@ def main():
                 "shared_inference_global_concurrency":1,"source_repository_unchanged":True,"grants_and_processes_cleaned":True,
                 "routing":"explicit owner role-to-harness assignment; no autonomous capability expansion",
                 "hermes_call_hint":args.hermes_call_hint,
+                "hermes_terminal_profile":args.hermes_terminal_profile,
+                "simple_copy":args.simple_copy,
                 "network":"explicit host networking; no network-isolation claim","cloud_requests":0,
                 "metrics":inference_rpc(inference,True,{"type":"metrics"})}
             destination=Path(args.output);destination.parent.mkdir(parents=True,exist_ok=True)
             destination.write_text(json.dumps(report,indent=2)+"\n");print(json.dumps({"both_harness_tasks_verified":report["both_harness_tasks_verified"],"trials":trials},indent=2))
+            if args.require_success:assert report["both_harness_tasks_verified"],"one or more real harness artifacts failed independent verification"
         finally:
             if daemon is not None:stop_process(daemon)
             stop_process(coordinator)

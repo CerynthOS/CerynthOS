@@ -534,6 +534,7 @@ dependencies = [
  "axum",
  "cerynth-agent-api",
  "cerynth-model-api",
+ "cerynth-resources",
  "clap",
  "fs2",
  "futures-util",
@@ -585,8 +586,11 @@ name = "cerynth-resources"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cerynth-agent-api",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "tokio",
  "uuid",
 ]

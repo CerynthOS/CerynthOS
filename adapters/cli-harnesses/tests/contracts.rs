@@ -32,6 +32,37 @@ fn session(kind: HarnessKind) -> Session {
 }
 
 #[tokio::test]
+async fn owner_hermes_profile_keeps_prompt_off_argv_and_does_not_bypass_os_policy() {
+    let mut session = session(HarnessKind::Hermes);
+    session.spec.runtime.hermes_terminal_profile = true;
+    assert!(session.spec.validate().is_ok());
+    let adapter = CliHarnessAdapter {
+        kind: HarnessKind::Hermes,
+        program: "/usr/bin/hermes".into(),
+    };
+    let launch = adapter
+        .prepare_launch(&session, AdapterInput::Prompt("private fixture".into()))
+        .await
+        .unwrap();
+    assert!(
+        !launch
+            .args
+            .iter()
+            .any(|a| a == "--safe-mode" || a.contains("private fixture"))
+    );
+    assert!(launch.args.iter().any(|a| a == "--ignore-rules"));
+    assert!(
+        launch
+            .args
+            .windows(2)
+            .any(|a| a == ["--toolsets", "terminal"])
+    );
+    assert!(session.spec.runtime.require_cgroup);
+    session.spec.harness = HarnessKind::OpenCode;
+    assert!(session.spec.validate().is_err());
+}
+
+#[tokio::test]
 async fn protocol_plans_keep_native_server_in_the_supervised_launch_and_prompt_off_argv() {
     use cerynth_adapter_cli_harnesses::protocol::OpenCodeProtocolAdapter;
     use cerynth_agent_api::HarnessTransport;

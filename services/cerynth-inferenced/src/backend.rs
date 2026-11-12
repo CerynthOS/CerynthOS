@@ -1,9 +1,5 @@
 use anyhow::{Context, Result, ensure};
 use cerynth_model_api::OllamaClient;
-use nix::{
-    sys::signal::{Signal, killpg},
-    unistd::Pid,
-};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf, time::Duration};
 use tokio::{
@@ -29,24 +25,32 @@ fn default_parallel() -> u32 {
 
 struct OwnedBackend {
     child: Child,
-    group: i32,
+    unit: Option<String>,
 }
 
 impl Drop for OwnedBackend {
     fn drop(&mut self) {
-        if self.child.id().is_some() && self.group > 1 {
-            let _ = killpg(Pid::from_raw(self.group), Signal::SIGKILL);
-            let _ = self.child.start_kill();
+        if let Some(unit) = self.unit.take() {
+            let _ = crate::backend_scope::stop(&unit);
         }
+        let _ = self.child.start_kill();
     }
 }
 
 #[derive(Default)]
 pub struct BackendManager {
     processes: Mutex<BTreeMap<String, OwnedBackend>>,
+    journal: Mutex<crate::backend_scope::Journal>,
 }
 
 impl BackendManager {
+    pub(crate) fn persistent(directory: &std::path::Path) -> Result<Self> {
+        Ok(Self {
+            processes: Mutex::new(BTreeMap::new()),
+            journal: Mutex::new(crate::backend_scope::Journal::persistent(directory)?),
+        })
+    }
+    #[allow(clippy::too_many_lines)]
     pub async fn start(&self, spec: &OllamaLaunch) -> Result<()> {
         ensure!(
             !spec.id.is_empty()
@@ -76,11 +80,18 @@ impl BackendManager {
         std::fs::create_dir_all(&spec.models_directory)?;
         let home = spec.models_directory.join(".backend-home");
         std::fs::create_dir_all(&home)?;
-        let child = Command::new(&spec.binary)
-            .arg("serve")
+        let unit = self.journal.lock().await.reserve()?;
+        let uid = nix::unistd::getuid();
+        let child = Command::new("/usr/bin/systemd-run")
+            .args(crate::backend_scope::payload(&unit, &spec.binary))
             .env_clear()
             .env("PATH", "/usr/local/bin:/usr/bin:/bin")
             .env("HOME", home)
+            .env("XDG_RUNTIME_DIR", format!("/run/user/{uid}"))
+            .env(
+                "DBUS_SESSION_BUS_ADDRESS",
+                format!("unix:path=/run/user/{uid}/bus"),
+            )
             .env("OLLAMA_HOST", &spec.endpoint)
             .env("OLLAMA_MODELS", &spec.models_directory)
             .env("OLLAMA_NO_CLOUD", "1")
@@ -95,9 +106,13 @@ impl BackendManager {
             .kill_on_drop(true)
             .spawn()
             .context("cannot start owned Ollama backend")?;
-        let group = i32::try_from(child.id().context("backend PID unavailable")?)?;
-        let mut owned = OwnedBackend { child, group };
-        tokio::time::timeout(Duration::from_secs(10), async {
+        let mut owned = OwnedBackend {
+            child,
+            unit: Some(unit),
+        };
+        // Recent Ollama releases discover several driver backends before tags
+        // becomes ready. Keep this bounded without rejecting a healthy cold GPU.
+        tokio::time::timeout(Duration::from_secs(60), async {
             loop {
                 ensure!(
                     owned.child.try_wait()?.is_none(),
@@ -125,21 +140,19 @@ impl BackendManager {
             .await
             .remove(id)
             .context("backend is not owned by this daemon")?;
-        let _ = killpg(Pid::from_raw(owned.group), Signal::SIGTERM);
-        if tokio::time::timeout(Duration::from_secs(2), owned.child.wait())
-            .await
-            .is_err()
-        {
-            let _ = killpg(Pid::from_raw(owned.group), Signal::SIGKILL);
-            owned.child.kill().await?;
-            owned.child.wait().await?;
-        }
+        let unit = owned
+            .unit
+            .as_ref()
+            .context("backend scope identity missing")?;
+        self.journal.lock().await.release(unit)?;
+        owned.unit = None;
+        tokio::time::timeout(Duration::from_secs(3), owned.child.wait()).await??;
         Ok(())
     }
 
     pub async fn status(&self) -> BTreeMap<String, String> {
         let mut processes = self.processes.lock().await;
-        processes
+        let mut status: BTreeMap<String, String> = processes
             .iter_mut()
             .map(|(id, process)| {
                 (
@@ -151,6 +164,20 @@ impl BackendManager {
                     },
                 )
             })
-            .collect()
+            .collect();
+        for unit in self
+            .journal
+            .lock()
+            .await
+            .units()
+            .iter()
+            .filter(|unit| !processes.values().any(|p| p.unit.as_ref() == Some(*unit)))
+        {
+            status.insert(
+                format!("cleanup:{unit}"),
+                "cleanup_pending_restart_reconciliation".into(),
+            );
+        }
+        status
     }
 }

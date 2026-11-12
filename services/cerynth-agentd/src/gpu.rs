@@ -11,6 +11,43 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 impl AgentService {
+    pub(crate) async fn finish_unowned_gpu(
+        &self,
+        id: Uuid,
+        job_id: Uuid,
+        succeeded: bool,
+    ) -> Result<Value> {
+        self.runtime.lock().await.registry.get(id)?;
+        let mut gpu = self.gpu.lock().await;
+        ensure!(
+            gpu.jobs
+                .get(&job_id)
+                .is_some_and(|job| job.request.session_id == id),
+            "GPU job owner mismatch"
+        );
+        Ok(serde_json::to_value(gpu.finish(
+            job_id,
+            if succeeded {
+                JobState::Completed
+            } else {
+                JobState::Failed
+            },
+            now_ms(),
+        )?)?)
+    }
+    pub(crate) async fn gpu_jobs(&self) -> Result<Value> {
+        let inventory = cerynth_resources::inventory().await?;
+        let mut gpu = self.gpu.lock().await;
+        gpu.update_devices(inventory.gpus);
+        let pressure_blocked = self.resources.is_some()
+            && cerynth_resources::pressure::sample().blocks_new_work(now_ms());
+        gpu.set_pressure(pressure_blocked);
+        gpu.schedule(now_ms());
+        Ok(
+            serde_json::json!({"jobs":gpu.jobs,"devices":gpu.devices,"desktop_reserve_bytes":gpu.desktop_reserve_bytes,
+            "enforcement":"cooperative_reservation","pressure_blocked":pressure_blocked,"automatically_terminates_gpu_processes":false}),
+        )
+    }
     pub(crate) async fn run_gpu(
         self: &Arc<Self>,
         id: Uuid,
@@ -44,6 +81,15 @@ impl AgentService {
             process::prepare(&session, &launch, false)?;
             ensure!(
                 session
+                    .execution
+                    .model_residency
+                    .as_ref()
+                    .is_none_or(|binding| binding.ready
+                        && session.execution.model_residency_cleanup_pending),
+                "model residency preparation is incomplete or released"
+            );
+            ensure!(
+                session
                     .spec
                     .runtime
                     .guard
@@ -56,6 +102,10 @@ impl AgentService {
                 "this Guard GPU profile grants all device nodes; scoped device partitions are unsupported"
             );
             let mut gpu = self.gpu.lock().await;
+            gpu.set_pressure(
+                self.resources.is_some()
+                    && cerynth_resources::pressure::sample().blocks_new_work(now_ms()),
+            );
             let job = gpu
                 .jobs
                 .get(&job_id)

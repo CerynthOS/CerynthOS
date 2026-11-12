@@ -144,6 +144,7 @@ use anyhow::{Result, ensure};
 use cerynth_agent_api::{HarnessAdapter, HarnessKind, LaunchRequest, Session};
 use serde_json::{Value, json};
 use std::{path::PathBuf, time::Duration};
+use tokio::io::AsyncReadExt;
 
 pub fn executable(name: &str) -> Option<PathBuf> {
     let override_name = match name {
@@ -204,6 +205,75 @@ pub(crate) fn protocol_bridge() -> Result<PathBuf> {
 }
 
 impl AgentService {
+    pub(crate) fn bind_harness_profile(
+        &self,
+        session: &Session,
+        plan: &mut crate::process::PreparedLaunch,
+    ) -> Result<()> {
+        use std::{
+            io::Write,
+            os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt},
+        };
+        if !session.spec.runtime.hermes_terminal_profile {
+            return Ok(());
+        }
+        plan.environment
+            .push(("HERMES_IGNORE_RULES".into(), "1".into()));
+        ensure!(
+            session.spec.harness == HarnessKind::Hermes
+                && session.spec.runtime.isolation == cerynth_agent_api::IsolationPolicy::Required
+                && session.spec.runtime.guard.is_none(),
+            "Hermes terminal profile requires the supported isolated CLI boundary"
+        );
+        let directory = self.directory.join("harness-profiles");
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&directory)?;
+        let path = directory.join(format!("{}.yaml", session.id));
+        let content = b"tools:\n  tool_search:\n    enabled: 'off'\nterminal:\n  backend: local\nplugins:\n  enabled: []\n  auto_update_check_hours: 0\nhooks: {}\nmcp_servers: {}\n";
+        if path.exists() {
+            let metadata = std::fs::symlink_metadata(&path)?;
+            ensure!(
+                metadata.is_file()
+                    && metadata.uid() == session.owner_uid
+                    && metadata.mode() & 0o777 == 0o600
+                    && std::fs::read(&path)? == content,
+                "harness profile changed"
+            );
+        } else {
+            let mut file = tempfile::NamedTempFile::new_in(&directory)?;
+            file.as_file()
+                .set_permissions(std::fs::Permissions::from_mode(0o600))?;
+            file.write_all(content)?;
+            file.as_file().sync_all()?;
+            file.persist_noclobber(&path)?;
+        }
+        let bwrap = plan
+            .args
+            .iter()
+            .position(|s| s == "/usr/bin/bwrap")
+            .ok_or_else(|| anyhow::anyhow!("sandbox missing"))?;
+        let boundary = plan
+            .args
+            .iter()
+            .enumerate()
+            .skip(bwrap + 1)
+            .find(|(_, s)| s.as_str() == "--")
+            .map(|(i, _)| i)
+            .ok_or_else(|| anyhow::anyhow!("sandbox payload boundary missing"))?;
+        plan.args.splice(
+            boundary..boundary,
+            [
+                "--dir".into(),
+                "/home/agent/.hermes".into(),
+                "--ro-bind".into(),
+                path.to_string_lossy().into_owned(),
+                "/home/agent/.hermes/config.yaml".into(),
+            ],
+        );
+        Ok(())
+    }
     pub(crate) async fn discover_harness(&self, harness: HarnessKind) -> Result<Value> {
         ensure!(
             harness == HarnessKind::OpenCode,
@@ -274,6 +344,8 @@ impl AgentService {
                 "transport":"supervised_cli_jsonl","capabilities":capabilities,
                 "optional_transports":protocol_transports,
                 "authentication":authentication,"native_pause_resume":false,
+                "authentication_scope":"owner profile inventory; managed sessions do not inherit it",
+                "saved_inventory_only":matches!(name,"opencode"|"hermes"),
                 "cloud_credentials_inherited":false}),
             );
         }
@@ -316,37 +388,181 @@ async fn authentication_state(name: &str, path: &std::path::Path) -> &'static st
     let arguments: &[&str] = match name {
         "codex" => &["login", "status"],
         "claude" => &["auth", "status", "--json"],
+        "opencode" | "hermes" => &["auth", "list"],
         _ => return "unsupported",
     };
-    let output = tokio::time::timeout(
-        Duration::from_secs(3),
-        tokio::process::Command::new(path)
+    let output = tokio::time::timeout(Duration::from_secs(5), async {
+        // Run local inventory outside the repository. Output is bounded and
+        // reduced to an enum; provider/account labels never reach the caller.
+        let directory = tempfile::tempdir()?;
+        let mut child = tokio::process::Command::new(path)
             .args(arguments)
+            .current_dir(directory.path())
+            .env_clear()
+            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .envs(
+                [
+                    "HOME",
+                    "XDG_CONFIG_HOME",
+                    "XDG_DATA_HOME",
+                    "XDG_STATE_HOME",
+                    "HERMES_HOME",
+                ]
+                .into_iter()
+                .filter_map(|key| std::env::var_os(key).map(|value| (key, value))),
+            )
+            .env("OPENCODE_DISABLE_MODELS_FETCH", "true")
+            .env("OPENCODE_DISABLE_AUTOUPDATE", "true")
+            .env("NO_COLOR", "1")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
             .kill_on_drop(true)
-            .output(),
-    )
+            .spawn()?;
+        let mut bytes = Vec::new();
+        child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("auth probe stdout missing"))?
+            .take(32769)
+            .read_to_end(&mut bytes)
+            .await?;
+        ensure!(bytes.len() <= 32768, "auth inventory output exceeds limit");
+        Ok::<_, anyhow::Error>((child.wait().await?.success(), bytes))
+    })
     .await;
-    let Ok(Ok(output)) = output else {
+    let Ok(Ok((success, bytes))) = output else {
         return "unknown";
     };
     if name == "claude" {
-        let value: Value = serde_json::from_slice(&output.stdout).unwrap_or(Value::Null);
+        let value: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
         return match value["loggedIn"].as_bool() {
             Some(true) => "authenticated",
             Some(false) => "unauthenticated",
             None => "unknown",
         };
     }
-    if output.status.success() {
-        "authenticated"
-    } else {
-        "unknown"
+    if matches!(name, "opencode" | "hermes") {
+        return local_auth_inventory(name, success, &bytes);
     }
+    if success { "authenticated" } else { "unknown" }
+}
+
+fn local_auth_inventory(name: &str, success: bool, bytes: &[u8]) -> &'static str {
+    if !success {
+        return "unknown";
+    }
+    let text = String::from_utf8_lossy(bytes);
+    // Read only the native count marker. Do not confuse a valid configured key
+    // with a live provider authentication/entitlement check.
+    for line in text.lines() {
+        let words: Vec<_> = line.split_whitespace().collect();
+        for pair in words.windows(2) {
+            if pair[1].starts_with("credential") {
+                if let Ok(count) = pair[0].trim_start_matches('(').parse::<u32>() {
+                    if count > 0 {
+                        return "credentials_configured";
+                    }
+                    if name == "opencode" {
+                        return "no_saved_credentials";
+                    }
+                }
+            }
+        }
+    }
+    if name == "hermes" && text.trim().is_empty() {
+        return "no_saved_credentials";
+    }
+    "unknown"
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn profile_binding_rejects_tampering_and_keeps_configuration_outside_workspace() -> Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir()?;
+        let workspace = tempfile::tempdir()?;
+        std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))?;
+        let service = AgentService::open(directory.path(), "http://127.0.0.1:11434")?;
+        let mut registry =
+            crate::registry::Registry::open(&directory.path().join("fixture-registry"))?;
+        let session = registry.create(serde_json::from_value(
+            json!({"name":"profile","harness":"hermes","workspace":workspace.path(),
+            "model":{"name":"fixture"},"runtime":{"hermes_terminal_profile":true}}),
+        )?)?;
+        let mut plan = crate::process::PreparedLaunch {
+            program: "/usr/bin/systemd-run".into(),
+            args: vec![
+                "--".into(),
+                "/usr/bin/bwrap".into(),
+                "--dir".into(),
+                "/home/agent".into(),
+                "--".into(),
+                "/usr/bin/hermes".into(),
+            ],
+            environment: vec![],
+            unit: None,
+        };
+        service.bind_harness_profile(&session, &mut plan)?;
+        let path = directory
+            .path()
+            .join("harness-profiles")
+            .join(format!("{}.yaml", session.id));
+        assert!(!path.starts_with(workspace.path()));
+        assert!(std::fs::read_to_string(&path)?.contains("enabled: 'off'"));
+        assert!(
+            plan.args
+                .iter()
+                .any(|a| a == "/home/agent/.hermes/config.yaml")
+        );
+        assert!(
+            plan.environment
+                .iter()
+                .any(|(k, v)| k == "HERMES_IGNORE_RULES" && v == "1")
+        );
+        std::fs::write(&path, b"changed")?;
+        assert!(service.bind_harness_profile(&session, &mut plan).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn authentication_inventory_exposes_only_state_and_does_not_validate_keys_online() {
+        assert_eq!(
+            local_auth_inventory("opencode", true, b"\x1b[90m\n 0 credentials\n"),
+            "no_saved_credentials"
+        );
+        assert_eq!(
+            local_auth_inventory(
+                "opencode",
+                true,
+                b"provider private@example.invalid\n 1 credential\n"
+            ),
+            "credentials_configured"
+        );
+        assert_eq!(
+            local_auth_inventory(
+                "hermes",
+                true,
+                b"private-provider (2 credentials):\n #1 key=secret-canary"
+            ),
+            "credentials_configured"
+        );
+        assert_eq!(
+            local_auth_inventory("hermes", true, b""),
+            "no_saved_credentials"
+        );
+        assert_eq!(
+            local_auth_inventory("opencode", false, b"1 credential"),
+            "unknown"
+        );
+        assert_eq!(
+            local_auth_inventory("hermes", true, b"unexpected output secret-canary"),
+            "unknown"
+        );
+    }
 
     #[test]
     fn native_tool_failures_ids_and_usage_remain_distinct_without_raw_content() {

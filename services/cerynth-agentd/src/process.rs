@@ -155,6 +155,18 @@ fn systemctl_bounded(args: &[&str]) -> Result<std::process::Output> {
 
 pub fn recover(session: &Session) -> Result<()> {
     recover_agent(session)?;
+    if let Some(unit) = &session.execution.resource_slice {
+        ensure!(
+            unit.starts_with("cerynth-r")
+                && unit.ends_with(&format!("-s{}.slice", session.id.simple()))
+                && unit
+                    .trim_end_matches(".slice")
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || c == b'-'),
+            "invalid owned resource slice"
+        );
+        stop_scope(unit)?;
+    }
     if let Some(unit) = &session.execution.native_guard_unit {
         ensure!(
             *unit == guard_unit_name(session.id),
@@ -298,6 +310,12 @@ const BWRAP_ARGS: &[&str] = &[
     "/home/agent",
 ];
 
+fn append_cpu_quota(wrapper: &mut Vec<String>, budget: &cerynth_agent_api::ResourceBudget) {
+    if let Some(quota) = budget.cpu_quota_micros_per_second {
+        wrapper.insert(6, format!("--property=CPUQuota={}%", quota / 10_000));
+    }
+}
+
 pub fn prepare(
     session: &Session,
     launch: &LaunchRequest,
@@ -384,6 +402,7 @@ pub fn prepare(
             "--".into(),
             command.to_string_lossy().into_owned(),
         ];
+        append_cpu_quota(&mut wrapper, budget);
         wrapper.extend(args);
         command = PathBuf::from("/usr/bin/systemd-run");
         ensure!(

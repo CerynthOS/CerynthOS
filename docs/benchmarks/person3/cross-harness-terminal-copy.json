@@ -1,0 +1,107 @@
+{
+  "source_artifact": "cross-harness-terminal-copy.json",
+  "source_sha256": "7e11d9bbb27a123522f9a85a33d2b488b0cdcc2ffeaedbb29e16a4f6cf677daa",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-local-cross-harness-delegation-experiment",
+    "model": "qwen2.5:3b",
+    "trials": [
+      {
+        "harness": "open_code",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": true,
+        "tool_events": 1,
+        "isolated_worktree": true
+      },
+      {
+        "harness": "hermes",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": true,
+        "tool_events": 2,
+        "isolated_worktree": true
+      }
+    ],
+    "both_harness_tasks_verified": true,
+    "parent_child_graph_verified": true,
+    "shared_inference_global_concurrency": 1,
+    "source_repository_unchanged": true,
+    "grants_and_processes_cleaned": true,
+    "routing": "explicit owner role-to-harness assignment; no autonomous capability expansion",
+    "hermes_call_hint": false,
+    "hermes_terminal_profile": true,
+    "simple_copy": true,
+    "network": "explicit host networking; no network-isolation claim",
+    "cloud_requests": 0,
+    "metrics": {
+      "failures": 0,
+      "p50_ms": 1982.206444,
+      "p95_ms": 6772.407222,
+      "samples": [
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 10,
+            "queue_ms": 0.112676,
+            "request_ms": 4556.245294,
+            "tokens_per_second": null,
+            "ttft_ms": 4451.314494
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "393eafad-8590-445a-96eb-935a4f6797f2"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 85,
+            "queue_ms": 4274.685926,
+            "request_ms": 2497.7212959999997,
+            "tokens_per_second": null,
+            "ttft_ms": 2466.218334
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "5da51ecb-ac5a-470d-83c5-5c95dc9e3ff2"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 3,
+            "queue_ms": 0.09465,
+            "request_ms": 86.47684699999999,
+            "tokens_per_second": null,
+            "ttft_ms": 65.596138
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "0cf7ff0b-c1c1-42e1-9cea-c6a73d7a7d92"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 83,
+            "queue_ms": 0.077759,
+            "request_ms": 1982.128685,
+            "tokens_per_second": null,
+            "ttft_ms": 1940.786153
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "4c802e3b-30ad-49ce-97cd-c2c32b3bb28c"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 3,
+            "queue_ms": 0.076846,
+            "request_ms": 69.762354,
+            "tokens_per_second": null,
+            "ttft_ms": 48.524939
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "c4918532-6f59-4078-a6e9-80f03a23c140"
+        }
+      ]
+    }
+  }
+}

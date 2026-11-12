@@ -1,8 +1,10 @@
 //! Shared inference coordinator with separate administrative and token-authenticated sockets.
 
 mod backend;
+mod backend_scope;
 mod models;
 pub mod proxy;
+mod residency;
 use anyhow::{Context, Result, ensure};
 pub use backend::OllamaLaunch;
 use cerynth_model_api::{
@@ -80,6 +82,7 @@ pub struct MetricSample {
 
 #[derive(Default)]
 struct State {
+    pressure: Option<cerynth_resources::pressure::Sample>,
     endpoints: BTreeMap<String, (EndpointSpec, Backend)>,
     grants: BTreeMap<Uuid, Grant>,
     metrics: Vec<MetricSample>,
@@ -89,9 +92,11 @@ struct State {
 }
 
 pub struct Coordinator {
+    residency: Mutex<residency::Residency>,
     state: Mutex<State>,
     queue: AdmissionQueue,
     lifecycle: Arc<RwLock<()>>,
+    request_slots: Arc<tokio::sync::Semaphore>,
     backends: backend::BackendManager,
     storage: Option<PathBuf>,
 }
@@ -109,6 +114,26 @@ struct StoredRouting {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AdminOperation {
+    PlanCache {
+        entries: Vec<cerynth_model_api::cache::CacheEntry>,
+        capabilities: cerynth_model_api::cache::CacheCapabilities,
+        trust_domain: String,
+        needed_bytes: u64,
+    },
+    QuiesceModel {
+        lease_id: Uuid,
+        session_id: Uuid,
+        endpoint_id: String,
+        model: String,
+    },
+    ReleaseModel {
+        lease_id: Uuid,
+        session_id: Uuid,
+    },
+    Residency,
+    Pressure {
+        sample: cerynth_resources::pressure::Sample,
+    },
     Configure {
         endpoint: EndpointSpec,
     },
@@ -167,9 +192,11 @@ impl Coordinator {
     #[must_use]
     pub fn new(concurrency: usize) -> Self {
         Self {
+            residency: Mutex::new(residency::Residency::default()),
             state: Mutex::new(State::default()),
             queue: AdmissionQueue::new(concurrency),
             lifecycle: Arc::new(RwLock::new(())),
+            request_slots: Arc::new(tokio::sync::Semaphore::new(64)),
             backends: backend::BackendManager::default(),
             storage: None,
         }
@@ -217,6 +244,8 @@ impl Coordinator {
             }
         }
         coordinator.storage = Some(path);
+        coordinator.backends = backend::BackendManager::persistent(directory)?;
+        *coordinator.residency.get_mut() = residency::Residency::load(directory)?;
         Ok(coordinator)
     }
 
@@ -251,6 +280,27 @@ impl Coordinator {
     /// Returns an error on policy conflicts, unavailable backends, or invalid grants.
     pub async fn admin(&self, operation: AdminOperation) -> Result<Value> {
         match operation {
+            AdminOperation::PlanCache {
+                entries,
+                capabilities,
+                trust_domain,
+                needed_bytes,
+            } => Self::cache_plan(&entries, &capabilities, &trust_domain, needed_bytes),
+            AdminOperation::QuiesceModel {
+                lease_id,
+                session_id,
+                endpoint_id,
+                model,
+            } => {
+                self.quiesce_model(lease_id, session_id, endpoint_id, model)
+                    .await
+            }
+            AdminOperation::ReleaseModel {
+                lease_id,
+                session_id,
+            } => self.release_model(lease_id, session_id).await,
+            AdminOperation::Residency => self.residency_status().await,
+            AdminOperation::Pressure { sample } => self.pressure(sample).await,
             AdminOperation::Registry { endpoint_id, model } => {
                 self.registry(endpoint_id, model).await
             }
@@ -299,33 +349,19 @@ impl Coordinator {
             }
             AdminOperation::Health => {
                 let backend_processes = self.backends.status().await;
+                let residency_holds = self.residency.lock().await.active_count();
                 let state = self.state.lock().await;
                 let (active, queued) = self.queue.counts();
                 Ok(
                     json!({"version":1,"service_ready":true,"backend_processes":backend_processes,"endpoints":state.endpoints.keys().collect::<Vec<_>>(),
                     "grants":state.grants.len(),"active_requests":active,"queued_requests":queued,
-                    "grants_survive_restart":false}),
+                    "grants_survive_restart":false,"admission_pressure":state.pressure,
+                    "admitted_and_waiting_requests":64-self.request_slots.available_permits(),"request_limit":64,
+                    "model_residency_holds":residency_holds,
+                    "pressure_admission_blocked":state.pressure.as_ref().is_some_and(|s|s.blocks_new_work(cerynth_resources::pressure::now_ms()))}),
                 )
             }
-            AdminOperation::Metrics => {
-                let state = self.state.lock().await;
-                let mut latency: Vec<_> = state
-                    .metrics
-                    .iter()
-                    .map(|sample| sample.metrics.queue_ms + sample.metrics.request_ms)
-                    .collect();
-                latency.sort_by(f64::total_cmp);
-                let percentile = |p: usize| {
-                    if latency.is_empty() {
-                        None
-                    } else {
-                        Some(latency[((latency.len() * p).div_ceil(100)).saturating_sub(1)])
-                    }
-                };
-                Ok(
-                    json!({"samples":state.metrics,"failures":state.failures,"p50_ms":percentile(50),"p95_ms":percentile(95)}),
-                )
-            }
+            AdminOperation::Metrics => self.metrics().await,
             AdminOperation::Models { ref endpoint_id }
             | AdminOperation::Details {
                 ref endpoint_id,
@@ -341,7 +377,31 @@ impl Coordinator {
         }
     }
 
+    async fn metrics(&self) -> Result<Value> {
+        let state = self.state.lock().await;
+        let mut latency: Vec<_> = state
+            .metrics
+            .iter()
+            .map(|sample| sample.metrics.queue_ms + sample.metrics.request_ms)
+            .collect();
+        latency.sort_by(f64::total_cmp);
+        let percentile = |p: usize| {
+            if latency.is_empty() {
+                None
+            } else {
+                Some(latency[((latency.len() * p).div_ceil(100)).saturating_sub(1)])
+            }
+        };
+        Ok(
+            json!({"samples":state.metrics,"failures":state.failures,"p50_ms":percentile(50),"p95_ms":percentile(95)}),
+        )
+    }
+
     async fn configure(&self, endpoint: EndpointSpec) -> Result<Value> {
+        let _exclusive = self
+            .lifecycle
+            .try_write()
+            .context("inference or model actuation is active; endpoint replacement is deferred")?;
         let (id, backend) = match &endpoint {
             EndpointSpec::Ollama { id, url } => {
                 (id.clone(), Backend::Ollama(OllamaClient::new(url)?))
@@ -352,6 +412,7 @@ impl Coordinator {
             ),
         };
         ensure!(!id.is_empty() && id.len() <= 128, "invalid endpoint ID");
+        self.ensure_endpoint_not_leased(&id).await?;
         let mut state = self.state.lock().await;
         ensure!(
             !state.grants.values().any(|g| g.spec.endpoint_id == id),
@@ -549,13 +610,21 @@ impl Coordinator {
             (grant.spec.clone(), backend, grant.revoked.subscribe())
         };
         let work = async {
+            let _request_slot = self
+                .request_slots
+                .clone()
+                .try_acquire_owned()
+                .context("inference request admission is full")?;
+            let waiting = Instant::now();
             let _lifecycle = self.lifecycle.read().await;
-            let permit = self
+            let _residency = self.residency_permit(&grant.endpoint_id).await?;
+            let _permit = self
                 .queue
                 .acquire(request.priority, grant.concurrency_limits)
                 .await
                 .map_err(anyhow::Error::msg)?;
             let start = Instant::now();
+            let queue_ms = waiting.elapsed().as_secs_f64() * 1000.0;
             let (output, mut metrics) = match backend {
                 Backend::Ollama(client) => {
                     client
@@ -568,7 +637,7 @@ impl Coordinator {
                         .await?
                 }
             };
-            metrics.queue_ms = permit.queue_ms;
+            metrics.queue_ms = queue_ms;
             metrics.request_ms = start.elapsed().as_secs_f64() * 1000.0;
             let mut state = self.state.lock().await;
             if state.metrics.len() == 1024 {

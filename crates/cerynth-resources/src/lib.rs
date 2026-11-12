@@ -1,4 +1,7 @@
 //! Accelerator monitoring and cooperative admission. No generic hard VRAM limits.
+pub mod admission;
+pub mod pressure;
+pub mod systemd;
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, time::Duration};
@@ -83,45 +86,7 @@ pub async fn inventory() -> Result<HardwareInventory> {
                 mig_status: f[6].into(), mps_status: "not_configured_or_verified".into() });
         }
     } else { diagnostics.push("NVIDIA telemetry unavailable: missing tool, unsupported driver, or command timeout".into()); }
-    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if !name.starts_with("card") || name.contains('-') {
-                continue;
-            }
-            let path = entry.path().join("device");
-            let vendor = std::fs::read_to_string(path.join("vendor")).unwrap_or_default();
-            if vendor.trim() != "0x1002" && vendor.trim() != "0x8086" {
-                continue;
-            }
-            let read = |file: &str| {
-                std::fs::read_to_string(path.join(file))
-                    .ok()?
-                    .trim()
-                    .parse::<u64>()
-                    .ok()
-            };
-            gpus.push(GpuDevice {
-                id: name.clone(),
-                name,
-                vendor: if vendor.trim() == "0x1002" {
-                    "amd"
-                } else {
-                    "intel"
-                }
-                .into(),
-                driver: std::fs::read_link(path.join("driver"))
-                    .ok()
-                    .and_then(|p| p.file_name().map(|s| s.to_string_lossy().into_owned())),
-                total_bytes: read("mem_info_vram_total"),
-                used_bytes: read("mem_info_vram_used"),
-                utilization_percent: read("gpu_busy_percent").and_then(|n| u32::try_from(n).ok()),
-                enforcement: EnforcementLevel::Monitoring,
-                mig_status: "not_applicable".into(),
-                mps_status: "not_applicable".into(),
-            });
-        }
-    }
+    gpus.extend(discover_drm(std::path::Path::new("/sys/class/drm")));
     let mut gpu_processes = Vec::new();
     if let Some(csv) = command(
         "nvidia-smi",
@@ -166,6 +131,54 @@ pub async fn inventory() -> Result<HardwareInventory> {
     })
 }
 
+/// AMD/Intel DRM fields are read as bytes/percent; absent metrics remain unknown.
+#[must_use]
+pub fn discover_drm(root: &std::path::Path) -> Vec<GpuDevice> {
+    let mut gpus = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(root) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !name.starts_with("card") || name.contains('-') {
+                continue;
+            }
+            let path = entry.path().join("device");
+            let vendor = std::fs::read_to_string(path.join("vendor")).unwrap_or_default();
+            if vendor.trim() != "0x1002" && vendor.trim() != "0x8086" {
+                continue;
+            }
+            let read = |file: &str| {
+                std::fs::read_to_string(path.join(file))
+                    .ok()?
+                    .trim()
+                    .parse::<u64>()
+                    .ok()
+            };
+            gpus.push(GpuDevice {
+                id: name.clone(),
+                name,
+                vendor: if vendor.trim() == "0x1002" {
+                    "amd"
+                } else {
+                    "intel"
+                }
+                .into(),
+                driver: std::fs::read_link(path.join("driver"))
+                    .ok()
+                    .and_then(|p| p.file_name().map(|s| s.to_string_lossy().into_owned())),
+                total_bytes: read("mem_info_vram_total"),
+                used_bytes: read("mem_info_vram_used"),
+                utilization_percent: read("gpu_busy_percent")
+                    .filter(|n| *n <= 100)
+                    .and_then(|n| u32::try_from(n).ok()),
+                enforcement: EnforcementLevel::Monitoring,
+                mig_status: "not_applicable".into(),
+                mps_status: "not_applicable".into(),
+            });
+        }
+    }
+    gpus
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum JobState {
@@ -202,6 +215,7 @@ pub struct GpuJob {
 
 #[derive(Default)]
 pub struct GpuBroker {
+    pressure_blocked: bool,
     pub devices: BTreeMap<String, GpuDevice>,
     pub jobs: BTreeMap<Uuid, GpuJob>,
     pub desktop_reserve_bytes: u64,
@@ -209,6 +223,9 @@ pub struct GpuBroker {
 }
 
 impl GpuBroker {
+    pub fn set_pressure(&mut self, blocked: bool) {
+        self.pressure_blocked = blocked;
+    }
     #[must_use]
     pub fn new(desktop_reserve_bytes: u64) -> Self {
         Self {
@@ -279,6 +296,9 @@ impl GpuBroker {
                 job.state = JobState::Expired;
             }
         }
+        if self.pressure_blocked {
+            return;
+        }
         let mut queued: Vec<_> = self
             .jobs
             .values()
@@ -333,6 +353,10 @@ impl GpuBroker {
     /// # Errors
     /// Rejects expired, queued, duplicate or unknown leases.
     pub fn bind_process(&mut self, id: Uuid, now_ms: u64) -> Result<GpuJob> {
+        ensure!(
+            !self.pressure_blocked,
+            "new GPU execution is blocked by resource pressure"
+        );
         self.schedule(now_ms);
         let job = self
             .jobs
@@ -383,7 +407,8 @@ impl GpuBroker {
     }
 }
 
-fn total_memory() -> Option<u64> {
+#[must_use]
+pub fn total_memory() -> Option<u64> {
     std::fs::read_to_string("/proc/meminfo").ok().and_then(|s| {
         s.lines()
             .find_map(|line| line.strip_prefix("MemTotal:"))
@@ -396,6 +421,52 @@ fn total_memory() -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn amd_and_intel_drm_adapters_keep_missing_and_malformed_metrics_unknown() -> Result<()> {
+        let root = tempfile::tempdir()?;
+        for (card, vendor, driver) in [
+            ("card0", "0x1002", "amdgpu"),
+            ("card1", "0x8086", "i915"),
+            ("card0-HDMI-A-1", "0x1002", "amdgpu"),
+        ] {
+            let device = root.path().join(card).join("device");
+            std::fs::create_dir_all(&device)?;
+            std::fs::write(device.join("vendor"), vendor)?;
+            std::os::unix::fs::symlink(
+                format!("/sys/bus/pci/drivers/{driver}"),
+                device.join("driver"),
+            )?;
+        }
+        let amd = root.path().join("card0/device");
+        std::fs::write(
+            amd.join("mem_info_vram_total"),
+            (16_u64 * 1024_u64.pow(3)).to_string(),
+        )?;
+        std::fs::write(
+            amd.join("mem_info_vram_used"),
+            (4_u64 * 1024_u64.pow(3)).to_string(),
+        )?;
+        std::fs::write(amd.join("gpu_busy_percent"), "42")?;
+        let devices = discover_drm(root.path());
+        assert_eq!(devices.len(), 2);
+        let amd_device = devices.iter().find(|d| d.vendor == "amd").unwrap();
+        assert_eq!(amd_device.total_bytes, Some(16 * 1024_u64.pow(3)));
+        assert_eq!(amd_device.utilization_percent, Some(42));
+        assert_eq!(amd_device.driver.as_deref(), Some("amdgpu"));
+        let intel = devices.iter().find(|d| d.vendor == "intel").unwrap();
+        assert!(
+            intel.total_bytes.is_none()
+                && intel.used_bytes.is_none()
+                && intel.utilization_percent.is_none()
+        );
+        std::fs::write(amd.join("mem_info_vram_used"), "N/A")?;
+        std::fs::write(amd.join("gpu_busy_percent"), "150")?;
+        let devices = discover_drm(root.path());
+        let amd = devices.iter().find(|d| d.vendor == "amd").unwrap();
+        assert!(amd.used_bytes.is_none() && amd.utilization_percent.is_none());
+        Ok(())
+    }
 
     #[test]
     fn admission_respects_desktop_reserve_usage_priority_and_expiration() -> Result<()> {

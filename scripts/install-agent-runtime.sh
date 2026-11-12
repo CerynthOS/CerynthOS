@@ -5,11 +5,13 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 staging_root=""
 profile="release"
+observer_build=""
 while (($#)); do
     case "$1" in
         --root) staging_root="${2:?--root needs a path}"; shift 2 ;;
         --profile) profile="${2:?--profile needs debug or release}"; shift 2 ;;
-        *) echo "Usage: $0 --root STAGING_DIRECTORY [--profile debug|release]" >&2; exit 2 ;;
+        --observer-build) observer_build="${2:?--observer-build needs a build directory}"; shift 2 ;;
+        *) echo "Usage: $0 --root STAGING_DIRECTORY [--profile debug|release] [--observer-build DIRECTORY]" >&2; exit 2 ;;
     esac
 done
 if [[ -z "$staging_root" || "$staging_root" == "/" || "$staging_root" != /* ]]; then
@@ -19,6 +21,15 @@ fi
 if [[ "$profile" != debug && "$profile" != release ]]; then
     echo "Profile must be debug or release." >&2
     exit 2
+fi
+if [[ -n "$observer_build" ]]; then
+    if [[ ! -x "$observer_build/cerynth-observer" ]]; then
+        echo "Build the native observer before staging it." >&2
+        exit 1
+    fi
+    install -D -m 0755 "$observer_build/cerynth-observer" "$staging_root/usr/bin/cerynth-observer"
+    install -D -m 0644 "$repo_root/apps/cerynth-observer/io.cerynth.Observer.desktop" \
+        "$staging_root/usr/share/applications/io.cerynth.Observer.desktop"
 fi
 for binary in cerynth-agentd cerynth-worktree-checkout cerynth-harness-bridge cerynth-inferenced cerynth-hardware; do
     source_binary="$repo_root/target/$profile/$binary"

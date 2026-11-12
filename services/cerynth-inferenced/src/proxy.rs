@@ -26,6 +26,13 @@ fn reject(status: StatusCode, message: &'static str) -> Rejection {
     )
 }
 
+fn residency_unavailable(_: anyhow::Error) -> Rejection {
+    reject(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "model residency unavailable",
+    )
+}
+
 /// Only chat and stateless Responses routes are exposed, both requiring a grant.
 pub fn router(coordinator: Arc<Coordinator>) -> Router {
     Router::new()
@@ -107,13 +114,27 @@ async fn forward(
     if priority > grant.max_priority || priority < -100 {
         return Err(reject(StatusCode::FORBIDDEN, "priority is not authorized"));
     }
-    let metric_model = model.clone();
     let session_id = grant.session_id;
     let endpoint_id = grant.endpoint_id.clone();
     let trace_id = Uuid::new_v4();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(180);
     let work = async {
+        let request_slot = coordinator
+            .request_slots
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| {
+                reject(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "inference request admission is full",
+                )
+            })?;
+        let waiting = Instant::now();
         let lifecycle = coordinator.lifecycle.clone().read_owned().await;
+        let residency = coordinator
+            .residency_permit(&endpoint_id)
+            .await
+            .map_err(residency_unavailable)?;
         let permit = coordinator
             .queue
             .acquire(priority, grant.concurrency_limits)
@@ -125,6 +146,7 @@ async fn forward(
                 )
             })?;
         let start = Instant::now();
+        let queue_ms = waiting.elapsed().as_secs_f64() * 1000.0;
         let response = match backend {
             Backend::Ollama(client) => client.proxy(route, body).await,
             Backend::Compatible(client) => client.proxy(route, body).await,
@@ -136,19 +158,28 @@ async fn forward(
                 "inference backend rejected request",
             ));
         }
-        Ok::<_, Rejection>((permit, start, response, lifecycle))
+        Ok::<_, Rejection>((
+            permit,
+            start,
+            response,
+            lifecycle,
+            residency,
+            request_slot,
+            queue_ms,
+        ))
     };
-    let (permit, start, response, lifecycle) = tokio::select! {
+    let (permit, start, response, lifecycle, residency, request_slot, queue_ms) = tokio::select! {
         biased;
         _=revoked.changed()=>return Err(reject(StatusCode::FORBIDDEN,"session grant revoked")),
         result=tokio::time::timeout_at(deadline,work)=>result
             .map_err(|_|reject(StatusCode::GATEWAY_TIMEOUT,"inference admission deadline exceeded"))??,
     };
-    let queue_ms = permit.queue_ms;
     let state = ForwardState {
+        _request_slot: request_slot,
         response,
         _permit: permit,
         _lifecycle: lifecycle,
+        _residency: residency,
         revoked,
         coordinator,
         start,
@@ -161,7 +192,7 @@ async fn forward(
         finished: false,
         session_id,
         endpoint_id,
-        model: metric_model,
+        model,
         trace_id,
         deadline,
     };
@@ -279,6 +310,8 @@ fn enforce_request_policy(
 }
 
 struct ForwardState {
+    _request_slot: tokio::sync::OwnedSemaphorePermit,
+    _residency: OwnedRwLockReadGuard<()>,
     response: reqwest::Response,
     _permit: AdmissionPermit,
     _lifecycle: OwnedRwLockReadGuard<()>,

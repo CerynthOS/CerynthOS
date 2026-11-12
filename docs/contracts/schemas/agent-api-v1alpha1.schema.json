@@ -785,6 +785,71 @@
         {
           "type": "object",
           "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minimum": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ResourceBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "resource_admit"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "resource_accounting"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "resource_view"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
             "type"
           ],
           "properties": {
@@ -842,6 +907,39 @@
               "type": "string",
               "enum": [
                 "gpu_jobs"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "endpoint_id",
+            "id",
+            "lease_id",
+            "model",
+            "type"
+          ],
+          "properties": {
+            "endpoint_id": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lease_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "model": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gpu_quiesce_model"
               ]
             }
           },
@@ -1027,6 +1125,16 @@
     "ResourceBudget": {
       "type": "object",
       "properties": {
+        "cpu_quota_micros_per_second": {
+          "description": "Hard CPU bandwidth in microseconds per second; None means weight-only sharing.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
         "cpu_weight": {
           "default": 100,
           "type": "integer",
@@ -1083,6 +1191,7 @@
       "properties": {
         "budget": {
           "default": {
+            "cpu_quota_micros_per_second": null,
             "cpu_weight": 100,
             "gpu_memory_bytes": 0,
             "inference_concurrency": 2,
@@ -1117,6 +1226,11 @@
               "type": "null"
             }
           ]
+        },
+        "hermes_terminal_profile": {
+          "description": "Owner-selected coding profile for small local models; OS policy still enforces the boundary independently of the harness tool list.",
+          "default": false,
+          "type": "boolean"
         },
         "isolation": {
           "default": "required",
@@ -1202,6 +1316,7 @@
         "runtime": {
           "default": {
             "budget": {
+              "cpu_quota_micros_per_second": null,
               "cpu_weight": 100,
               "gpu_memory_bytes": 0,
               "inference_concurrency": 2,
@@ -1213,6 +1328,7 @@
             },
             "capabilities": [],
             "guard": null,
+            "hermes_terminal_profile": false,
             "isolation": "required",
             "message_peers": [],
             "network": "deny",

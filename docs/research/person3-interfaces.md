@@ -8,7 +8,7 @@ status are separate columns. Provider authentication is never assumed transferab
 | Harness | Official integration surfaces | Lifecycle and output | Tools / subagents | Cerynth status |
 | --- | --- | --- | --- | --- |
 | OpenCode | Headless HTTP server/OpenAPI, CLI JSON, ACP | Sessions, prompts, message history, event stream, abort | Native tool events and agent facilities; native child sessions need explicit mapping | Managed CLI, password-protected owned HTTP server and streamed ACP v1 paths exercised at 1.19.5; HTTP history includes intermediate tool messages; coding success checked separately |
-| Hermes | CLI, ACP stdio, native Python interfaces | One-shot query/file input, JSONL where supported, native resume | Harness-native delegation/tooling; not equivalent to OS child budgets | Pinned 0.23.1 launches inside Bubblewrap/systemd and uses authenticated local inference; observed tool failures prevent claiming verified coding success |
+| Hermes | CLI, ACP stdio, native Python interfaces | One-shot query/file input, JSONL where supported, native resume | Harness-native delegation/tooling; not equivalent to OS child budgets | Pinned 0.23.1 launches inside Bubblewrap/systemd and uses authenticated local inference; an owner-selected eager terminal profile completes an independently verified cross-harness copy task; failed Python approval/bridge trials retained |
 | Codex | Exec JSONL, app-server protocol, SDK | Turns/threads, local history, interrupt/resume depend on interface | Structured execution/results/usage; native collaboration is not automatic Cerynth delegation | Installed 0.167.0 exercised with local Ollama; explicit provider override and daemon isolation required |
 | Claude Code | Programmatic CLI/Agent SDK | Print mode, streaming JSON, session resume; CLI exit status alone does not verify task success | SDK permissions and native subagents; trusted OS enforcement remains separate | CLI launch plan and version discovery; installed 2.1.312; cloud execution/credential broker not exercised |
 | Generic CLI/PTY | Process argv, pipes, PTY | Start, input, output, process-group stop, deadline | Structured tools/resume/subagents are unavailable unless an adapter reports them | Implemented and tested with actual CLI and PTY processes |
@@ -64,7 +64,7 @@ Measured on the development host:
 | NVIDIA | RTX 5060 Laptop GPU, 8,151 MiB, driver 615.78.08 | Utilization, total/used memory and supported compute-process memory; cooperative reservations only |
 | Intel | Integrated GPU using i915 | DRM discovery; dedicated VRAM metrics unavailable on this host |
 | MIG | nvidia-smi reports N/A | No enforced partition advertised |
-| MPS | Not configured or verified | No memory or SM guarantee advertised |
+| MPS | Private daemon/client CUDA test verified a 128 MiB client limit and 50% active-thread setting | Cooperative controls evaluated; no generic untrusted partition guarantee |
 | Local inference | Ollama 0.35.0, CUDA compute 12.0 reported by backend | Engine-owned model placement and allocation; Cerynth does not override driver limits |
 
 Hardware discovery is executable with `cerynth-hardware`, retains unavailable
@@ -95,3 +95,5 @@ specific interoperability, not a general performance advantage. See the
 Sources for subsequent engine evaluation:
 [vLLM](https://docs.vllm.ai/), [SGLang](https://docs.sglang.ai/),
 [LMCache](https://docs.lmcache.ai/).
+
+The [November 12 continuation](../integration/2026-11-12-person3-local-completion.md) adds actual nested systemd accounting, MPS controls, Ollama model/GPU exclusion, native Qt consumption and an actuated idle-model eviction comparison. The latter releases model VRAM but increases latency on this small fixture. AMD DRM adapters have missing/malformed fixture coverage, not physical AMD qualification.

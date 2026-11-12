@@ -5,6 +5,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct ResourceBudget {
+    /// Hard CPU bandwidth in microseconds per second; None means weight-only sharing.
+    pub cpu_quota_micros_per_second: Option<u64>,
     pub cpu_weight: u32,
     pub memory_high_bytes: u64,
     pub memory_max_bytes: u64,
@@ -18,6 +20,7 @@ pub struct ResourceBudget {
 impl Default for ResourceBudget {
     fn default() -> Self {
         Self {
+            cpu_quota_micros_per_second: None,
             cpu_weight: 100,
             memory_high_bytes: 1024 * 1024 * 1024,
             memory_max_bytes: 2 * 1024 * 1024 * 1024,
@@ -35,6 +38,9 @@ impl ResourceBudget {
     /// Returns an error if limits are zero, inconsistent, or outside supported ranges.
     pub fn validate(&self) -> Result<(), String> {
         if !(1..=10_000).contains(&self.cpu_weight)
+            || self.cpu_quota_micros_per_second.is_some_and(|quota| {
+                !(10_000..=4_096_000_000).contains(&quota) || quota % 10_000 != 0
+            })
             || self.memory_high_bytes == 0
             || self.memory_high_bytes > self.memory_max_bytes
             || self.tasks_max == 0
@@ -52,6 +58,14 @@ impl ResourceBudget {
     #[must_use]
     pub fn fits_within(&self, parent: &Self) -> bool {
         self.cpu_weight <= parent.cpu_weight
+            && match (
+                self.cpu_quota_micros_per_second,
+                parent.cpu_quota_micros_per_second,
+            ) {
+                (_, None) => true,
+                (Some(child), Some(parent)) => child <= parent,
+                (None, Some(_)) => false,
+            }
             && self.memory_max_bytes <= parent.memory_max_bytes
             && self.memory_high_bytes <= parent.memory_high_bytes
             && self.tasks_max <= parent.tasks_max
@@ -111,6 +125,9 @@ pub enum WorkloadPhase {
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct RuntimeSpec {
+    /// Owner-selected coding profile for small local models; OS policy still
+    /// enforces the boundary independently of the harness tool list.
+    pub hermes_terminal_profile: bool,
     pub transport: HarnessTransport,
     pub project: String,
     pub parent_id: Option<Uuid>,
@@ -128,6 +145,7 @@ pub struct RuntimeSpec {
 impl Default for RuntimeSpec {
     fn default() -> Self {
         Self {
+            hermes_terminal_profile: false,
             transport: HarnessTransport::CliJsonl,
             project: "default".into(),
             parent_id: None,
@@ -306,6 +324,11 @@ pub struct ProcessIdentity {
 // be pending simultaneously; these are not mutually exclusive lifecycle states.
 #[allow(clippy::struct_excessive_bools)]
 pub struct ExecutionRecord {
+    pub model_residency: Option<ModelResidencyBinding>,
+    pub model_residency_cleanup_pending: bool,
+    pub resource_allocation: Option<ResourceAllocation>,
+    pub resource_slice: Option<String>,
+    pub resource_cleanup_pending: bool,
     pub retry: Option<RetryLineage>,
     pub retry_session_id: Option<Uuid>,
     pub gpu_job_id: Option<Uuid>,
@@ -329,6 +352,25 @@ pub struct ExecutionRecord {
     pub guard_cleanup_pending: bool,
     pub guard_profile_digest: Option<String>,
     pub workspace_preparing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceAllocation {
+    pub id: Uuid,
+    pub parent_session_id: Option<Uuid>,
+    pub granted: ResourceBudget,
+    pub active: bool,
+    pub kernel_enforced: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ModelResidencyBinding {
+    pub lease_id: Uuid,
+    pub endpoint_id: String,
+    pub model: String,
+    pub ready: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

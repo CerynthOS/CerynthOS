@@ -373,6 +373,8 @@ impl AgentService {
         }
         self.release_guard_sessions().await?;
         self.finish_gpu(id, false).await?;
+        self.release_model_residency().await?;
+        self.release_resources().await?;
         self.session_records(Some(id)).await
     }
 }

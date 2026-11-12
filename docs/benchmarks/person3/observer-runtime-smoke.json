@@ -1,0 +1,20 @@
+{
+  "source_artifact": "observer-runtime-smoke.json",
+  "source_sha256": "fbf31b1ebed858a00886b5cb1f27ee45ba7d59eddd8cda37c8f5cfec96dd3cee",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "live-qt-owner-api-consumer-smoke",
+    "qt_version": "6.12.0",
+    "session_list_consumed": true,
+    "resource_and_harness_provenance_consumed": true,
+    "nested_kernel_accounting_consumed": true,
+    "queued_and_admitted_gpu_jobs_displayed": true,
+    "inference_metrics_and_pressure_consumed": true,
+    "raw_credential_absent": true,
+    "text_rendering": "plain text for lower-trust session and event labels",
+    "read_only_client": true,
+    "capture": "observer-runtime-smoke.png",
+    "backend": "public synthetic; not a model-quality or inference-speed benchmark",
+    "cloud_requests": 0
+  }
+}

@@ -5,6 +5,48 @@ use serde_json::{Value, json};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 impl Coordinator {
+    pub(crate) fn cache_plan(
+        entries: &[cerynth_model_api::cache::CacheEntry],
+        capabilities: &cerynth_model_api::cache::CacheCapabilities,
+        trust_domain: &str,
+        needed_bytes: u64,
+    ) -> Result<Value> {
+        ensure!(
+            entries.len() <= 256
+                && !trust_domain.is_empty()
+                && trust_domain.len() <= 128
+                && entries.iter().all(|e| !e.id.is_empty()
+                    && e.id.len() <= 128
+                    && e.model.len() <= 256
+                    && e.trust_domain.len() <= 128),
+            "cache planning metadata bound exceeded"
+        );
+        Ok(serde_json::to_value(cerynth_model_api::cache::plan(
+            entries,
+            capabilities,
+            trust_domain,
+            needed_bytes,
+        ))?)
+    }
+    pub(crate) async fn pressure(
+        &self,
+        sample: cerynth_resources::pressure::Sample,
+    ) -> Result<Value> {
+        let now = cerynth_resources::pressure::now_ms();
+        sample.validate(now)?;
+        let blocked = sample.blocks_new_work(now);
+        self.queue.set_availability(
+            !blocked,
+            Duration::from_millis(
+                sample
+                    .observed_at_ms
+                    .saturating_add(5000)
+                    .saturating_sub(now),
+            ),
+        );
+        self.state.lock().await.pressure = Some(sample);
+        Ok(json!({"blocked":blocked,"active_requests_cancelled":false}))
+    }
     pub(crate) fn placement(
         request: &cerynth_model_api::placement::PlacementRequest,
         targets: &[cerynth_model_api::placement::PlacementTarget],

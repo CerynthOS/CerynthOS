@@ -13,17 +13,17 @@ PRIVATE_KEYS={"session_id","parent_id","source_session_id","checker_session_id",
     "events","harness_events","synthetic_task_output","verification","artifact","metrics","device_id"}
 
 
-def clean(value):
-    if isinstance(value,dict):return {key:clean(item) for key,item in value.items() if key not in PRIVATE_KEYS}
-    if isinstance(value,list):return [clean(item) for item in value]
+def clean(value,keep_metrics=False):
+    if isinstance(value,dict):return {key:clean(item,keep_metrics) for key,item in value.items() if key not in PRIVATE_KEYS or (key=="metrics" and keep_metrics)}
+    if isinstance(value,list):return [clean(item,keep_metrics) for item in value]
     if isinstance(value,str):return value.replace(str(ROOT),"<repo>").replace(str(Path.home()),"<home>")
     return value
 
 
-def publish(name):
+def publish(name,keep_metrics=False):
     source=SOURCE/name
     data=json.loads(source.read_text())
-    result=clean(data)
+    result=clean(data,keep_metrics)
     destination=DESTINATION/name
     destination.write_text(json.dumps({"source_artifact":name,"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),
         "selection":"Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
@@ -40,6 +40,11 @@ def main():
         "a2a-runtime-smoke.json","task-evidence-runtime-smoke.json","cross-harness-runtime-smoke.json",
         "cross-harness-runtime-smoke-diagnostic.json","cross-harness-runtime-smoke-call-hint.json"]
     for name in files:publish(name)
+    continuation=["resource-hierarchy-smoke.json","auth-inventory-smoke.json","observer-runtime-smoke.json",
+        "resource-responsiveness-smoke.json","model-residency-smoke.json","mps-capability-probe.json",
+        "packaging-runtime-smoke.json","runtime-version-inventory.json","cross-harness-terminal-profile.json",
+        "cross-harness-terminal-profile-final.json","cross-harness-terminal-profile-accepted.json","cross-harness-terminal-copy.json"]
+    for name in continuation:publish(name,keep_metrics=True)
     experiments=[]
     for name in files[:5]:
         data=json.loads((SOURCE/name).read_text());groups=[]
@@ -85,7 +90,7 @@ def main():
             "normalized_tool_events":sum(e["kind"].startswith("harness_tool") for e in data["harness_events"])})
     (DESTINATION/"additional-harness-trials.json").write_text(json.dumps({"kind":"additional-exploratory-harness-trials",
         "trials":trials,"controlled_success_rate_claim":False,"cloud_requests":0},indent=2)+"\n")
-    print(json.dumps({"exported_sources":len(files),"additional_harness_trials":len(trials),"lmcache_transfer_samples":len(transfers)}))
+    print(json.dumps({"exported_sources":len(files)+len(continuation),"additional_harness_trials":len(trials),"lmcache_transfer_samples":len(transfers)}))
 
 
 if __name__=="__main__":main()

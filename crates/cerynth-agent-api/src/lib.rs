@@ -142,6 +142,9 @@ impl SessionSpec {
             return Err("workspace must be an absolute path".into());
         }
         self.runtime.validate()?;
+        if self.runtime.hermes_terminal_profile && self.harness != HarnessKind::Hermes {
+            return Err("Hermes terminal profile requires the Hermes harness".into());
+        }
         if self.runtime.transport != HarnessTransport::CliJsonl
             && self.harness != HarnessKind::OpenCode
         {
@@ -366,6 +369,14 @@ pub enum Operation {
         id: Uuid,
     },
     Diagnostics,
+    ResourceAdmit {
+        id: Uuid,
+        minimum: Option<ResourceBudget>,
+    },
+    ResourceAccounting {
+        id: Uuid,
+    },
+    ResourceView,
     Inventory,
     GpuSubmit {
         id: Uuid,
@@ -374,6 +385,12 @@ pub enum Operation {
         priority: i32,
     },
     GpuJobs,
+    GpuQuiesceModel {
+        id: Uuid,
+        lease_id: Uuid,
+        endpoint_id: String,
+        model: String,
+    },
     GpuRun {
         id: Uuid,
         job_id: Uuid,

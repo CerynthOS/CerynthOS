@@ -27,11 +27,11 @@ Person 3 adds no scheduler source changes.
 
 ```mermaid
 flowchart TD
-  UI[Owner CLI / future desktop] --> AG[private agentd.sock]
+  UI[Owner CLI / native Qt observer] --> AG[private agentd.sock]
   UI --> IC[private inference control.sock]
   AG --> REG[Atomic session registry and operation ledger]
   AG --> SUP[Process / PTY supervisor]
-  SUP --> CG[systemd user scope]
+  SUP --> CG[systemd scope / optional nested slices]
   CG --> BW[Bubblewrap workspace namespace]
   BW --> HAR[Agent harness]
   HAR --> HTTP[token-authenticated loopback HTTP proxy]
@@ -99,10 +99,14 @@ Namespace isolation is not a full security review.
 
 Scopes receive CPUWeight, MemoryHigh, MemoryMax, TasksMax, and control-group kill
 semantics. Parent/child creation bounds child reservations and capabilities.
-Parent CPU weight is not a sum of CPU capacity; nested kernel-enforced parent
-cgroup totals require Person 1's resource API. Current scopes are independent
-user-manager scopes, so hierarchical reservation validation must not be labelled
-hierarchical kernel enforcement.
+The default remains independent user-manager scopes. An opt-in experimental
+resource foundation now creates actual nested systemd slices, admits owner
+CPU/RAM allocations with explicit minimums, and measures aggregate descendants.
+Nested quotas and sibling reservation bounds are exercised on the default Linux
+scheduler; unqualified sched_ext operation is refused for this feature. CPU
+weight is not a quantity of reserved CPU capacity. Machine-wide service authority
+and Person 1's allocation API/review remain outstanding. See the
+[concrete handoff](../contracts/resource-admission-v1alpha1.md).
 
 Distinct active processes cannot use overlapping writable workspaces. An owner
 can create separate Git worktrees before starting agents. Worktrees and branches

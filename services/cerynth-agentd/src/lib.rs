@@ -6,11 +6,13 @@ mod gpu;
 mod guard;
 mod harnesses;
 mod inference;
+mod model_residency;
 mod native_guard;
 mod orchestration;
 mod process;
 mod registry;
 pub mod remote;
+mod resources;
 mod supervisor;
 mod workspace;
 
@@ -59,6 +61,8 @@ pub struct AgentService {
     guard_control: Option<cerynth_agent_protocols::guard::GuardClient>,
     guard_cleanup_lock: Mutex<()>,
     native_guards: Mutex<std::collections::BTreeMap<Uuid, native_guard::OwnedGuard>>,
+    resources: Option<cerynth_resources::systemd::Hierarchy>,
+    resource_lock: Mutex<()>,
 }
 
 impl AgentService {
@@ -95,6 +99,8 @@ impl AgentService {
                 .transpose()?,
             guard_cleanup_lock: Mutex::new(()),
             native_guards: Mutex::new(std::collections::BTreeMap::new()),
+            resources: resources::from_environment(directory)?,
+            resource_lock: Mutex::new(()),
             native_opencode: std::env::var("CERYNTH_OPENCODE_URL")
                 .ok()
                 .map(|url| {
@@ -190,11 +196,17 @@ impl AgentService {
                     .artifacts,
             )?),
             Operation::Diagnostics => self.diagnostics().await,
+            Operation::ResourceAdmit { id, minimum } => {
+                self.admit_resources(id, minimum.as_ref()).await
+            }
+            Operation::ResourceAccounting { id } => self.resource_accounting(id).await,
+            Operation::ResourceView => self.resource_view().await,
             Operation::Observe { id, pid } => self.observe(id, pid).await,
             Operation::A2a { sponsor, request } => self.a2a(sponsor, request).await,
             Operation::Archive { id } => self.archive_session(id).await,
             Operation::Cleanup { id } => self.cleanup_session(id).await,
             operation @ (Operation::Inventory
+            | Operation::GpuQuiesceModel { .. }
             | Operation::GpuRun { .. }
             | Operation::GpuSubmit { .. }
             | Operation::GpuJobs
@@ -205,6 +217,15 @@ impl AgentService {
 
     async fn resource_operation(self: &Arc<Self>, operation: Operation) -> Result<Value> {
         match operation {
+            Operation::GpuQuiesceModel {
+                id,
+                lease_id,
+                endpoint_id,
+                model,
+            } => {
+                self.quiesce_gpu_model(id, lease_id, endpoint_id, model)
+                    .await
+            }
             Operation::GpuRun {
                 id,
                 job_id,
@@ -233,6 +254,11 @@ impl AgentService {
                 let inventory = cerynth_resources::inventory().await?;
                 let mut gpu = self.gpu.lock().await;
                 gpu.update_devices(inventory.gpus);
+                gpu.set_pressure(
+                    self.resources.is_some()
+                        && cerynth_resources::pressure::sample()
+                            .blocks_new_work(registry::now_ms()),
+                );
                 let committed = gpu
                     .jobs
                     .values()
@@ -263,39 +289,12 @@ impl AgentService {
                     registry::now_ms(),
                 )?)?)
             }
-            Operation::GpuJobs => {
-                let inventory = cerynth_resources::inventory().await?;
-                let mut gpu = self.gpu.lock().await;
-                gpu.update_devices(inventory.gpus);
-                gpu.schedule(registry::now_ms());
-                Ok(
-                    serde_json::json!({"jobs":gpu.jobs,"devices":gpu.devices,"desktop_reserve_bytes":gpu.desktop_reserve_bytes,
-                    "enforcement":"cooperative_reservation","automatically_terminates_gpu_processes":false}),
-                )
-            }
+            Operation::GpuJobs => self.gpu_jobs().await,
             Operation::GpuFinish {
                 id,
                 job_id,
                 succeeded,
-            } => {
-                self.runtime.lock().await.registry.get(id)?;
-                let mut gpu = self.gpu.lock().await;
-                ensure!(
-                    gpu.jobs
-                        .get(&job_id)
-                        .is_some_and(|job| job.request.session_id == id),
-                    "GPU job owner mismatch"
-                );
-                Ok(serde_json::to_value(gpu.finish(
-                    job_id,
-                    if succeeded {
-                        cerynth_resources::JobState::Completed
-                    } else {
-                        cerynth_resources::JobState::Failed
-                    },
-                    registry::now_ms(),
-                )?)?)
-            }
+            } => self.finish_unowned_gpu(id, job_id, succeeded).await,
             Operation::RequestResources { id, requested } => {
                 self.request_resources(id, requested).await
             }
@@ -410,7 +409,15 @@ impl AgentService {
             let _ = control.cancel.send(true);
         }
         for session in runtime.registry.list() {
-            if session.state != SessionState::Created && !session.state.is_terminal() {
+            if !session.state.is_terminal()
+                && (session.state != SessionState::Created
+                    || session.execution.model_residency_cleanup_pending
+                    || session
+                        .execution
+                        .resource_allocation
+                        .as_ref()
+                        .is_some_and(|a| a.active))
+            {
                 runtime
                     .registry
                     .transition(session.id, SessionState::Failed, "daemon_shutdown")?;
@@ -424,6 +431,11 @@ impl AgentService {
         while workers.join_next().await.is_some() {}
         drop(workers);
         self.release_guard_sessions().await?;
+        self.release_model_residency().await?;
+        self.release_resources().await?;
+        if let Some(hierarchy) = &self.resources {
+            cerynth_resources::systemd::stop(&hierarchy.root).await?;
+        }
         Ok(())
     }
 }
@@ -501,6 +513,10 @@ pub async fn serve_with_policy(
     service.recover_inference_grants().await;
     service.recover_native_guard_secrets().await?;
     service.release_guard_sessions().await?;
+    // An unavailable coordinator retains the durable lease for an explicit
+    // cleanup retry; it must not prevent inspection of recovered sessions.
+    let _ = service.release_model_residency().await;
+    let pressure_sampler = service.pressure_sampler();
     let socket = directory.join("agentd.sock");
     if let Ok(metadata) = std::fs::symlink_metadata(&socket) {
         ensure!(
@@ -526,6 +542,10 @@ pub async fn serve_with_policy(
         }
     };
     let cleanup = service.shutdown().await;
+    if let Some(sampler) = pressure_sampler {
+        sampler.abort();
+        let _ = sampler.await;
+    }
     clients.abort_all();
     while clients.join_next().await.is_some() {}
     drop(listener);

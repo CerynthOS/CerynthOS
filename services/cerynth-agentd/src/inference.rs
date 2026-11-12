@@ -41,6 +41,36 @@ impl InferenceControl {
 }
 
 impl AgentService {
+    pub(crate) fn pressure_sampler(
+        self: &std::sync::Arc<Self>,
+    ) -> Option<tokio::task::JoinHandle<()>> {
+        if self.resources.is_none() || self.inference_control.is_none() {
+            return None;
+        }
+        let weak = std::sync::Arc::downgrade(self);
+        Some(tokio::spawn(async move {
+            loop {
+                let Some(service) = weak.upgrade() else {
+                    return;
+                };
+                let Some(control) = &service.inference_control else {
+                    return;
+                };
+                let sample = cerynth_resources::pressure::sample();
+                let _ = tokio::time::timeout(
+                    Duration::from_secs(2),
+                    cerynth_inferenced::call(
+                        &control.directory,
+                        true,
+                        serde_json::json!({"type":"pressure","sample":sample}),
+                    ),
+                )
+                .await;
+                drop(service);
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }))
+    }
     async fn inference_scopes(&self, session: &Session) -> Result<Vec<(String, usize)>> {
         let runtime = self.runtime.lock().await;
         let project_limit = std::env::var("CERYNTH_PROJECT_INFERENCE_LIMIT")

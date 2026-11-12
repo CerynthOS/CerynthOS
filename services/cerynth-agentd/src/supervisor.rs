@@ -115,6 +115,15 @@ impl AgentService {
                 "session has already started"
             );
             ensure!(
+                self.resources.is_none()
+                    || session
+                        .execution
+                        .resource_allocation
+                        .as_ref()
+                        .is_some_and(|a| a.active),
+                "owner resource_admit is required before launch"
+            );
+            ensure!(
                 session.spec.runtime.parent_id.is_none_or(|parent| runtime
                     .registry
                     .get(parent)
@@ -183,6 +192,8 @@ impl AgentService {
         };
         let result = async {
             let mut plan = plan;
+            self.bind_resources(id, &mut plan).await?;
+            self.bind_harness_profile(&session, &mut plan)?;
             self.bind_inference(&session, &mut plan).await?;
             self.bind_guard(&session, &launch, &mut plan).await?;
             let session = self.runtime.lock().await.registry.get(id)?;
@@ -214,6 +225,8 @@ impl AgentService {
             }
             drop(runtime);
             self.release_guard_sessions().await?;
+            self.release_model_residency().await?;
+            self.release_resources().await?;
         }
         result
     }
@@ -461,7 +474,9 @@ impl AgentService {
             let _ = crate::orchestration::cancel_tree(&mut runtime, id, false, "parent_exited");
             drop(runtime);
             let _=service.finish_gpu(id, exit_code==Some(0) && cleaned).await;
+            let _=service.release_model_residency().await;
             let _=service.release_guard_sessions().await;
+            let _=service.release_resources().await;
         });
         guard.0 = None;
         Ok(json!({"session_id":id,"pid":pid,"operation_id":operation_id}))

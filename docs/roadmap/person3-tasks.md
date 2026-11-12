@@ -1,6 +1,6 @@
 # Person 3 task acceptance ledger
 
-Audit date: 2026-11-11. **All 112 tasks are not complete.** The weekly plan and
+Audit date: 2026-11-12. **All 112 tasks are not complete.** The weekly plan and
 historical Week 1 guide are unchanged. This ledger separates implemented local
 functionality from partially implemented integrations and outstanding acceptance.
 
@@ -10,10 +10,12 @@ identifies concrete missing behavior or validation. **Pending** has no completed
 acceptance result. No teammate agreement, cloud execution, hard GPU partitioning,
 or unperformed benchmark is inferred from a type, placeholder, or process exit.
 
-Current audit: **87 implemented, 20 partial, 5 pending**.
+Current audit: **100 implemented, 8 partial, 4 pending**.
 These are task-scope labels, not production-readiness percentages.
 
 Evidence references:
+
+- [November 12 local completion audit](../integration/2026-11-12-person3-local-completion.md), [resource handoff](../contracts/resource-admission-v1alpha1.md), [native observer](../runtime/native-observer.md).
 
 - [Runtime guide](../runtime/agent-runtime.md), [architecture](../architecture/person3-runtime.md), [schema](../contracts/agent-session-v1alpha1.md).
 - [Harness/protocol/hardware research](../research/person3-interfaces.md).
@@ -51,9 +53,9 @@ Evidence references:
 | P3-016 | First real harness | Implemented | OpenCode managed launch and independently verified local coding smoke task. |
 | P3-017 | Real local inference endpoint | Implemented | Ollama native streaming and authenticated compatible proxy exercised. |
 | P3-018 | Process trees, exits and failures | Implemented | Boot/PID-generation identity, descendants, exit codes, deadlines and failure reasons. |
-| P3-019 | Connect Person 1 resource API | Partial | Real systemd limits verified; Person 1's per-agent allocation API is absent from this checkout. |
+| P3-019 | Connect Person 1 resource API | Partial | Owner allocation/admission and nested systemd foundation now work; an actual Person 1 allocation service/API and coordinated handoff are still absent. See November 12 audit. |
 | P3-020 | Connect Person 2 sandbox/authorization API | Implemented | Pinned real Guard sandbox/authorization, offline inheritance and opt-in per-root native inference identity bridge exercised. Model coding failures retained; native delegation/tool-effect dedup remain separately limited. |
-| P3-021 | Publish structured events for Person 4 | Partial | Cursor-based events and provenance implemented; desktop consumer agreement/integration pending. |
+| P3-021 | Publish structured events for Person 4 | Implemented | Cursor session/tool/inference events preserve provenance and retention gaps; actual native Qt owner-API consumer and live fixture now exercise them. Team contract approval remains P3-010/P3-099. |
 | P3-022 | Startup/termination/cleanup/crash tests | Implemented | SIGKILL/restart, orphan cleanup, parent exit, timeout, PTY and shutdown regressions. |
 
 ## Phase 2 — Universal harness integration
@@ -64,7 +66,7 @@ Evidence references:
 | P3-024 | Hermes adapter | Implemented | Pinned 0.23.1 launches with private home/read-only dependencies, structured tools and brokered local inference; small-model coding failures recorded. |
 | P3-025 | Codex or Claude Code adapter | Implemented | Codex 0.167.0 local execution recipe exercised; Claude recipe detected but authenticated cloud workflow unverified. |
 | P3-026 | Installation and runtime-version detection | Implemented | Owner-selected executable resolution and bounded version probes. |
-| P3-027 | Secret-free authentication checks | Partial | Codex/Claude status probes return only state; OpenCode/Hermes authentication checks explicitly unsupported. |
+| P3-027 | Secret-free authentication checks | Implemented | Bounded native auth inventories return only state; OpenCode/Hermes private-profile network-isolated canary fixture passes. Configured credentials, unknown state and live authenticated account status remain distinct; no ambient credential environment forwarding. |
 | P3-028 | Structured IO/event streams | Implemented | Native JSONL output and transparent inference SSE; unsupported formats stay raw private output. |
 | P3-029 | Normalize tools/results/usage/errors | Implemented | Supported native JSONL tools/results/errors, nonzero command exits, token usage and cache read/write fields normalized with regression fixtures; unknown formats remain private raw output. |
 | P3-030 | Honest cancellation/resumption support | Implemented | Owned-process cancel supported; native resume not advertised; ACP load only when negotiated. |
@@ -81,7 +83,7 @@ Evidence references:
 | P3-036 | Task assignment/delegation API | Implemented | Objective/input/output/completion contract and owner-sponsored child creation. |
 | P3-037 | Bounded child creation | Implemented | Deadlines, max children, individual and aggregate reservations validated. |
 | P3-038 | Person 2 inheritance checks | Implemented | Pinned real Guard evaluates registered parent/child UUIDs and rejects increased child capability; local subset checks and leaf-first authorization cleanup also tested. |
-| P3-039 | Person 1 hierarchical accounting | Partial | Reservation validation and inference hierarchy exist; nested parent cgroups/global accounting missing. |
+| P3-039 | Person 1 hierarchical accounting | Implemented | Real nested systemd slices enforce aggregate parent limits on the qualified host; direct sibling CPU reservations are bounded, kernel usage includes descendants, cascade/SIGKILL recovery verified. Person 1 global API/review remains separate. |
 | P3-040 | Messaging and structured results | Implemented | Explicit sharing authorization, scoped bounded messages and task-result artifacts. |
 | P3-041 | Graphs/dependencies | Implemented | Delegation/dependency edges; unresolved dependencies block launch. |
 | P3-042 | Git worktrees/workspace mapping | Implemented | Retained per-agent branch/worktree; hooks disabled, filters disabled in network-denied scoped checkout; durable preparation journal and real hostile-hook/filter smoke test. |
@@ -114,19 +116,19 @@ Evidence references:
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
 | P3-061 | GPU discovery/capability matrix | Implemented | NVIDIA and DRM discovery; actual host support/enforcement matrix published. |
-| P3-062 | Vendor GPU utilization/memory adapters | Partial | NVIDIA live-validated and DRM fields implemented; AMD/other vendor hardware validation unavailable. |
+| P3-062 | Vendor GPU utilization/memory adapters | Implemented | NVIDIA live telemetry, Intel discovery and injectable AMD/Intel DRM utilization/memory adapters; missing/malformed sysfs tests preserve unknowns. AMD physical hardware remains unverified and is labelled accordingly. |
 | P3-063 | Supported workload/process GPU usage | Implemented | Supported NVIDIA compute-process memory; graphics and missing metrics explicitly limited. |
 | P3-064 | GPU requests/device/memory/priority | Implemented | Typed request and validated cooperative budget. |
 | P3-065 | GPU admission/queue/reject | Implemented | Capacity, desktop margin, priority/FIFO and expiry tests. |
-| P3-066 | Model residency versus GPU jobs | Partial | Actual occupied memory enters conservative admission; coordinated model eviction/residency changes not integrated. |
+| P3-066 | Model residency versus GPU jobs | Implemented | Actual Ollama unload coordinated with Guard CUDA job, durable origin fencing, bounded waiters, restart recovery and lazy reload after independently verified GPU-scope cleanup. Cooperative, Ollama-only actuation; no arbitrary-client isolation claim. |
 | P3-067 | Distinguish enforcement levels | Implemented | Monitoring/cooperative labels; no unsupported hard GPU guarantee. |
 | P3-068 | Cooperative VRAM accounting | Implemented | Reservation release/expiration and session budget validation. |
 | P3-069 | Desktop GPU capacity | Implemented | Default 1 GiB admission safety margin; cannot constrain bypassing processes. |
 | P3-070 | GPU lifecycle/cleanup/timeouts/failure | Implemented | Actual Guard/systemd CUDA job execution; immutable job/operation binding, timeout/cleanup and retained lease until verified scope emptiness. Manual mid-process release denied. |
 | P3-071 | GPU authorization | Implemented | Actual Guard GPU allow/deny decision bound to job and launch hash, plus authoritative agentd launch gate. Guard decision label remains advisory; no hard VRAM claim. |
-| P3-072 | GPU UI allocations/queue | Partial | Owner API exposes reservations and observations; Person 4 consumer not integrated. |
+| P3-072 | GPU UI allocations/queue | Implemented | Native Qt client consumes real admitted/queued GPU jobs, device memory and resource state through owner APIs; live screenshot fixture passes. Full Person 4 shell remains separate. |
 | P3-073 | CUDA/Python versus local inference | Implemented | Bounded real CUDA bandwidth fixture overlaps real Ollama requests; smoke experiment, no hard-isolation/performance claim. |
-| P3-074 | Evaluate MIG/MPS where available | Partial | MIG reports N/A on this host; MPS not configured/tested; no enforced partition implementation. |
+| P3-074 | Evaluate MIG/MPS where available | Implemented | MIG N/A recorded; private real MPS daemon/client test validates 128 MiB client cap and 50% thread setting with actual CUDA allocations/SM observations. Cooperative evaluation only; no generic hard partition advertised. |
 
 ## Phase 6 — CacheWeaver and optimization
 
@@ -141,7 +143,7 @@ Evidence references:
 | P3-081 | Experimental session-aware cache policy | Implemented | Deterministic recommendation policy and tests; it does not execute KV transfers. |
 | P3-082 | Prevent cross-tenant cache leakage | Partial | Conservative origin/domain routing plus actual coordinator-derived per-grant vLLM native-prefix salt miss/hit isolation and forgery/revocation tests. LMCache/SGLang caches and wider authorization/timing leakage remain unverified. |
 | P3-083 | Placement/switching-cost estimates | Implemented | Owner-only advisory placement planner uses fresh device telemetry, authorization, calibrated resident memory and actual switching samples; protects active models and retains outliers. It does not actuate placement. |
-| P3-084 | Compare engine defaults | Partial | Measured latency, short-output completion rate and memory against native prefix enabled/disabled and LMCache CPU offload. No actuated Cerynth session-aware policy versus engine-default comparison. |
+| P3-084 | Compare engine defaults | Implemented | Three alternating pairs compare an actuated idle-model eviction recommendation with Ollama defaults: model VRAM released, reload latency regressed. Raw samples and limitations retained; no KV transfer or general speedup claim. |
 | P3-085 | Consented local/cloud routing evaluation | Partial | Explicit consent enforced; authorized live cloud routing experiment not run. |
 | P3-086 | Publish benchmark/regressions | Implemented | Sanitized numerical samples, cold outliers, CUDA smoke limits, failed coding trials and the validation report are retained in docs/benchmarks/person3; advanced engine comparison remains P3-084. |
 
@@ -149,18 +151,18 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-087 | Global resource semantics with Person 1 | Partial | Proposed request/allocation handoffs documented; agreement/global implementation missing. |
+| P3-087 | Global resource semantics with Person 1 | Partial | Concrete CPU/RAM/GPU/inference handoff, per-instance accept/reduce/queue/reject and kernel pressure wiring supplied; team agreement and one machine-wide authority across services/instances remain pending. |
 | P3-088 | Agent demand/priority signals | Implemented | Validated resource requests, CPU weights, inference priority grants and phase reports. |
-| P3-089 | Accept/reduce/queue/reject decisions | Partial | Inference/GPU admission and owner-review resource requests exist; global CPU/RAM reduced-grant policy missing. |
+| P3-089 | Accept/reduce/queue/reject decisions | Implemented | Owner CPU/RAM admission implements accept/reduce/queue/reject with explicit minimums and no upward grants; root/child reservations and live kernel limits tested. Global Person 1 service integration is separate. |
 | P3-090 | Project/parent inference budgets | Implemented | Project, ancestor and session scopes share cancellation-safe coordinator admission. |
 | P3-091 | Request additional CPU/RAM/GPU | Implemented | Owner API records validated demand and returns applied:false; no self-approved increase. |
 | P3-092 | Prevent self-authorized higher limits | Implemented | Root grants restricted to owner plane; child subsets and immutable inference grants checked. |
 | P3-093 | Workload phase reports | Implemented | Inference/tool/compile/idle/approval-wait plus cleanup fields; no CPU heuristic pretends semantic certainty. |
-| P3-094 | Person 1 pressure to admission | Pending | Resource pressure stream/contract unavailable in checkout. |
-| P3-095 | Cross-harness routing experiments | Partial | Real OpenCode/Hermes parent-child routing, separate worktrees, shared authenticated queue and fixture hashes exercised. Small-model tool failures mean no verified successful heterogeneous workflow yet. |
+| P3-094 | Person 1 pressure to admission | Partial | Versioned fresh kernel pressure sampler drives CPU/RAM/GPU/inference admission; stale and forged-input tests pass. Actual Person 1 service stream integration and coordinated contract review remain pending. |
+| P3-095 | Cross-harness routing experiments | Implemented | Actual OpenCode/Hermes parent-child copy workflow succeeds in separate worktrees with one authenticated inference queue and independently verified artifact hashes. Failed bridge/approval trials retained; no general coding success-rate claim. |
 | P3-096 | Supervised A2A gateway | Implemented | Explicit loopback A2A 0.3 HTTP subset with Agent Card, private sponsor-bound credential, text drafts/get/cancel and immutable message dedup. Actual auth/scope/substitution tests; no automatic execution/full conformance claim. |
 | P3-097 | Optional remote execution prototype | Implemented | Opt-in SSH relay with dedicated key, pinned host identity, explicit consent and disabled ambient auth/forwarding; actual rootless loopback sshd launch/replay/cancel cleanup test. No physical second-machine/partition rollback claim. |
-| P3-098 | Fairness/responsiveness tests | Partial | Hierarchical queue tests and responsive owner IPC; full desktop-under-contention benchmark pending. |
+| P3-098 | Fairness/responsiveness tests | Implemented | Real nested 1-core parent/two half-core child contention records near-equal CPU use, owner IPC latency and native Qt frame intervals; cleanup verified. Offscreen/bounded test, not full KWin input or whole-machine saturation qualification. |
 
 ## Phase 8 — Reliability, packaging and alpha
 
@@ -174,16 +176,17 @@ Evidence references:
 | P3-104 | Performance/memory-leak regressions | Implemented | Reproducible 100-cycle lifecycle/archive regression after 10 warmups: 471,040-byte RSS growth, 148.22 ms p95, explicit 32 MiB/5 s thresholds; bounded synthetic coverage, not a proof of no leaks. |
 | P3-105 | Hermes/OpenCode/Codex/Claude mixed workload | Pending | Local harnesses exercised separately; authenticated cloud/mixed workflow not validated. |
 | P3-106 | Five-agent local/cloud scenario | Pending | Required authorized cloud configuration and complete resource/security integrations unavailable. |
-| P3-107 | Pin/test supported versions | Partial | Cargo.lock, protocol versions, pinned test harness binaries and matrix exist; complete live compatibility regression coverage pending. |
+| P3-107 | Pin/test supported versions | Partial | Reproducible offline inventory verifies all installed harness/backend/engine pins; local adapter/protocol regressions and evidence matrix exist. Full authenticated cloud feature compatibility remains unqualified until deferred cloud tests. |
 | P3-108 | Install/config/troubleshooting docs | Implemented | Current runtime guide and reproducible commands; historical weekly guide retained. |
-| P3-109 | Person 1 image/startup integration | Partial | Staging script and user units supplied; image install/boot/upgrade acceptance pending. |
-| P3-110 | Person 4 demo/evaluation support | Partial | Real host smoke tools, structured evidence and benchmark report; graphical demonstration/evaluation not integrated. |
+| P3-109 | Person 1 image/startup integration | Implemented | Staged exact Rust/native Qt executables, desktop entry and user units; isolated runtime-linked service dependency startup, hardening, forced restart and session recovery verified. No ISO boot/upgrade/signing claim; distribution/release acceptance remains separate. |
+| P3-110 | Person 4 demo/evaluation support | Implemented | Working native Qt observer, actual live API screenshot, bounded frame/IPC contention measurements and reproducible demo/benchmark scripts supplied for Person 4. No complete desktop-shell or physical-display evaluation claim. |
 | P3-111 | Publish inference/GPU support matrices | Implemented | Explicit backend, protocol, hardware and enforcement support in research/runtime docs. |
 | P3-112 | Release integration/regression review | Pending | Automated/local checks completed; cross-track release review and alpha acceptance remain outstanding. |
 
-Outstanding work follows the acceptance conditions above. The next shared integration
-needs Person 1's allocation/pressure API and nested accounting, Person 4's event
-consumer, reviewed shared contracts and image/release acceptance. Remaining P3
-engineering includes model-residency actuation, broader cache/privacy validation,
-global reduced-grant resource policy and reliable heterogeneous task completion.
-Cloud acceptance still needs an explicitly authorized provider/account/endpoint.
+Outstanding work follows the acceptance conditions above. Real nested accounting,
+reduced grants, model-residency actuation, a native event consumer and a verified
+heterogeneous copy workflow now exist. Remaining integration needs Person 1's
+actual allocation/pressure service, one machine-wide authority, reviewed shared
+contracts and release acceptance. Authoritative native tool-effect IDs and broader
+cache/privacy guarantees remain open. Cloud acceptance is deferred until last at
+the user's request and still needs an explicitly authorized dedicated configuration.

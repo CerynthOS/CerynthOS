@@ -17,6 +17,8 @@ struct Inner {
 }
 #[derive(Default)]
 struct State {
+    paused: bool,
+    valid_until: Option<Instant>,
     active: usize,
     counters: HashMap<String, usize>,
     waiting: Vec<Ticket>,
@@ -73,6 +75,19 @@ impl Drop for AdmissionPermit {
 }
 
 impl AdmissionQueue {
+    /// Trusted gate: expired pressure evidence blocks new work; existing permits
+    /// remain valid and release normally.
+    pub fn set_availability(&self, available: bool, validity: std::time::Duration) {
+        let mut state = self
+            .inner
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        state.paused = !available;
+        state.valid_until = Some(Instant::now() + validity);
+        drop(state);
+        self.inner.changed.notify_waiters();
+    }
     #[must_use]
     pub fn new(limit: usize) -> Self {
         Self {
@@ -157,7 +172,11 @@ impl AdmissionQueue {
                         .min_by_key(|ticket| (std::cmp::Reverse(ticket.priority), ticket.id))
                         .map(|ticket| ticket.id)
                 };
-                if state.active < self.inner.limit && next == Some(id) {
+                if !state.paused
+                    && state.valid_until.is_none_or(|until| until > Instant::now())
+                    && state.active < self.inner.limit
+                    && next == Some(id)
+                {
                     state.priority_bypasses = if oldest == Some(id) {
                         0
                     } else {
@@ -195,6 +214,36 @@ impl AdmissionQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn pressure_gates_new_permits_preserves_active_work_and_expires_closed() {
+        let queue = AdmissionQueue::new(2);
+        let active = queue.acquire(0, vec![("active".into(), 1)]).await.unwrap();
+        queue.set_availability(false, std::time::Duration::from_secs(1));
+        assert!(
+            tokio::time::timeout(
+                std::time::Duration::from_millis(20),
+                queue.acquire(0, vec![("next".into(), 1)])
+            )
+            .await
+            .is_err()
+        );
+        assert_eq!(queue.counts(), (1, 0));
+        queue.set_availability(true, std::time::Duration::from_millis(10));
+        let permit = queue.acquire(0, vec![("next".into(), 1)]).await.unwrap();
+        drop(permit);
+        tokio::time::sleep(std::time::Duration::from_millis(15)).await;
+        assert!(
+            tokio::time::timeout(
+                std::time::Duration::from_millis(20),
+                queue.acquire(0, vec![("stale".into(), 1)])
+            )
+            .await
+            .is_err()
+        );
+        drop(active);
+        assert_eq!(queue.counts(), (0, 0));
+    }
 
     #[tokio::test]
     async fn hierarchical_limits_priority_and_cancelled_waiters() {

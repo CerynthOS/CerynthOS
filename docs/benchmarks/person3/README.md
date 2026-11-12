@@ -1,6 +1,6 @@
 # Person 3 measured evidence
 
-These JSON files preserve public synthetic measurements from November 10–11,
+These JSON files preserve public synthetic measurements from November 10–12,
 2026. The [validation report](../../integration/2026-11-11-person3-runtime.md)
 describes procedures, failures and limits. This is one development host, not
 research-grade evidence of general OS or cache-policy performance.
@@ -25,3 +25,12 @@ native Guard identity, supervised CUDA, evidence collection, A2A and SSH results
 outcomes separately from successful transport/boundary checks. Re-export these
 selected public fixtures with `python3 tools/publish_person3_evidence.py` after
 running the corresponding tools; ignored raw backend logs are never published.
+
+The [November 12 audit](../../integration/2026-11-12-person3-local-completion.md)
+adds three-level systemd accounting/recovery, actual NVIDIA MPS client controls,
+private native auth inventories, live Qt API consumption and frame observations,
+packaged user-service restart, offline version pins, and successful independently
+checked OpenCode/Hermes copy routing. Failed terminal-profile trials remain beside
+the accepted copy fixture. `model-residency-smoke.json` compares an actuated
+idle-model eviction recommendation with engine defaults and retains the observed
+reload-latency regression. These fixtures make no cloud model requests.

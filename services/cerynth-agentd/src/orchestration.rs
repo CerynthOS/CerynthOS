@@ -193,6 +193,8 @@ impl AgentService {
         let result = serde_json::to_value(runtime.registry.get(id)?)?;
         drop(runtime);
         self.release_guard_sessions().await?;
+        self.release_model_residency().await?;
+        self.release_resources().await?;
         Ok(result)
     }
 
@@ -307,7 +309,11 @@ impl AgentService {
                 task_id: session.spec.runtime.task.as_ref().map(|t| t.id),
                 timestamp_ms: e.timestamp_ms,
                 sequence: e.sequence,
-                category: if e.reason.starts_with("harness_tool") {
+                category: if e.reason.starts_with("guard_") || e.reason.starts_with("native_guard_") {
+                    "security"
+                } else if e.reason.starts_with("resource") || e.reason.starts_with("gpu_") || e.reason.starts_with("model_residency_") || e.reason=="workload_phase_reported" {
+                    "resource"
+                } else if e.reason.starts_with("harness_tool") {
                     "tool"
                 } else if e.reason.starts_with("inference") {
                     "inference"

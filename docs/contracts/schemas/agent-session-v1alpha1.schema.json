@@ -44,10 +44,15 @@
         "harness_events": [],
         "messages": [],
         "mode": "integrated",
+        "model_residency": null,
+        "model_residency_cleanup_pending": false,
         "native_guard_unit": null,
         "operations": [],
         "phase": "idle",
         "process": null,
+        "resource_allocation": null,
+        "resource_cleanup_pending": false,
+        "resource_slice": null,
         "retry": null,
         "retry_session_id": null,
         "workspace_preparing": false,
@@ -286,6 +291,21 @@
             }
           ]
         },
+        "model_residency": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelResidencyBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_residency_cleanup_pending": {
+          "default": false,
+          "type": "boolean"
+        },
         "native_guard_unit": {
           "default": null,
           "type": [
@@ -317,6 +337,28 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "resource_allocation": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResourceAllocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resource_cleanup_pending": {
+          "default": false,
+          "type": "boolean"
+        },
+        "resource_slice": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
           ]
         },
         "retry": {
@@ -516,6 +558,31 @@
         "cloud"
       ]
     },
+    "ModelResidencyBinding": {
+      "type": "object",
+      "required": [
+        "endpoint_id",
+        "lease_id",
+        "model",
+        "ready"
+      ],
+      "properties": {
+        "endpoint_id": {
+          "type": "string"
+        },
+        "lease_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "model": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "NetworkPolicy": {
       "type": "string",
       "enum": [
@@ -646,9 +713,51 @@
       },
       "additionalProperties": false
     },
+    "ResourceAllocation": {
+      "type": "object",
+      "required": [
+        "active",
+        "granted",
+        "id",
+        "kernel_enforced"
+      ],
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "granted": {
+          "$ref": "#/definitions/ResourceBudget"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kernel_enforced": {
+          "type": "boolean"
+        },
+        "parent_session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false
+    },
     "ResourceBudget": {
       "type": "object",
       "properties": {
+        "cpu_quota_micros_per_second": {
+          "description": "Hard CPU bandwidth in microseconds per second; None means weight-only sharing.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
         "cpu_weight": {
           "default": 100,
           "type": "integer",
@@ -730,6 +839,7 @@
       "properties": {
         "budget": {
           "default": {
+            "cpu_quota_micros_per_second": null,
             "cpu_weight": 100,
             "gpu_memory_bytes": 0,
             "inference_concurrency": 2,
@@ -764,6 +874,11 @@
               "type": "null"
             }
           ]
+        },
+        "hermes_terminal_profile": {
+          "description": "Owner-selected coding profile for small local models; OS policy still enforces the boundary independently of the harness tool list.",
+          "default": false,
+          "type": "boolean"
         },
         "isolation": {
           "default": "required",
@@ -886,6 +1001,7 @@
         "runtime": {
           "default": {
             "budget": {
+              "cpu_quota_micros_per_second": null,
               "cpu_weight": 100,
               "gpu_memory_bytes": 0,
               "inference_concurrency": 2,
@@ -897,6 +1013,7 @@
             },
             "capabilities": [],
             "guard": null,
+            "hermes_terminal_profile": false,
             "isolation": "required",
             "message_peers": [],
             "network": "deny",

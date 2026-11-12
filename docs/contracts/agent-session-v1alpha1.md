@@ -54,8 +54,10 @@ retain denied host networking. Names/models are
 1–256 bytes without control characters. Workspaces must exist. The owner supplies
 root grants. Children inherit a subset of capabilities, sharing peers,
 network/isolation authority, individual limits and bounded total memory/GPU/
-concurrency reservations. Current independent systemd scopes do not enforce
-aggregate parent kernel limits.
+concurrency reservations. Independent scopes remain the default; opt-in nested
+systemd slices now enforce aggregate parent limits on the qualified Linux host.
+The [experimental resource handoff](resource-admission-v1alpha1.md) documents
+owner admission, CPU quotas, pressure, model residency and remaining team review.
 
 Harness values: `inference_probe`, `generic_pty`, `open_code`, `hermes`, `codex`,
 `claude_code`, `acp`. ACP is a negotiated transport library; selecting `acp` does
@@ -178,3 +180,18 @@ issuance, sandbox receipts and authoritative tool mediation. Person 4 must revie
 event consumption, gaps and evidence/enforcement labels. The
 [architecture document](../architecture/person3-runtime.md) records proposed
 handoffs. No cross-track agreement is claimed.
+
+## November 12 optional fields
+
+`runtime.budget.cpu_quota_micros_per_second` defaults to null (weight-only).
+`runtime.hermes_terminal_profile` defaults to false; only Hermes accepts it.
+The profile mounts generated read-only terminal/tool-search configuration into
+an otherwise private home, bypasses workspace rules, and enables no added plugins,
+MCP servers or hooks. It preserves native dangerous-command approval behavior.
+It is a harness profile, not a replacement for OS enforcement.
+
+Execution metadata adds independent resource allocation/slice and model-residency
+cleanup journals. Defaulted fields preserve old stored records; new request
+variants are owner-only experimental API additions. Strict old clients must be
+reviewed against the regenerated schema before stabilization. No scheduler wire
+format or frozen week-one contract changed.

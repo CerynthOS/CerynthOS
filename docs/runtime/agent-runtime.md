@@ -296,8 +296,11 @@ Owner inference operation `plan_placement` compares fresh device observations,
 protected/active residents, calibrated allocation sizes and measured switching
 samples. It returns advisory choices and cost ranges; stale/unknown or unauthorized
 targets are queued/rejected rather than guessed. It never evicts or moves a model.
-CacheWeaver also remains a recommendation policy; experimental LMCache transfers
-were performed by the engine, not by a new Cerynth KV implementation.
+CacheWeaver returns recommendations. An owner-actuated idle-model eviction
+experiment now applies its recommendation through `gpu_quiesce_model`, holding
+new inference until GPU scope cleanup and permitting lazy reload afterward.
+This currently actuates Ollama whole-model unload only. Experimental LMCache
+transfers were performed by the engine, not by a new Cerynth KV implementation.
 
 ## A2A and optional remote prototype
 
@@ -374,3 +377,16 @@ the engine. Revoke tokens before changing endpoint policy and stop sessions
 before stopping a backend. Never interpret CLI exit zero as verified coding
 success. Cross-track integration and outstanding experiments are listed in the
 task ledger.
+
+## Experimental nested resources and native observer
+
+The [resource handoff](../contracts/resource-admission-v1alpha1.md) describes
+`CERYNTH_RESOURCE_HIERARCHY=1`, required owner `resource_admit`, optional CPU
+quotas, aggregate systemd slices, pressure admission and Ollama GPU/model fencing.
+This feature requires sched_ext disabled until Person 1 qualifies its CPU policy;
+it never changes the scheduler. The default independent-scope mode is preserved.
+
+The [native observer guide](native-observer.md) supplies a working Qt desktop
+client, build/staging instructions, screenshots and bounded contention fixtures.
+The [November 12 audit](../integration/2026-11-12-person3-local-completion.md)
+records current acceptance, tradeoffs, unsupported features and deferred cloud work.

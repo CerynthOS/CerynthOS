@@ -117,6 +117,13 @@ impl Registry {
         let mut recovered = registry.snapshot.clone();
         for session in recovered.sessions.values_mut() {
             if session.execution.cleanup_pending
+                || session.execution.model_residency_cleanup_pending
+                || session.execution.resource_cleanup_pending
+                || session
+                    .execution
+                    .resource_allocation
+                    .as_ref()
+                    .is_some_and(|a| a.active)
                 || session.execution.gpu_cleanup_pending
                 || session.execution.workspace_preparing
                 || (session.execution.guard_cleanup_pending
@@ -125,6 +132,10 @@ impl Registry {
             {
                 crate::process::recover(session)?;
                 session.execution.cleanup_pending = false;
+                session.execution.resource_cleanup_pending = false;
+                if let Some(allocation) = &mut session.execution.resource_allocation {
+                    allocation.active = false;
+                }
                 session.execution.gpu_cleanup_pending = false;
                 session.execution.workspace_preparing = false;
                 if session.execution.native_guard_unit.is_some() {
@@ -186,6 +197,13 @@ impl Registry {
         );
         ensure!(
             !source.execution.cleanup_pending
+                && !source.execution.model_residency_cleanup_pending
+                && !source.execution.resource_cleanup_pending
+                && !source
+                    .execution
+                    .resource_allocation
+                    .as_ref()
+                    .is_some_and(|a| a.active)
                 && !source.execution.guard_cleanup_pending
                 && !source.execution.gpu_cleanup_pending
                 && !source.execution.workspace_preparing,
@@ -233,6 +251,10 @@ impl Registry {
         );
         if let Some(parent_id) = spec.runtime.parent_id {
             let parent = self.get(parent_id)?;
+            if spec.runtime.budget.cpu_quota_micros_per_second.is_none() {
+                spec.runtime.budget.cpu_quota_micros_per_second =
+                    parent.spec.runtime.budget.cpu_quota_micros_per_second;
+            }
             ensure!(!parent.state.is_terminal(), "parent session is terminal");
             ensure!(
                 spec.runtime.guard.is_some() == parent.spec.runtime.guard.is_some(),
@@ -408,8 +430,15 @@ impl Registry {
             .context("session is unknown or already archived")?;
         ensure!(
             session.state.is_terminal()
+                && !session.execution.model_residency_cleanup_pending
                 && !session.execution.cleanup_pending
                 && !session.execution.guard_cleanup_pending
+                && !session.execution.resource_cleanup_pending
+                && !session
+                    .execution
+                    .resource_allocation
+                    .as_ref()
+                    .is_some_and(|a| a.active)
                 && !session.execution.gpu_cleanup_pending
                 && !session.execution.workspace_preparing,
             "session cleanup is not complete"

@@ -1,0 +1,38 @@
+{
+  "source_artifact": "mps-capability-probe.json",
+  "source_sha256": "7278933a4254847929fd256695982a849bc2bc2b936bd6941a9dfffaa232f9b5",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "private-mps-hardware-capability-evaluation",
+    "control_tool_installed": true,
+    "compute_mode_changed": false,
+    "global_mps_daemon_used": false,
+    "generic_hard_vram_guarantee": false,
+    "cloud_requests": 0,
+    "mig_current": "[N/A]",
+    "baseline": {
+      "init": 0,
+      "device": 0,
+      "context": 0,
+      "multiprocessors": 26,
+      "32mib_allocation": 0,
+      "256mib_allocation": 0
+    },
+    "memory_limit_command_ok": true,
+    "thread_limit_command_ok": true,
+    "client": {
+      "init": 0,
+      "device": 0,
+      "context": 0,
+      "multiprocessors": 12,
+      "32mib_allocation": 0,
+      "256mib_allocation": 2
+    },
+    "active_server_count": 1,
+    "client_connection_verified": true,
+    "client_memory_limit_observed": true,
+    "mps_supported_for_fixture": true,
+    "daemon_log_has_unsupported_device": false,
+    "owned_scope_cleanup": true
+  }
+}
