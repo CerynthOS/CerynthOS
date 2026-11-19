@@ -251,6 +251,15 @@ impl Registry {
         );
         if let Some(parent_id) = spec.runtime.parent_id {
             let parent = self.get(parent_id)?;
+            if let (Some(child), Some(parent)) = (&spec.runtime.guard, &parent.spec.runtime.guard) {
+                ensure!(
+                    child
+                        .remotes
+                        .iter()
+                        .all(|(name, url)| parent.remotes.get(name) == Some(url)),
+                    "child cannot change owner-approved Git remote targets"
+                );
+            }
             if spec.runtime.budget.cpu_quota_micros_per_second.is_none() {
                 spec.runtime.budget.cpu_quota_micros_per_second =
                     parent.spec.runtime.budget.cpu_quota_micros_per_second;

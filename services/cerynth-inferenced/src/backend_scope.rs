@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
     io::Write,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
 
@@ -28,6 +28,30 @@ fn valid(unit: &str) -> bool {
 }
 
 impl Journal {
+    pub(crate) fn private_home(&self, unit: &str) -> Result<PathBuf> {
+        ensure!(valid(unit), "invalid owned backend scope");
+        let base = self
+            .path
+            .as_ref()
+            .and_then(|p| p.parent())
+            .context("persistent coordinator required")?
+            .join("model-homes");
+        let home = base.join(unit);
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&home)?;
+        for directory in [&base, &home] {
+            let m = std::fs::symlink_metadata(directory)?;
+            ensure!(
+                m.is_dir()
+                    && m.uid() == nix::unistd::getuid().as_raw()
+                    && m.mode() & 0o777 == 0o700,
+                "model home is not private"
+            );
+        }
+        Ok(home)
+    }
     pub(crate) fn units(&self) -> &BTreeSet<String> {
         &self.units
     }

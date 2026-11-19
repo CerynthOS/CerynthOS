@@ -3,6 +3,7 @@
 mod backend;
 mod backend_scope;
 mod models;
+mod privacy;
 pub mod proxy;
 mod residency;
 use anyhow::{Context, Result, ensure};
@@ -92,6 +93,7 @@ struct State {
 }
 
 pub struct Coordinator {
+    privacy: privacy::Policy,
     residency: Mutex<residency::Residency>,
     state: Mutex<State>,
     queue: AdmissionQueue,
@@ -105,6 +107,8 @@ pub struct Coordinator {
 #[serde(deny_unknown_fields)]
 struct StoredRouting {
     version: u32,
+    #[serde(default)]
+    cache_privacy: Option<privacy::Policy>,
     endpoints: Vec<EndpointSpec>,
     trust_domains: BTreeMap<String, String>,
     #[serde(default)]
@@ -192,6 +196,7 @@ impl Coordinator {
     #[must_use]
     pub fn new(concurrency: usize) -> Self {
         Self {
+            privacy: privacy::Policy::TrustDomain,
             residency: Mutex::new(residency::Residency::default()),
             state: Mutex::new(State::default()),
             queue: AdmissionQueue::new(concurrency),
@@ -204,6 +209,7 @@ impl Coordinator {
 
     fn persistent(directory: &Path, concurrency: usize) -> Result<Self> {
         let mut coordinator = Self::new(concurrency);
+        coordinator.privacy = privacy::Policy::from_environment()?;
         let path = directory.join("routing.json");
         if path.exists() {
             let metadata = std::fs::symlink_metadata(&path)?;
@@ -217,11 +223,19 @@ impl Coordinator {
             let stored: StoredRouting =
                 serde_json::from_slice(&std::fs::read(&path)?).context("invalid routing state")?;
             ensure!(
-                stored.version == 1
+                matches!(stored.version, 1 | 2)
                     && stored.endpoints.len() <= 32
                     && stored.trust_domains.len() <= 1024,
                 "unsupported routing state"
             );
+            if stored.cache_privacy == Some(privacy::Policy::ManagedProcess) {
+                ensure!(
+                    std::env::var("CERYNTH_CACHE_PRIVACY").is_err()
+                        || coordinator.privacy == privacy::Policy::ManagedProcess,
+                    "persisted strict cache policy cannot be downgraded in place"
+                );
+                coordinator.privacy = privacy::Policy::ManagedProcess;
+            }
             let state = coordinator.state.get_mut();
             state.trust_domains = stored.trust_domains;
             state.models = stored.models;
@@ -245,7 +259,19 @@ impl Coordinator {
         }
         coordinator.storage = Some(path);
         coordinator.backends = backend::BackendManager::persistent(directory)?;
+        if coordinator.privacy == privacy::Policy::ManagedProcess {
+            // Old owned scopes are now empty, no grants survive, and every new
+            // grant must bind a newly owned process with a fresh private home.
+            coordinator.state.get_mut().trust_domains.clear();
+        }
         *coordinator.residency.get_mut() = residency::Residency::load(directory)?;
+        if coordinator.privacy == privacy::Policy::ManagedProcess {
+            let state = coordinator
+                .state
+                .try_lock()
+                .context("coordinator initialization lock unavailable")?;
+            coordinator.persist(&state)?;
+        }
         Ok(coordinator)
     }
 
@@ -254,7 +280,8 @@ impl Coordinator {
         if let Some(path) = &self.storage {
             let directory = path.parent().context("missing routing directory")?;
             let stored = StoredRouting {
-                version: 1,
+                version: 2,
+                cache_privacy: Some(self.privacy),
                 endpoints: state
                     .endpoints
                     .values()
@@ -340,12 +367,7 @@ impl Coordinator {
                 configured
             }
             AdminOperation::StopBackend { endpoint_id } => {
-                let _exclusive = self
-                    .lifecycle
-                    .try_write()
-                    .context("inference is active or queued; stop sessions first")?;
-                self.backends.stop(&endpoint_id).await?;
-                Ok(json!({"stopped":endpoint_id}))
+                self.stop_private_backend(&endpoint_id).await
             }
             AdminOperation::Health => {
                 let backend_processes = self.backends.status().await;
@@ -356,6 +378,7 @@ impl Coordinator {
                     json!({"version":1,"service_ready":true,"backend_processes":backend_processes,"endpoints":state.endpoints.keys().collect::<Vec<_>>(),
                     "grants":state.grants.len(),"active_requests":active,"queued_requests":queued,
                     "grants_survive_restart":false,"admission_pressure":state.pressure,
+                    "cache_privacy":self.privacy,
                     "admitted_and_waiting_requests":64-self.request_slots.available_permits(),"request_limit":64,
                     "model_residency_holds":residency_holds,
                     "pressure_admission_blocked":state.pressure.as_ref().is_some_and(|s|s.blocks_new_work(cerynth_resources::pressure::now_ms()))}),
@@ -398,6 +421,7 @@ impl Coordinator {
     }
 
     async fn configure(&self, endpoint: EndpointSpec) -> Result<Value> {
+        self.require_private_backend(&endpoint).await?;
         let _exclusive = self
             .lifecycle
             .try_write()
@@ -477,6 +501,8 @@ impl Coordinator {
             state.endpoints.contains_key(&grant.endpoint_id),
             "unknown endpoint"
         );
+        self.require_private_backend(&state.endpoints[&grant.endpoint_id].0)
+            .await?;
         let route = match &state.endpoints[&grant.endpoint_id].0 {
             EndpointSpec::Ollama { url, .. } => cerynth_model_api::origin_key(url)?,
             EndpointSpec::Compatible { config, .. } => {
@@ -488,11 +514,12 @@ impl Coordinator {
                 cerynth_model_api::origin_key(&config.url)?
             }
         };
+        let cache_domain = self.privacy.domain(&grant);
         ensure!(
             state
                 .trust_domains
                 .get(&route)
-                .is_none_or(|domain| *domain == grant.trust_domain),
+                .is_none_or(|domain| *domain == cache_domain),
             "backend origin already belongs to another trust domain; use an isolated backend"
         );
         ensure!(
@@ -513,9 +540,7 @@ impl Coordinator {
         let hash: [u8; 32] = Sha256::digest(token.as_bytes()).into();
         let (revoked, _) = watch::channel(false);
         let session_id = grant.session_id;
-        state
-            .trust_domains
-            .insert(route.clone(), grant.trust_domain.clone());
+        state.trust_domains.insert(route.clone(), cache_domain);
         ensure!(
             state.trust_domains.len() <= 1024,
             "trust-domain registry full"
@@ -531,7 +556,7 @@ impl Coordinator {
                 revoked,
             },
         );
-        Ok(json!({"session_id":session_id,"token":token}))
+        Ok(json!({"session_id":session_id,"token":token,"cache_privacy":self.privacy}))
     }
 
     async fn backend_metadata(

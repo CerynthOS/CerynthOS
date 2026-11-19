@@ -1,6 +1,7 @@
 //! Unprivileged managed agent supervisor and session registry.
 
 pub mod a2a_http;
+mod effects;
 mod gateway;
 mod gpu;
 mod guard;
@@ -41,6 +42,20 @@ use uuid::Uuid;
 
 use registry::Registry;
 
+fn validate_request(request: &Request) -> Result<()> {
+    ensure!(
+        request.version == API_VERSION,
+        "unsupported agent API version"
+    );
+    if let Some(expected) = &request.expected_contract {
+        ensure!(
+            cerynth_agent_api::contract::manifest()["contract_id"] == *expected,
+            "contract fingerprint mismatch; operation not dispatched"
+        );
+    }
+    Ok(())
+}
+
 struct Runtime {
     registry: Registry,
     active: HashMap<Uuid, watch::Sender<bool>>,
@@ -63,6 +78,8 @@ pub struct AgentService {
     native_guards: Mutex<std::collections::BTreeMap<Uuid, native_guard::OwnedGuard>>,
     resources: Option<cerynth_resources::systemd::Hierarchy>,
     resource_lock: Mutex<()>,
+    effects: Arc<effects::Journal>,
+    effect_gateways: Mutex<std::collections::BTreeMap<Uuid, effects::Gateway>>,
 }
 
 impl AgentService {
@@ -101,6 +118,8 @@ impl AgentService {
             native_guards: Mutex::new(std::collections::BTreeMap::new()),
             resources: resources::from_environment(directory)?,
             resource_lock: Mutex::new(()),
+            effects: Arc::new(effects::Journal::open(&directory.join("tool-effects"))?),
+            effect_gateways: Mutex::new(std::collections::BTreeMap::new()),
             native_opencode: std::env::var("CERYNTH_OPENCODE_URL")
                 .ok()
                 .map(|url| {
@@ -116,11 +135,14 @@ impl AgentService {
     }
 
     async fn dispatch(self: &Arc<Self>, request: Request) -> Result<Value> {
-        ensure!(
-            request.version == API_VERSION,
-            "unsupported agent API version"
-        );
+        validate_request(&request)?;
         match request.operation {
+            operation @ (Operation::Protocol
+            | Operation::PlanGlobalResources { .. }
+            | Operation::ToolAwaitApproval { .. }
+            | Operation::ToolDecide { .. }
+            | Operation::ToolEffects { .. }
+            | Operation::ProcessTree { .. }) => self.session_control_operation(operation).await,
             Operation::Create { spec } => Ok(serde_json::to_value(
                 self.runtime.lock().await.registry.create(spec)?,
             )?),
@@ -152,16 +174,6 @@ impl AgentService {
             Operation::Input { id, input } => self.process_input(id, input).await,
             Operation::Output { id, offset, limit } => self.output(id, offset, limit).await,
             Operation::Events { id, after } => self.events(id, after).await,
-            Operation::ProcessTree { id } => {
-                let s = self.runtime.lock().await.registry.get(id)?;
-                Ok(serde_json::to_value(
-                    s.execution
-                        .process
-                        .as_ref()
-                        .map(process::descendants)
-                        .unwrap_or_default(),
-                )?)
-            }
             Operation::Delegate { parent, spec, task } => self.delegate(parent, spec, task).await,
             Operation::SendMessage {
                 sender,
@@ -200,6 +212,7 @@ impl AgentService {
                 self.admit_resources(id, minimum.as_ref()).await
             }
             Operation::ResourceAccounting { id } => self.resource_accounting(id).await,
+            Operation::PlatformResources { id } => self.platform_resources(id).await,
             Operation::ResourceView => self.resource_view().await,
             Operation::Observe { id, pid } => self.observe(id, pid).await,
             Operation::A2a { sponsor, request } => self.a2a(sponsor, request).await,
@@ -212,6 +225,36 @@ impl AgentService {
             | Operation::GpuJobs
             | Operation::GpuFinish { .. }
             | Operation::RequestResources { .. }) => self.resource_operation(operation).await,
+        }
+    }
+
+    async fn session_control_operation(self: &Arc<Self>, operation: Operation) -> Result<Value> {
+        match operation {
+            Operation::Protocol => Ok(cerynth_agent_api::contract::manifest()),
+            Operation::PlanGlobalResources {
+                id,
+                minimum,
+                gpu_device_id,
+            } => self.plan_global_resources(id, minimum, gpu_device_id).await,
+            Operation::ToolAwaitApproval { id, approval_id } => {
+                self.tool_await(id, approval_id).await
+            }
+            Operation::ToolDecide { id, request } => self.tool_decide(id, request).await,
+            Operation::ToolEffects { id } => {
+                self.runtime.lock().await.registry.get(id)?;
+                Ok(self.effects.status(id).await)
+            }
+            Operation::ProcessTree { id } => {
+                let s = self.runtime.lock().await.registry.get(id)?;
+                Ok(serde_json::to_value(
+                    s.execution
+                        .process
+                        .as_ref()
+                        .map(process::descendants)
+                        .unwrap_or_default(),
+                )?)
+            }
+            _ => anyhow::bail!("unsupported session control operation"),
         }
     }
 
@@ -464,8 +507,7 @@ async fn connection(mut stream: UnixStream, service: Arc<AgentService>) -> Resul
     .await?;
     let result = match request {
         Ok(bytes) => match serde_json::from_slice::<Request>(&bytes) {
-            Ok(request) => service
-                .dispatch(request)
+            Ok(request) => Box::pin(service.dispatch(request))
                 .await
                 .map_err(|error| error.to_string()),
             Err(_) => Err("invalid agent API request".into()),
@@ -511,6 +553,7 @@ pub async fn serve_with_policy(
         allow_unisolated,
     )?);
     service.recover_inference_grants().await;
+    service.recover_effect_sockets().await?;
     service.recover_native_guard_secrets().await?;
     service.release_guard_sessions().await?;
     // An unavailable coordinator retains the durable lease for an explicit
@@ -559,6 +602,25 @@ pub async fn serve_with_policy(
 /// # Errors
 /// Returns an error on connection failure, protocol mismatch, or daemon rejection.
 pub async fn call(directory: &Path, operation: Operation) -> Result<Value> {
+    let expected_contract = if matches!(operation, Operation::Protocol) {
+        None
+    } else {
+        std::env::var("CERYNTH_AGENT_CONTRACT").ok()
+    };
+    if let Some(expected) = &expected_contract {
+        ensure!(
+            expected.len() == 64 && expected.bytes().all(|c| c.is_ascii_hexdigit()),
+            "invalid expected contract fingerprint"
+        );
+    }
+    call_once(directory, operation, expected_contract).await
+}
+
+async fn call_once(
+    directory: &Path,
+    operation: Operation,
+    expected_contract: Option<String>,
+) -> Result<Value> {
     registry::private_directory(directory)?;
     tokio::time::timeout(Duration::from_secs(190), async {
         let mut stream = UnixStream::connect(directory.join("agentd.sock"))
@@ -570,6 +632,7 @@ pub async fn call(directory: &Path, operation: Operation) -> Result<Value> {
         );
         let mut bytes = serde_json::to_vec(&Request {
             version: API_VERSION,
+            expected_contract,
             operation,
         })?;
         ensure!(bytes.len() < MAX_FRAME_BYTES, "request exceeds limit");

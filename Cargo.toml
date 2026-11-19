@@ -13,6 +13,7 @@ members = [
     "adapters/cli-harnesses",
     "services/cerynth-agentd",
     "crates/cerynth-resources",
+    "crates/cerynth-platform-resources",
     "crates/cerynth-agent-protocols",
     "services/cerynth-inferenced",
     "services/cerynthd",

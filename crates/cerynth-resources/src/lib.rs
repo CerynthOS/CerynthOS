@@ -1,5 +1,7 @@
 //! Accelerator monitoring and cooperative admission. No generic hard VRAM limits.
 pub mod admission;
+pub mod global;
+pub mod platform;
 pub mod pressure;
 pub mod systemd;
 use anyhow::{Result, ensure};

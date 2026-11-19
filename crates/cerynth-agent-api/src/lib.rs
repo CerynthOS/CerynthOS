@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod contract;
 mod runtime;
 pub use runtime::*;
 
@@ -275,12 +276,34 @@ pub trait HarnessAdapter: Send + Sync {
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_contract: Option<String>,
     pub operation: Operation,
 }
 
 #[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    Protocol,
+    PlanGlobalResources {
+        id: Uuid,
+        minimum: Option<ResourceBudget>,
+        gpu_device_id: Option<String>,
+    },
+    ToolAwaitApproval {
+        id: Uuid,
+        approval_id: Uuid,
+    },
+    ToolDecide {
+        id: Uuid,
+        request: serde_json::Value,
+    },
+    ToolEffects {
+        id: Uuid,
+    },
+    PlatformResources {
+        id: Uuid,
+    },
     Create {
         spec: SessionSpec,
     },

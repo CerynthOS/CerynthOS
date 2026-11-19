@@ -210,6 +210,8 @@ impl RuntimeSpec {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct GuardPolicy {
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub remotes: std::collections::BTreeMap<String, String>,
     #[serde(default)]
     pub native_inference: bool,
     #[serde(default)]
@@ -242,11 +244,37 @@ impl GuardPolicy {
     /// # Errors
     /// Rejects unsupported grants; this integration currently supports offline profiles.
     pub fn validate(&self) -> Result<(), String> {
+        if self.remotes.len() > 16
+            || self.remotes.iter().any(|(name, url)| {
+                name.is_empty()
+                    || name.len() > 64
+                    || !name
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || "_-".contains(c))
+                    || url.is_empty()
+                    || url.len() > 4096
+                    || url.chars().any(char::is_control)
+                    || url.contains(['?', '#'])
+                    || !(url.starts_with('/')
+                        || url.starts_with("file:///")
+                        || url.starts_with("https://")
+                        || url.starts_with("ssh://"))
+                    || (url.starts_with("https://") && url.contains('@'))
+                    || (url.starts_with("ssh://")
+                        && url.contains('@')
+                        && url
+                            .split('@')
+                            .next()
+                            .is_some_and(|u| u.trim_start_matches("ssh://").contains(':')))
+            })
+        {
+            return Err("invalid owner Git remotes; embedded credentials and unsupported schemes are forbidden".into());
+        }
         if self.capabilities.len() > 32
             || self.capabilities.iter().any(|cap| {
                 !(matches!(
                     cap.kind.as_str(),
-                    "fs.read" | "fs.write" | "session.spawn" | "tool.exec" | "gpu.use"
+                    "fs.read" | "fs.write" | "session.spawn" | "tool.exec" | "gpu.use" | "git.push"
                 ) || (self.native_inference
                     && matches!(
                         (cap.kind.as_str(), cap.target.as_str()),

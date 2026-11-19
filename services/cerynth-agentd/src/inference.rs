@@ -56,7 +56,7 @@ impl AgentService {
                 let Some(control) = &service.inference_control else {
                     return;
                 };
-                let sample = cerynth_resources::pressure::sample();
+                let sample = service.platform_pressure().await;
                 let _ = tokio::time::timeout(
                     Duration::from_secs(2),
                     cerynth_inferenced::call(
@@ -157,6 +157,7 @@ impl AgentService {
         let token = response["token"]
             .as_str()
             .context("coordinator returned no session credential")?;
+        require_private_cache_boundary(session, &response)?;
         if session
             .spec
             .runtime
@@ -236,6 +237,22 @@ impl AgentService {
     }
 }
 
+fn require_private_cache_boundary(session: &Session, response: &serde_json::Value) -> Result<()> {
+    if response["cache_privacy"] == "managed_process" {
+        ensure!(
+            session
+                .spec
+                .runtime
+                .guard
+                .as_ref()
+                .is_some_and(|g| g.native_inference)
+                && session.spec.runtime.network == cerynth_agent_api::NetworkPolicy::Deny,
+            "managed-process cache privacy requires the supported Guard native inference boundary with host networking denied"
+        );
+    }
+    Ok(())
+}
+
 fn replace_codex_args(args: &[String], url: &str) -> Result<Vec<String>> {
     let mut prefix = if let Some(position) = args.iter().rposition(|arg| arg == "--") {
         let executable = args
@@ -285,6 +302,37 @@ fn replace_codex_args(args: &[String], url: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod control_boundary_tests {
     use super::*;
+
+    #[test]
+    fn strict_cache_grants_require_native_guard_and_denied_host_network() -> Result<()> {
+        let root = tempfile::tempdir()?;
+        let workspace = root.path().join("workspace");
+        std::fs::create_dir(&workspace)?;
+        let mut registry = crate::registry::Registry::open(&root.path().join("state"))?;
+        let mut session = registry.create(serde_json::from_value(serde_json::json!({
+            "name":"cache-boundary-fixture","harness":"open_code","workspace":workspace,
+            "model":{"name":"public-model"}
+        }))?)?;
+        let strict = serde_json::json!({"cache_privacy":"managed_process"});
+        assert!(require_private_cache_boundary(&session, &strict).is_err());
+        session.spec.runtime.guard = Some(cerynth_agent_api::GuardPolicy {
+            native_inference: true,
+            ..cerynth_agent_api::GuardPolicy::default()
+        });
+        session.spec.runtime.network = cerynth_agent_api::NetworkPolicy::Host;
+        assert!(require_private_cache_boundary(&session, &strict).is_err());
+        session.spec.runtime.network = cerynth_agent_api::NetworkPolicy::Deny;
+        assert!(require_private_cache_boundary(&session, &strict).is_ok());
+        session.spec.runtime.guard = None;
+        assert!(
+            require_private_cache_boundary(
+                &session,
+                &serde_json::json!({"cache_privacy":"trust_domain"})
+            )
+            .is_ok()
+        );
+        Ok(())
+    }
 
     #[test]
     fn generic_workspaces_cannot_mount_separately_configured_inference_control() -> Result<()> {

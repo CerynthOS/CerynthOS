@@ -1,6 +1,6 @@
 # Person 3 measured evidence
 
-These JSON files preserve public synthetic measurements from November 10–12,
+These JSON files preserve public synthetic measurements from November 10–19,
 2026. The [validation report](../../integration/2026-11-11-person3-runtime.md)
 describes procedures, failures and limits. This is one development host, not
 research-grade evidence of general OS or cache-policy performance.
@@ -34,3 +34,12 @@ checked OpenCode/Hermes copy routing. Failed terminal-profile trials remain besi
 the accepted copy fixture. `model-residency-smoke.json` compares an actuated
 idle-model eviction recommendation with engine defaults and retains the observed
 reload-latency regression. These fixtures make no cloud model requests.
+
+The [November 19 audit](../../integration/2026-11-19-person3-remaining-partials.md)
+adds the actual pinned Person 1 budget/usage/PSI integration, sandbox-mounted
+Guard tool-effect deduplication with one independently counted local Git push,
+owned Ollama session/cache-generation isolation and persisted privacy checks,
+and live client contract pinning. Separate `*-nov19.json` files preserve Guard
+and model-residency regressions without replacing the previous measured trials.
+Unknown-acknowledgement handling is tested by the Rust fault fixture; no
+exactly-once, arbitrary-shell, timing-noninterference or cloud result is implied.

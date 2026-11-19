@@ -1,0 +1,16 @@
+{
+  "source_artifact": "contract-compatibility-smoke.json",
+  "source_sha256": "ce581346b8682bdfa34bd43a8d1211e2ed1e472b480047df74404e2aef1eadc0",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "live-owner-client-contract-pinning",
+    "contract_id": "30f6f4c4095bb534e93d14fcd7e6d08db8b172dfad2a6d397b3796cc623b01b7",
+    "wrong_contract_rejected_before_mutation": true,
+    "matching_contract_created_session": true,
+    "contract_pin_in_mutating_request_checked_by_server": true,
+    "raw_wrong_pin_rejected_without_registry_mutation": true,
+    "instance_only_global_proposal_queues_without_actuation": true,
+    "team_approval_claimed": false,
+    "cloud_requests": 0
+  }
+}

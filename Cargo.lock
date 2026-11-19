@@ -471,6 +471,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.19",
  "uuid",
 ]
@@ -568,6 +569,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cerynth-platform-resources"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "nix 0.30.1",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "cerynth-policy"
 version = "0.1.0"
 dependencies = [
@@ -587,6 +600,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cerynth-agent-api",
+ "cerynth-platform-resources",
  "serde",
  "serde_json",
  "sha2",

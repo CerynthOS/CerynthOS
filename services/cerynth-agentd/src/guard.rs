@@ -53,6 +53,7 @@ fn native_command(plan: &PreparedLaunch, command: Vec<String>) -> Vec<String> {
 impl AgentService {
     pub(crate) fn check_control_workspace(&self, workspace: &std::path::Path) -> Result<()> {
         let mut protected = vec![self.directory.canonicalize()?];
+        protected.push(crate::effects::root());
         if let Some(control) = &self.inference_control {
             protected.push(control.directory().canonicalize()?);
         }
@@ -116,7 +117,7 @@ impl AgentService {
         let registration = json!({"op":"register_session","registration":{
             "session_id":session.id,"parent_session_id":session.spec.runtime.parent_id,
             "mode":"managed","workspace":session.spec.workspace,"capabilities":policy.capabilities,
-            "harness":session.spec.harness,"remotes":{}}});
+            "harness":session.spec.harness,"remotes":policy.remotes}});
         let response = client.request(registration).await?;
         if !accepted(&response) {
             // Explicit denial of this new UUID grants no authority. Transport
@@ -152,7 +153,9 @@ impl AgentService {
         let response = client
             .request(json!({"op":"launch_profile","session_id":session.id,"cmd":cmd}))
             .await?;
-        let argv = profile_arguments(&response)?;
+        let mut argv = profile_arguments(&response)?;
+        self.journal_guard_socket(session.id, &client, &mut argv)
+            .await?;
         let digest = format!("{:x}", Sha256::digest(serde_json::to_vec(&argv)?));
         let separator = plan
             .args
@@ -166,6 +169,39 @@ impl AgentService {
             Registry::record_event(s, "guard_profile_selected");
             Ok(())
         })?;
+        Ok(())
+    }
+
+    async fn journal_guard_socket(
+        &self,
+        id: Uuid,
+        client: &GuardClient,
+        argv: &mut [String],
+    ) -> Result<()> {
+        let socket = client
+            .socket()
+            .parent()
+            .context("Guard runtime missing")?
+            .join("sessions")
+            .join(format!("{id}.sock"));
+        let gateway =
+            crate::effects::gateway(id, self.effects.clone(), GuardClient::new(socket.clone())?)?;
+        let proxy = crate::effects::root().join(format!("{id}.sock"));
+        let mut replaced = false;
+        for index in 0..argv.len().saturating_sub(2) {
+            if matches!(argv[index].as_str(), "--bind" | "--ro-bind")
+                && argv[index + 1] == socket.to_string_lossy()
+                && argv[index + 2] == "/run/agent/guard.sock"
+            {
+                argv[index + 1] = proxy.to_string_lossy().into_owned();
+                replaced = true;
+            }
+        }
+        ensure!(
+            replaced,
+            "Guard profile did not expose the expected session broker socket"
+        );
+        self.effect_gateways.lock().await.insert(id, gateway);
         Ok(())
     }
 
@@ -230,6 +266,7 @@ impl AgentService {
             "provide the final isolated workspace before Guard registration"
         );
         let mut protected = vec![
+            crate::effects::root(),
             self.directory.canonicalize()?,
             client
                 .socket()
@@ -329,6 +366,7 @@ impl AgentService {
                     self.stop_native_guard(&session).await?;
                 }
                 if ended || private_gateway {
+                    self.effect_gateways.lock().await.remove(&session.id);
                     self.runtime.lock().await.registry.update(session.id, |s| {
                         s.execution.guard_cleanup_pending = false;
                         Registry::record_event(

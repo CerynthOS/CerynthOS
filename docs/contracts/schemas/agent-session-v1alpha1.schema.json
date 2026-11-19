@@ -474,6 +474,12 @@
         "native_inference": {
           "default": false,
           "type": "boolean"
+        },
+        "remotes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

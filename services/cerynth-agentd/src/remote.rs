@@ -173,6 +173,7 @@ pub async fn request(config: &RemoteConfig, operation: Operation) -> Result<Valu
     config.validate()?;
     let mut bytes = serde_json::to_vec(&Request {
         version: API_VERSION,
+        expected_contract: None,
         operation,
     })?;
     ensure!(
@@ -248,7 +249,7 @@ pub async fn relay(directory: &Path, input: impl AsyncRead + Unpin) -> Result<Re
     );
     Ok(Response {
         version: API_VERSION,
-        result: crate::call(directory, request.operation)
+        result: crate::call_once(directory, request.operation, request.expected_contract)
             .await
             .map_err(|e| e.to_string()),
     })

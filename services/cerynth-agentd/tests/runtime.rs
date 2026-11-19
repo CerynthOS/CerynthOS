@@ -337,6 +337,7 @@ async fn protocol_rejects_oversize_unknown_fields_and_versions() -> Result<()> {
     let mut daemon = Daemon::start("http://127.0.0.1:1").await?;
     let mut bytes = serde_json::to_vec(&Request {
         version: API_VERSION + 1,
+        expected_contract: None,
         operation: Operation::List,
     })?;
     bytes.push(b'\n');

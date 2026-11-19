@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+cerynth-platform-resources = { path = "../cerynth-platform-resources" }
 anyhow.workspace = true
 cerynth-agent-api = { path = "../cerynth-agent-api" }
 sha2 = "0.10"

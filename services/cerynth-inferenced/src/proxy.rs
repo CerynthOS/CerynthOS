@@ -99,12 +99,9 @@ async fn forward(
     mut body: Value,
     route: &'static str,
 ) -> Result<Response, Rejection> {
-    let model = body["model"]
-        .as_str()
-        .filter(|m| !m.is_empty() && m.len() <= 256)
-        .ok_or_else(|| reject(StatusCode::BAD_REQUEST, "model is required"))?
-        .to_owned();
+    let model = requested_model(&body)?;
     let (grant, backend, mut revoked) = authorize(&coordinator, &headers, Some(&model)).await?;
+    enforce_cache_policy(coordinator.privacy, &body)?;
     let streaming = enforce_request_policy(&mut body, route, &grant)?;
     let priority = headers
         .get("x-cerynth-priority")
@@ -197,6 +194,35 @@ async fn forward(
         deadline,
     };
     Ok(stream_response(state))
+}
+
+fn requested_model(body: &Value) -> Result<String, Rejection> {
+    body["model"]
+        .as_str()
+        .filter(|m| !m.is_empty() && m.len() <= 256)
+        .map(str::to_owned)
+        .ok_or_else(|| reject(StatusCode::BAD_REQUEST, "model is required"))
+}
+
+fn enforce_cache_policy(policy: crate::privacy::Policy, body: &Value) -> Result<(), Rejection> {
+    if policy == crate::privacy::Policy::ManagedProcess
+        && [
+            "cache_salt",
+            "cache_prompt",
+            "kv_transfer_params",
+            "prompt_cache_key",
+            "cache_id",
+            "cache_namespace",
+        ]
+        .iter()
+        .any(|key| body.get(*key).is_some())
+    {
+        return Err(reject(
+            StatusCode::BAD_REQUEST,
+            "client cache control is forbidden in managed-process privacy mode",
+        ));
+    }
+    Ok(())
 }
 
 fn stream_response(state: ForwardState) -> Response {

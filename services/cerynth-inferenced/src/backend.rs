@@ -26,6 +26,7 @@ fn default_parallel() -> u32 {
 struct OwnedBackend {
     child: Child,
     unit: Option<String>,
+    endpoint: String,
 }
 
 impl Drop for OwnedBackend {
@@ -78,9 +79,8 @@ impl BackendManager {
         let mut processes = self.processes.lock().await;
         ensure!(!processes.contains_key(&spec.id), "backend already owned");
         std::fs::create_dir_all(&spec.models_directory)?;
-        let home = spec.models_directory.join(".backend-home");
-        std::fs::create_dir_all(&home)?;
         let unit = self.journal.lock().await.reserve()?;
+        let home = self.journal.lock().await.private_home(&unit)?;
         let uid = nix::unistd::getuid();
         let child = Command::new("/usr/bin/systemd-run")
             .args(crate::backend_scope::payload(&unit, &spec.binary))
@@ -109,6 +109,7 @@ impl BackendManager {
         let mut owned = OwnedBackend {
             child,
             unit: Some(unit),
+            endpoint: spec.endpoint.clone(),
         };
         // Recent Ollama releases discover several driver backends before tags
         // becomes ready. Keep this bounded without rejecting a healthy cold GPU.
@@ -179,5 +180,15 @@ impl BackendManager {
             );
         }
         status
+    }
+    pub(crate) async fn owns(&self, id: &str, url: &str) -> bool {
+        self.processes
+            .lock()
+            .await
+            .get_mut(id)
+            .is_some_and(|owned| {
+                owned.child.try_wait().is_ok_and(|s| s.is_none())
+                    && owned.endpoint.trim_end_matches('/') == url.trim_end_matches('/')
+            })
     }
 }

@@ -1,6 +1,6 @@
 # Person 3 task acceptance ledger
 
-Audit date: 2026-11-12. **All 112 tasks are not complete.** The weekly plan and
+Audit date: 2026-11-19. **All 112 tasks are not complete.** The weekly plan and
 historical Week 1 guide are unchanged. This ledger separates implemented local
 functionality from partially implemented integrations and outstanding acceptance.
 
@@ -10,10 +10,12 @@ identifies concrete missing behavior or validation. **Pending** has no completed
 acceptance result. No teammate agreement, cloud execution, hard GPU partitioning,
 or unperformed benchmark is inferred from a type, placeholder, or process exit.
 
-Current audit: **100 implemented, 8 partial, 4 pending**.
+Current audit: **104 implemented, 4 partial, 4 pending**.
 These are task-scope labels, not production-readiness percentages.
 
 Evidence references:
+
+- [November 19 remaining-task audit](../integration/2026-11-19-person3-remaining-partials.md), [tool effects](../runtime/tool-effects.md), [private cache mode](../runtime/cache-privacy.md), [candidate compatibility](../contracts/agent-compatibility-candidate.md).
 
 - [November 12 local completion audit](../integration/2026-11-12-person3-local-completion.md), [resource handoff](../contracts/resource-admission-v1alpha1.md), [native observer](../runtime/native-observer.md).
 
@@ -53,7 +55,7 @@ Evidence references:
 | P3-016 | First real harness | Implemented | OpenCode managed launch and independently verified local coding smoke task. |
 | P3-017 | Real local inference endpoint | Implemented | Ollama native streaming and authenticated compatible proxy exercised. |
 | P3-018 | Process trees, exits and failures | Implemented | Boot/PID-generation identity, descendants, exit codes, deadlines and failure reasons. |
-| P3-019 | Connect Person 1 resource API | Partial | Owner allocation/admission and nested systemd foundation now work; an actual Person 1 allocation service/API and coordinated handoff are still absent. See November 12 audit. |
+| P3-019 | Connect Person 1 resource API | Implemented | Actual Person 1 ResourceBudget v1 library pinned at 648c149, source hashes preserved; adapter validates budgets and reads typed status/usage/descendant PIDs in three real systemd levels. systemd remains the sole writer. Team approval stays P3-010; global authority stays P3-087. |
 | P3-020 | Connect Person 2 sandbox/authorization API | Implemented | Pinned real Guard sandbox/authorization, offline inheritance and opt-in per-root native inference identity bridge exercised. Model coding failures retained; native delegation/tool-effect dedup remain separately limited. |
 | P3-021 | Publish structured events for Person 4 | Implemented | Cursor session/tool/inference events preserve provenance and retention gaps; actual native Qt owner-API consumer and live fixture now exercise them. Team contract approval remains P3-010/P3-099. |
 | P3-022 | Startup/termination/cleanup/crash tests | Implemented | SIGKILL/restart, orphan cleanup, parent exit, timeout, PTY and shutdown regressions. |
@@ -89,7 +91,7 @@ Evidence references:
 | P3-042 | Git worktrees/workspace mapping | Implemented | Retained per-agent branch/worktree; hooks disabled, filters disabled in network-denied scoped checkout; durable preparation journal and real hostile-hook/filter smoke test. |
 | P3-043 | Child artifacts/diffs/outputs/tests | Implemented | Owner collector snapshots child candidate/output, creates immutable diff and test receipts, runs an independent managed checker and detects mutation/symlinks; passing/failed checks tested. Assertions are explicitly owner-selected, not general correctness proof. |
 | P3-044 | Cancellation/deadlines/bounded retries | Implemented | Recursive cancellation/deadlines plus three bounded owner-sponsored retries with atomic UUID links, complete-cleanup/known-outcome checks and restart deduplication. No automatic tool replay. |
-| P3-045 | Prevent duplicate external effects | Partial | Durable launch-operation deduplication survives archive/crash; arbitrary external harness tools require authoritative broker operation IDs. |
+| P3-045 | Prevent duplicate external effects | Implemented | Durable at-most-once submission through the sandbox-mounted actual Guard tool socket; immutable UUID/details, lost-ack fault recovery, approval binding, concurrent duplicate and real local Git-push count verified. Arbitrary unbrokered shell effects are outside this guarantee. |
 | P3-046 | Concurrent agents/termination/workspace tests | Implemented | Real parent-child termination and active-workspace conflict regression tests. |
 
 ## Phase 4 — Inference infrastructure
@@ -141,7 +143,7 @@ Evidence references:
 | P3-079 | Session residency/cache-hit data | Implemented | Session-correlated before/after typed model residency and native reported cache-token dataset retained in harness-trials.json; lower-trust counters labelled, not independently verified hits. |
 | P3-080 | Retain/evict/offload/recompute policy | Implemented | Metadata policy compares costs, protects active/interactive entries and requires actual offload capability. |
 | P3-081 | Experimental session-aware cache policy | Implemented | Deterministic recommendation policy and tests; it does not execute KV transfers. |
-| P3-082 | Prevent cross-tenant cache leakage | Partial | Conservative origin/domain routing plus actual coordinator-derived per-grant vLLM native-prefix salt miss/hit isolation and forgery/revocation tests. LMCache/SGLang caches and wider authorization/timing leakage remain unverified. |
+| P3-082 | Prevent cross-tenant cache leakage | Implemented | Opt-in managed_process mode requires one owned native Ollama process generation/private HOME per session authorization realm; unsupported external KV engines and aliases fail closed. Actual local reset/restart/downgrade checks and launcher boundary regressions. Not a timing-side-channel proof; default shared mode remains less restrictive. |
 | P3-083 | Placement/switching-cost estimates | Implemented | Owner-only advisory placement planner uses fresh device telemetry, authorization, calibrated resident memory and actual switching samples; protects active models and retains outliers. It does not actuate placement. |
 | P3-084 | Compare engine defaults | Implemented | Three alternating pairs compare an actuated idle-model eviction recommendation with Ollama defaults: model VRAM released, reload latency regressed. Raw samples and limitations retained; no KV transfer or general speedup claim. |
 | P3-085 | Consented local/cloud routing evaluation | Partial | Explicit consent enforced; authorized live cloud routing experiment not run. |
@@ -151,14 +153,14 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-087 | Global resource semantics with Person 1 | Partial | Concrete CPU/RAM/GPU/inference handoff, per-instance accept/reduce/queue/reject and kernel pressure wiring supplied; team agreement and one machine-wide authority across services/instances remain pending. |
+| P3-087 | Global resource semantics with Person 1 | Partial | Versioned CPU/RAM/GPU/inference demand, authoritative snapshot and pure four-outcome planner supplied with actual P1 budget translation. Instance-only coverage queues without actuation. Coordinated agreement and one machine-wide authority across services/instances remain outstanding. |
 | P3-088 | Agent demand/priority signals | Implemented | Validated resource requests, CPU weights, inference priority grants and phase reports. |
 | P3-089 | Accept/reduce/queue/reject decisions | Implemented | Owner CPU/RAM admission implements accept/reduce/queue/reject with explicit minimums and no upward grants; root/child reservations and live kernel limits tested. Global Person 1 service integration is separate. |
 | P3-090 | Project/parent inference budgets | Implemented | Project, ancestor and session scopes share cancellation-safe coordinator admission. |
 | P3-091 | Request additional CPU/RAM/GPU | Implemented | Owner API records validated demand and returns applied:false; no self-approved increase. |
 | P3-092 | Prevent self-authorized higher limits | Implemented | Root grants restricted to owner plane; child subsets and immutable inference grants checked. |
 | P3-093 | Workload phase reports | Implemented | Inference/tool/compile/idle/approval-wait plus cleanup fields; no CPU heuristic pretends semantic certainty. |
-| P3-094 | Person 1 pressure to admission | Partial | Versioned fresh kernel pressure sampler drives CPU/RAM/GPU/inference admission; stale and forged-input tests pass. Actual Person 1 service stream integration and coordinated contract review remain pending. |
+| P3-094 | Person 1 pressure to admission | Implemented | Actual pinned P1 SessionCgroup usage/PSI is merged with fresh machine headroom, displayed by ResourceView and forwarded to real inference admission. Typed high-PSI regression plus live coordinator/cgroup fixture; missing owned boundary fails closed. Team review stays P3-010. |
 | P3-095 | Cross-harness routing experiments | Implemented | Actual OpenCode/Hermes parent-child copy workflow succeeds in separate worktrees with one authenticated inference queue and independently verified artifact hashes. Failed bridge/approval trials retained; no general coding success-rate claim. |
 | P3-096 | Supervised A2A gateway | Implemented | Explicit loopback A2A 0.3 HTTP subset with Agent Card, private sponsor-bound credential, text drafts/get/cancel and immutable message dedup. Actual auth/scope/substitution tests; no automatic execution/full conformance claim. |
 | P3-097 | Optional remote execution prototype | Implemented | Opt-in SSH relay with dedicated key, pinned host identity, explicit consent and disabled ambient auth/forwarding; actual rootless loopback sshd launch/replay/cancel cleanup test. No physical second-machine/partition rollback claim. |
@@ -168,7 +170,7 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-099 | Stabilize shared APIs/IPC | Partial | Versioned experimental contracts/schema; team compatibility review and stabilization pending. |
+| P3-099 | Stabilize shared APIs/IPC | Partial | Content-addressed candidate manifest, optional pre-mutation owner-client pin, generated schemas and actual previous-checkpoint Rust request/session round trips pass. Coordinated team compatibility review and stable-release acceptance remain open. |
 | P3-100 | Persistent metadata/recovery | Implemented | Durable registry, artifact snapshots, archive ledger and explicit unknown outcomes. |
 | P3-101 | Shutdown/orphan cleanup | Implemented | Groups/scopes drained, startup cleanup, child cascade and crash tests. |
 | P3-102 | Backend unavailable behavior | Implemented | Bounded actionable errors, terminal failure evidence and no silent provider fallback. |

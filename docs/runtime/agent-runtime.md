@@ -388,5 +388,10 @@ it never changes the scheduler. The default independent-scope mode is preserved.
 
 The [native observer guide](native-observer.md) supplies a working Qt desktop
 client, build/staging instructions, screenshots and bounded contention fixtures.
-The [November 12 audit](../integration/2026-11-12-person3-local-completion.md)
-records current acceptance, tradeoffs, unsupported features and deferred cloud work.
+The [November 19 audit](../integration/2026-11-19-person3-remaining-partials.md)
+records current acceptance and the remaining review/cloud work. The actual
+[platform budget contract](../contracts/resource-budget-v1.md),
+[global proposal](../contracts/global-resource-request-v1.md),
+[tool-effect journal](tool-effects.md), [private cache mode](cache-privacy.md),
+and [compatibility candidate](../contracts/agent-compatibility-candidate.md)
+describe the latest opt-in interfaces, enforcement boundaries and rollback limits.

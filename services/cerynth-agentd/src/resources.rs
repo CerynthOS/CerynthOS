@@ -68,8 +68,45 @@ fn require_validated_cpu_scheduler() -> Result<()> {
 }
 
 impl AgentService {
+    pub(crate) async fn plan_global_resources(
+        &self,
+        id: Uuid,
+        minimum: Option<ResourceBudget>,
+        gpu_device_id: Option<String>,
+    ) -> Result<Value> {
+        use cerynth_resources::global::{Demand, OwnerSnapshot};
+        let session = self.runtime.lock().await.registry.get(id)?;
+        let memory =
+            cerynth_resources::total_memory().context("physical memory capacity unknown")?;
+        let cpus = u64::try_from(std::thread::available_parallelism()?.get())?;
+        let reserved = reserved_scope(&self.runtime.lock().await.registry.list(), None);
+        let request = Demand::for_session(&session, minimum, gpu_device_id);
+        let snapshot = OwnerSnapshot {
+            observed_at_ms: crate::registry::now_ms(),
+            complete_managed_workload_accounting: false,
+            capacity: Capacity {
+                memory_bytes: memory / 2,
+                cpu_quota_micros_per_second: cpus.saturating_sub(2).max(1) * 1_000_000,
+            },
+            reserved,
+            parent_authority: None,
+            accelerators: std::collections::BTreeMap::default(),
+            inference_limit: 4,
+            inference_reserved: 0,
+            pressure_blocks_new_work: self
+                .platform_pressure()
+                .await
+                .blocks_new_work(crate::registry::now_ms()),
+        };
+        let proposal =
+            cerynth_resources::global::plan(&request, &snapshot, crate::registry::now_ms())?;
+        Ok(
+            json!({"request":request,"proposal":proposal,"platform_request":cerynth_resources::platform::request(&session)?,
+            "accounting_scope":"instance_only; global authority has not attested all services","applied":false}),
+        )
+    }
     pub(crate) async fn resource_view(&self) -> Result<Value> {
-        let pressure = cerynth_resources::pressure::sample();
+        let pressure = self.platform_pressure().await;
         let runtime = self.runtime.lock().await;
         let allocations: Vec<_> = runtime
             .registry
@@ -197,6 +234,7 @@ impl AgentService {
         let (session, unit) = {
             let mut runtime = self.runtime.lock().await;
             let session = runtime.registry.get(id)?;
+            cerynth_resources::platform::request(&session)?;
             let allocation = session
                 .execution
                 .resource_allocation
@@ -268,6 +306,55 @@ impl AgentService {
             .resource_slice
             .context("session has no resource slice")?;
         Ok(serde_json::to_value(systemd::accounting(&unit).await?)?)
+    }
+
+    pub(crate) async fn platform_resources(&self, id: Uuid) -> Result<Value> {
+        let session = self.runtime.lock().await.registry.get(id)?;
+        let unit = session
+            .execution
+            .resource_slice
+            .as_ref()
+            .context("session has no resource slice")?;
+        let group = systemd::accounting(unit).await?.control_group;
+        let path = std::path::PathBuf::from("/sys/fs/cgroup").join(group.trim_start_matches('/'));
+        Ok(serde_json::to_value(
+            cerynth_resources::platform::snapshot(&session, &path)?,
+        )?)
+    }
+
+    pub(crate) async fn platform_pressure(&self) -> cerynth_resources::pressure::Sample {
+        let mut sample = cerynth_resources::pressure::sample();
+        let roots: Vec<_> = self
+            .runtime
+            .lock()
+            .await
+            .registry
+            .list()
+            .into_iter()
+            .filter(|s| {
+                s.spec.runtime.parent_id.is_none()
+                    && s.execution
+                        .resource_allocation
+                        .as_ref()
+                        .is_some_and(|a| a.active && a.kernel_enforced)
+            })
+            .collect();
+        for session in roots {
+            if let Ok(value) = self.platform_resources(session.id).await {
+                if let Ok(usage) = serde_json::from_value::<
+                    cerynth_resources::platform::ResourceUsage,
+                >(value["usage"].clone())
+                {
+                    cerynth_resources::platform::pressure(&mut sample, &usage);
+                } else {
+                    sample.available_memory_bytes = None;
+                }
+            } else {
+                // A missing owned boundary cannot be interpreted as zero pressure.
+                sample.available_memory_bytes = None;
+            }
+        }
+        sample
     }
 
     pub(crate) async fn release_resources(&self) -> Result<()> {

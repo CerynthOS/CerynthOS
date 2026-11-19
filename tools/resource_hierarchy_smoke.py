@@ -4,6 +4,7 @@ import argparse,json,os,subprocess,tempfile,time,uuid
 from pathlib import Path
 from harness_runtime_smoke import rpc
 from guard_runtime_smoke import stop_process
+from inference_runtime_smoke import rpc as inference_rpc
 
 def wait(check,timeout=15):
     deadline=time.monotonic()+timeout
@@ -24,8 +25,11 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--binary',default='target/debug/cerynth-agentd')
     parser.add_argument('--output',default='artifacts/person3/resource-hierarchy-smoke.json');args=parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='cerynth-resources-') as temporary:
-        root=Path(temporary);state=root/'state'
-        environment={**os.environ,'CERYNTH_RESOURCE_HIERARCHY':'1','CERYNTH_AGENT_MEMORY_MAX_BYTES':str(768*1024**2)}
+        root=Path(temporary);state=root/'state';inference=root/'inference'
+        coordinator=subprocess.Popen([str(Path('target/debug/cerynth-inferenced').resolve()),'--directory',str(inference),'serve'],
+            stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+        environment={**os.environ,'CERYNTH_RESOURCE_HIERARCHY':'1','CERYNTH_AGENT_MEMORY_MAX_BYTES':str(768*1024**2),
+            'CERYNTH_INFERENCE_DIR':str(inference),'CERYNTH_INFERENCE_HTTP':'http://127.0.0.1:11435'}
         def daemon():
             process=subprocess.Popen([str(Path(args.binary).resolve()),'--directory',str(state),'serve'],env=environment,
                 stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
@@ -33,9 +37,15 @@ def main():
                 if process.poll() is not None:raise RuntimeError(process.stderr.read().decode())
                 try:return rpc(state,{'type':'diagnostics'})
                 except OSError:return False
-            wait(ready);return process
-        process=daemon()
+            try:
+                wait(ready);return process
+            except BaseException:
+                stop_process(process)
+                raise
+        process=None
         try:
+            wait(lambda:(inference/'control.sock').exists())
+            process=daemon()
             def create(name,memory,cpu=1_000_000,parent=None):
                 workspace=root/name;workspace.mkdir()
                 return rpc(state,{'type':'create','spec':{'name':name,'harness':'generic_pty','workspace':str(workspace),
@@ -60,6 +70,19 @@ def main():
             assert observations[2]['control_group'].startswith(observations[1]['control_group']+'/')
             assert observations[0]['memory_current_bytes']>=observations[1]['memory_current_bytes']>=observations[2]['memory_current_bytes']>=32*1024**2
             assert [o['memory_max_bytes'] for o in observations]==[512*1024**2,256*1024**2,128*1024**2]
+            platform=[rpc(state,{'type':'platform_resources','id':s['id']}) for s in [parent,child,grandchild]]
+            for session,snapshot in zip([parent,child,grandchild],platform):
+                assert snapshot['source_revision']=='648c149be39f5ea8df612b3266857472976238eb'
+                assert snapshot['request']['schema_version']==snapshot['status']['schema_version']==snapshot['usage']['schema_version']==1
+                assert snapshot['request']['session_id']==snapshot['usage']['session_id']==session['id']
+                assert all(v['enforcement']=='enforced' for v in snapshot['status']['limits'].values()),snapshot
+            assert set(platform[2]['usage']['pids'])<=set(platform[1]['usage']['pids'])<=set(platform[0]['usage']['pids'])
+            assert all(key in platform[0]['usage']['pressure'] for key in ['cpu','memory','io'])
+            def pressure_received():
+                sample=inference_rpc(inference,True,{'type':'health'})['admission_pressure']
+                return sample if sample and sample['version']==1 and 0<=time.time()*1000-sample['observed_at_ms']<5000 else None
+            sample=wait(pressure_received)
+            assert all(sample[key] is not None for key in ['memory_some_avg10','memory_full_avg10','cpu_some_avg10','io_full_avg10'])
             sibling=create('cpu-sibling',128*1024**2,750_000,parent['id'])
             assert admit(sibling)['decision']=='queue','sibling CPU reservations exceeded parent quota'
             cpu_minimum={**sibling['spec']['runtime']['budget'],'cpu_quota_micros_per_second':250_000}
@@ -83,8 +106,14 @@ def main():
                 'sibling_cpu_reservations_bound_by_parent':True,
                 'leaf_first_cancellation_cleanup':True,'crash_recovery_releases_kernel_and_reservation':True,
                 'scheduler_ipc_changed':False,'person1_review_claimed':False,'cloud_requests':0}
+            report['actual_person1_resource_api_revision']='648c149be39f5ea8df612b3266857472976238eb'
+            report['person1_budget_validation_status_usage_and_descendant_pids']=True
+            report['single_systemd_writer_preserved']=True
+            report['platform_cgroup_psi_and_machine_pressure_forwarded_to_real_coordinator']=True
             destination=Path(args.output);destination.parent.mkdir(parents=True,exist_ok=True)
             destination.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
-        finally:stop_process(process)
+        finally:
+            if process is not None:stop_process(process)
+            stop_process(coordinator)
 
 if __name__=='__main__':main()

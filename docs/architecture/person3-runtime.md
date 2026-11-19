@@ -204,8 +204,12 @@ These are proposed handoffs, not claims of agreement:
 | Person 2 | Authorize immutable launch/tool action, issue scoped credentials, provide sandbox receipt | Principal, policy version, exact action hash, expiry, enforced boundary |
 | Person 4 | Consume versioned events and resource observations | Cursor/gap handling, source/provenance, unavailable metrics, true enforcement labels |
 
-Person 1's shared allocation/pressure API and Person 4's consumer are not present
-in this checkout. Person 2's pinned branch is integrated for the offline and
-bounded native inference slices above; authoritative arbitrary-tool-effect
-deduplication remains incomplete. No messages were sent to teammates and no review or approval
-has been fabricated.
+The November 19 continuation integrates Person 1's actual ResourceBudget v1
+library from `648c149` without changing its Rust source, while preserving systemd
+as the only writer. Typed cgroup usage/PSI now reaches inference admission.
+Machine-wide allocation ownership and coordinated review remain open. A native
+Qt consumer is present under `apps/cerynth-workspace`; it is an observer, not the
+complete desktop. The actual Guard tool socket is now mediated by a durable
+at-most-once operation journal; unbrokered external effects remain outside that
+boundary. See the [current audit](../integration/2026-11-19-person3-remaining-partials.md).
+No messages were sent to teammates and no review or approval has been fabricated.

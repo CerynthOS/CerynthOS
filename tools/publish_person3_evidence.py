@@ -45,6 +45,10 @@ def main():
         "packaging-runtime-smoke.json","runtime-version-inventory.json","cross-harness-terminal-profile.json",
         "cross-harness-terminal-profile-final.json","cross-harness-terminal-profile-accepted.json","cross-harness-terminal-copy.json"]
     for name in continuation:publish(name,keep_metrics=True)
+    november19=["platform-resources-smoke.json","tool-effects-smoke.json","cache-privacy-smoke.json",
+        "contract-compatibility-smoke.json","guard-runtime-smoke-nov19.json",
+        "native-guard-runtime-smoke-nov19.json","model-residency-smoke-nov19.json","validation-summary-nov19.json"]
+    for name in november19:publish(name,keep_metrics=True)
     experiments=[]
     for name in files[:5]:
         data=json.loads((SOURCE/name).read_text());groups=[]
@@ -90,7 +94,7 @@ def main():
             "normalized_tool_events":sum(e["kind"].startswith("harness_tool") for e in data["harness_events"])})
     (DESTINATION/"additional-harness-trials.json").write_text(json.dumps({"kind":"additional-exploratory-harness-trials",
         "trials":trials,"controlled_success_rate_claim":False,"cloud_requests":0},indent=2)+"\n")
-    print(json.dumps({"exported_sources":len(files)+len(continuation),"additional_harness_trials":len(trials),"lmcache_transfer_samples":len(transfers)}))
+    print(json.dumps({"exported_sources":len(files)+len(continuation)+len(november19),"additional_harness_trials":len(trials),"lmcache_transfer_samples":len(transfers)}))
 
 
 if __name__=="__main__":main()
