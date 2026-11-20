@@ -62,7 +62,17 @@ pub fn private_directory(path: &Path) -> Result<()> {
 }
 
 impl Registry {
+    #[cfg(test)]
     pub fn open(directory: &Path) -> Result<Self> {
+        Self::open_checked(directory, || Ok(())).map(|(registry, ())| registry)
+    }
+
+    /// Validate member identity under the registry lock before recovering any
+    /// processes. A copied registry must not stop the original member's scopes.
+    pub fn open_checked<T>(
+        directory: &Path,
+        preflight: impl FnOnce() -> Result<T>,
+    ) -> Result<(Self, T)> {
         private_directory(directory)?;
         let lock = OpenOptions::new()
             .read(true)
@@ -74,6 +84,7 @@ impl Registry {
             .open(directory.join("registry.lock"))?;
         lock.try_lock_exclusive()
             .context("another agent daemon owns this registry")?;
+        let checked = preflight()?;
         let path = directory.join("sessions.json");
         let snapshot = if path.exists() {
             let metadata = fs::symlink_metadata(&path)?;
@@ -153,7 +164,7 @@ impl Registry {
             }
         }
         registry.commit(recovered)?;
-        Ok(registry)
+        Ok((registry, checked))
     }
 
     fn commit(&mut self, snapshot: Snapshot) -> Result<()> {

@@ -13,7 +13,10 @@ can select a lower owner ceiling while retaining at least 512 MiB of physical
 headroom. The CPU ceiling leaves two logical CPUs outside the managed quota
 where available. These are capacity policies, not dedicated physical-core
 reservations. Multiple independently configured daemons are not a machine-wide
-allocator. This is the remaining Person 1/global-orchestrator integration.
+allocator. The [shared-domain handoff](global-resource-request-v1.md#shared-managed-domain-reservations--november-20)
+now adds an opt-in common reservation journal across participating instances.
+Unregistered model servers and bypassing clients remain outside that domain;
+cross-track ownership and complete machine accounting are not inferred.
 
 The experimental hierarchy requires sched_ext disabled until Person 1 qualifies
 the scheduler's CPU policy. No scheduler is stopped or replaced by this feature.
@@ -65,8 +68,8 @@ With the hierarchy enabled, agentd sends a fresh sample each second. New CPU/RAM
 GPU and inference work is queued under the documented conservative thresholds.
 Executing work is not forcibly killed by a pressure observation. Unit and HTTP
 tests cover stale input, forged data-plane input, blocked admission and release.
-This supplies a working kernel-backed handoff; Person 1's eventual service stream
-has not been integrated or approved.
+The pinned Person 1 library now supplies actual cgroup usage/PSI, conservatively
+merged with machine headroom before forwarding. Contract approval remains open.
 
 ## GPU/model exclusion
 
@@ -100,8 +103,8 @@ the native observer shows those separately from missing measurements.
 
 | Track | Concrete review surface | Outstanding decision |
 | --- | --- | --- |
-| Person 1 | `cerynth-resources`, `agentd/resources.rs`, nested quota/restart and fairness fixtures | Global allocator authority, pressure-stream ownership, sched_ext qualification and image integration |
-| Person 2 | Owner-only resource/model grants; unchanged pinned Guard wire protocol; explicit cleanup journals | Authoritative per-tool external-effect IDs and wider cache authorization/privacy policy |
+| Person 1 | Pinned budget/usage mechanism, shared-domain authority, nested quota/restart and fairness fixtures | Cross-track domain ownership, backend-wide coverage, sched_ext qualification and release integration |
+| Person 2 | Guard-mounted tool-effect journal, private-cache mode, owner-only resource/model grants | Shared trust-boundary review and unsupported engine/side-channel qualification |
 | Person 4 | Cursor events, resource/accounting/GPU APIs and native read-only Qt consumer | Shared event/desktop contract approval and full physical desktop evaluation |
 
 Implementation references: [systemd D-Bus API](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.systemd1.html),

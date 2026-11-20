@@ -54,6 +54,9 @@ impl AgentService {
     pub(crate) fn check_control_workspace(&self, workspace: &std::path::Path) -> Result<()> {
         let mut protected = vec![self.directory.canonicalize()?];
         protected.push(crate::effects::root());
+        if let Some(client) = &self.shared_resources {
+            protected.push(client.authority.directory().into());
+        }
         if let Some(control) = &self.inference_control {
             protected.push(control.directory().canonicalize()?);
         }
@@ -274,6 +277,9 @@ impl AgentService {
                 .context("Guard socket directory missing")?
                 .canonicalize()?,
         ];
+        if let Some(client) = &self.shared_resources {
+            protected.push(client.authority.directory().into());
+        }
         if let Some(path) = std::env::var_os("CERYNTH_INFERENCE_DIR") {
             protected.push(PathBuf::from(path).canonicalize()?);
         }

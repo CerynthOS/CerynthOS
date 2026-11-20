@@ -23,7 +23,21 @@ def main():
         subprocess.run(['bash','scripts/install-agent-runtime.sh','--root',str(stage),'--profile','debug',
             '--observer-build',str(Path('artifacts/person3/observer-build').resolve())],check=True,capture_output=True,text=True)
         manifest={str(p.relative_to(stage)):hashlib.sha256(p.read_bytes()).hexdigest() for p in stage.rglob('*') if p.is_file()}
-        assert len(manifest)==10,manifest
+        executables=['cerynth-agentd','cerynth-inferenced','cerynth-harness-bridge','cerynth-hardware',
+            'cerynth-resource-authority','cerynth-worktree-checkout']
+        expected={f'usr/lib/cerynth/{name}' for name in executables}|{
+            'usr/bin/cerynth-observer','usr/share/applications/io.cerynth.Observer.desktop',
+            'usr/share/doc/cerynth/agent-runtime.md','usr/lib/systemd/user/cerynth-agentd.service',
+            'usr/lib/systemd/user/cerynth-inferenced.service'}
+        assert set(manifest)==expected,manifest
+        for name in executables:
+            assert manifest['usr/lib/cerynth/'+name]==hashlib.sha256(Path('target/debug',name).read_bytes()).hexdigest()
+        authority=root/'authority';policy=root/'authority-policy.json'
+        policy.write_text(json.dumps({'version':1,'capacity':{'memory_bytes':128*1024**2,
+            'cpu_quota_micros_per_second':1_000_000},'inference_limit':0,'accelerators':{}}))
+        helper=str(stage/'usr/lib/cerynth/cerynth-resource-authority')
+        subprocess.run([helper,'init','--directory',str(authority),'--policy',str(policy)],check=True)
+        assert not json.loads(subprocess.check_output([helper,'status','--directory',str(authority)],text=True))['claims']
         with socket.socket() as reserved:reserved.bind(('127.0.0.1',0));port=reserved.getsockname()[1]
         for name,unit in units.items():
             text=(stage/f'usr/lib/systemd/user/cerynth-{name}.service').read_text()
@@ -61,6 +75,7 @@ def main():
                 properties=systemctl('show',units[name],'--property=NoNewPrivileges','--property=MemoryMax').stdout
                 assert 'NoNewPrivileges=yes' in properties
             report={'kind':'staged-user-service-startup-and-restart','staged_sha256':manifest,'staged_native_observer':True,
+                'staged_resource_authority_init_status_verified':True,'exact_expected_payload_and_binary_hashes':True,
                 'actual_unit_hardening_preserved':True,'isolated_state_and_dynamic_port':True,'restart_on_failure_verified':True,
                 'managed_scope_and_nested_slice_recovered':True,'unknown_prior_effects_preserved':True,'inference_dependency_started':True,
                 'production_units_enabled':False,'booted_iso':False,'cloud_requests':0,

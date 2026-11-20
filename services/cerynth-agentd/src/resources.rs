@@ -67,6 +67,60 @@ fn require_validated_cpu_scheduler() -> Result<()> {
     Ok(())
 }
 
+fn local_admission(
+    hierarchy: &Hierarchy,
+    registry: &Registry,
+    source: &cerynth_agent_api::Session,
+    minimum: Option<&ResourceBudget>,
+) -> Result<admission::Decision> {
+    if let Some(parent) = source.spec.runtime.parent_id {
+        let parent = registry.get(parent)?;
+        ensure!(
+            parent
+                .execution
+                .resource_allocation
+                .as_ref()
+                .is_some_and(|a| a.active),
+            "parent lacks an active allocation"
+        );
+        ensure!(
+            source
+                .spec
+                .runtime
+                .budget
+                .fits_within(&parent.spec.runtime.budget),
+            "child exceeds parent allocation"
+        );
+        admission::decide(
+            &source.spec.runtime.budget,
+            minimum,
+            &Capacity {
+                memory_bytes: parent.spec.runtime.budget.memory_max_bytes,
+                cpu_quota_micros_per_second: parent
+                    .spec
+                    .runtime
+                    .budget
+                    .cpu_quota_micros_per_second
+                    .unwrap_or(hierarchy.cpu_quota_micros_per_second),
+            },
+            &reserved_scope(&registry.list(), Some(parent.id)),
+            cerynth_resources::pressure::sample().blocks_new_work(crate::registry::now_ms()),
+        )
+    } else {
+        let reserved = reserved_scope(&registry.list(), None);
+        admission::decide(
+            &source.spec.runtime.budget,
+            minimum,
+            &Capacity {
+                memory_bytes: hierarchy.memory_max_bytes,
+                cpu_quota_micros_per_second: hierarchy.cpu_quota_micros_per_second,
+            },
+            &reserved,
+            cerynth_resources::pressure::sample().blocks_new_work(crate::registry::now_ms()),
+        )
+    }
+}
+
 impl AgentService {
     pub(crate) async fn plan_global_resources(
         &self,
@@ -122,7 +176,9 @@ impl AgentService {
         Ok(
             json!({"version":1,"hierarchy_enabled":self.resources.is_some(),"pressure":pressure,
             "pressure_blocks_new_work":pressure.blocks_new_work(crate::registry::now_ms()),
-            "allocations":allocations,"enforcement":"systemd slices when enabled; cooperative GPU reservations"}),
+            "allocations":allocations,"enforcement":"systemd slices when enabled; cooperative GPU reservations",
+            "shared_authority":self.shared_resources.as_ref().map(|c|c.authority.view()).transpose()?,
+            "shared_accounting_scope":"participating agentd root subtrees only; backend servers and bypassing workloads are outside this domain"}),
         )
     }
     pub(crate) async fn admit_resources(
@@ -137,6 +193,11 @@ impl AgentService {
         let mut runtime = self.runtime.lock().await;
         let source = runtime.registry.get(id)?;
         if let Some(allocation) = &source.execution.resource_allocation {
+            if let Some(client) = &self.shared_resources {
+                if source.spec.runtime.parent_id.is_none() {
+                    client.verify(&source)?;
+                }
+            }
             ensure!(
                 allocation.active,
                 "allocation was released; create a new session"
@@ -159,52 +220,19 @@ impl AgentService {
                 .any(|child| child.spec.runtime.parent_id == Some(id)),
             "admit the parent before creating its children"
         );
-        let decision = if let Some(parent) = source.spec.runtime.parent_id {
-            let parent = runtime.registry.get(parent)?;
-            ensure!(
-                parent
-                    .execution
-                    .resource_allocation
-                    .as_ref()
-                    .is_some_and(|a| a.active),
-                "parent lacks an active allocation"
-            );
-            ensure!(
-                source
-                    .spec
-                    .runtime
-                    .budget
-                    .fits_within(&parent.spec.runtime.budget),
-                "child exceeds parent allocation"
-            );
-            admission::decide(
-                &source.spec.runtime.budget,
-                minimum,
-                &Capacity {
-                    memory_bytes: parent.spec.runtime.budget.memory_max_bytes,
-                    cpu_quota_micros_per_second: parent
-                        .spec
-                        .runtime
-                        .budget
-                        .cpu_quota_micros_per_second
-                        .unwrap_or(hierarchy.cpu_quota_micros_per_second),
-                },
-                &reserved_scope(&runtime.registry.list(), Some(parent.id)),
-                cerynth_resources::pressure::sample().blocks_new_work(crate::registry::now_ms()),
-            )?
-        } else {
-            let reserved = reserved_scope(&runtime.registry.list(), None);
-            admission::decide(
-                &source.spec.runtime.budget,
-                minimum,
-                &Capacity {
-                    memory_bytes: hierarchy.memory_max_bytes,
-                    cpu_quota_micros_per_second: hierarchy.cpu_quota_micros_per_second,
-                },
-                &reserved,
-                cerynth_resources::pressure::sample().blocks_new_work(crate::registry::now_ms()),
-            )?
-        };
+        let mut decision = local_admission(hierarchy, &runtime.registry, &source, minimum)?;
+        if source.spec.runtime.parent_id.is_none() && self.shared_resources.is_some() {
+            if let Some(granted) = decision.granted() {
+                decision = self.reserve_shared(&source, granted, minimum).await?;
+                if let Some(granted) = decision.granted().cloned() {
+                    decision = if granted == source.spec.runtime.budget {
+                        admission::Decision::Accept { granted }
+                    } else {
+                        admission::Decision::Reduce { granted }
+                    };
+                }
+            }
+        }
         let mut response = serde_json::to_value(&decision)?;
         if let Some(granted) = decision.granted() {
             let allocation = ResourceAllocation {
@@ -234,6 +262,13 @@ impl AgentService {
         let (session, unit) = {
             let mut runtime = self.runtime.lock().await;
             let session = runtime.registry.get(id)?;
+            if let Some(client) = &self.shared_resources {
+                let mut root = session.clone();
+                while let Some(parent) = root.spec.runtime.parent_id {
+                    root = runtime.registry.get(parent)?;
+                }
+                client.verify(&root)?;
+            }
             cerynth_resources::platform::request(&session)?;
             let allocation = session
                 .execution
@@ -366,6 +401,8 @@ impl AgentService {
                     && !s.execution.cleanup_pending
                     && !s.execution.workspace_preparing
                     && !s.execution.gpu_cleanup_pending
+                    && !s.execution.model_residency_cleanup_pending
+                    && !s.execution.guard_cleanup_pending
                     && s.execution
                         .resource_allocation
                         .as_ref()
@@ -380,10 +417,16 @@ impl AgentService {
                     })
             });
             let Some(session) = eligible else {
-                return Ok(());
+                return self.reconcile_shared_resources().await;
             };
             if let Some(unit) = &session.execution.resource_slice {
                 systemd::stop(unit).await?;
+            }
+            if session.spec.runtime.parent_id.is_none() {
+                if let Some(client) = &self.shared_resources {
+                    self.revoke_shared_inference(session.id).await?;
+                    client.authority.release(&client.owner, session.id)?;
+                }
             }
             self.runtime.lock().await.registry.update(session.id, |s| {
                 s.execution.resource_cleanup_pending = false;

@@ -1,0 +1,50 @@
+{
+  "source_artifact": "validation-summary-nov20.json",
+  "source_sha256": "8feffd4dc6bdc68a94c811481a8e8c8ec9c130accdd7d1ac8acd98202c618119",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "person3-november20-shared-domain-validation",
+    "base_revision": "5aed04d",
+    "workspace_tests_passed": 272,
+    "workspace_tests_failed": 0,
+    "workspace_tests_ignored": 3,
+    "strict_person3_packages": 8,
+    "workspace_check_all_targets": true,
+    "shellcheck_passed": true,
+    "request_session_and_protocol_manifest_drift_check": true,
+    "protocol_contract_id": "42c4810f785d74c73dcdb272f87cf0d2ed2601983edaa9455e05e730b6de3617",
+    "actual_daemons_in_shared_domain_smoke": 2,
+    "live_guard_domain_protection_and_cleanup": true,
+    "staged_authority_helper_verified": true,
+    "raw_log_sha256": {
+      "workspace.log": "c797160831cb188566adb221e6803a8d60d7570ac2b62e423c4338469cc21c30",
+      "clippy.log": "58afdc5c2d73bfc19bcd3e691dcc669ce089fccc38080685196b5922b87ede72",
+      "check.log": "bf881947f9c244b92372f7721060ae3bb13e4334e35c353847bcb8ff520df6ea",
+      "build.log": "ec95a88c2a704960578b7b99679d908a2bfd7a7b23861e0e1facc3046a51df47",
+      "shared-authority.log": "d8f0e090b11e77e4499271f77b85cd09d99bc0ea3cc3405d3cb786ea85401880",
+      "contracts.log": "07e5ab79c8fa1879eab7a4dac853e3c336aa916eab2645f5cc152f5f3782eaae",
+      "compatibility.log": "e7c97c17fc31a47b85f12be33223bd4f239baddb546c1168bd2ce70216297e57",
+      "default-hierarchy.log": "a8e23c90a9378678a9b029f9e7a0bef056d7ed62143d01cd7db01c5552453dbb",
+      "packaging.log": "da36c425e41b9a18092ccb080fd9df7056ed636394f22846daa7b60efbd3e450",
+      "shellcheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "authority-library-tests.log": "cbfd59595eafef3f4df9467c70fd25deee76de5fac5c7bb37d40b020c7a9238a",
+      "recovery-tests.log": "9e58c0950c2515bc56a8918eedb33934f2addb5ccf94c46f6da3a9934fa983ee",
+      "early-rejected-start-retention-fixture-failure.log": "edfbdb24123f73ee18ba2a0fddb6c4fcdc1296e77b85a8f37a6415e8067a503c",
+      "old-package-count-fixture-failure.log": "020f63af730e3049d0e1a48a44b789fc70c9ed6c2ee0ff718c70d9f471a5c638"
+    },
+    "retained_fixture_failures": [
+      "Early rejected start correctly retained its explicit Created-session reservation; fixture now checks owner cancellation",
+      "Old packaging fixed count replaced with an exact expected payload and source binary hashes"
+    ],
+    "accounting_scope": "participating agentd root subtrees; unregistered backend servers and administrative grants excluded",
+    "gpu_enforcement": "cooperative reservation only",
+    "cloud_requests": 0,
+    "team_approval_claimed": false,
+    "acceptance": {
+      "implemented": 105,
+      "partial": 3,
+      "pending": 4
+    },
+    "copied_member_rejected_before_recovery": true
+  }
+}

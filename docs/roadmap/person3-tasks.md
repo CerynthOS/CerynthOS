@@ -1,6 +1,6 @@
 # Person 3 task acceptance ledger
 
-Audit date: 2026-11-19. **All 112 tasks are not complete.** The weekly plan and
+Audit date: 2026-11-20. **All 112 tasks are not complete.** The weekly plan and
 historical Week 1 guide are unchanged. This ledger separates implemented local
 functionality from partially implemented integrations and outstanding acceptance.
 
@@ -10,10 +10,12 @@ identifies concrete missing behavior or validation. **Pending** has no completed
 acceptance result. No teammate agreement, cloud execution, hard GPU partitioning,
 or unperformed benchmark is inferred from a type, placeholder, or process exit.
 
-Current audit: **104 implemented, 4 partial, 4 pending**.
+Current audit: **105 implemented, 3 partial, 4 pending**.
 These are task-scope labels, not production-readiness percentages.
 
 Evidence references:
+
+- [November 20 shared-domain follow-up](../integration/2026-11-19-person3-remaining-partials.md#november-20-shared-domain-and-compatibility-follow-up), [resource design and owner setup](../contracts/global-resource-request-v1.md#shared-managed-domain-reservations--november-20).
 
 - [November 19 remaining-task audit](../integration/2026-11-19-person3-remaining-partials.md), [tool effects](../runtime/tool-effects.md), [private cache mode](../runtime/cache-privacy.md), [candidate compatibility](../contracts/agent-compatibility-candidate.md).
 
@@ -153,7 +155,7 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-087 | Global resource semantics with Person 1 | Partial | Versioned CPU/RAM/GPU/inference demand, authoritative snapshot and pure four-outcome planner supplied with actual P1 budget translation. Instance-only coverage queues without actuation. Coordinated agreement and one machine-wide authority across services/instances remain outstanding. |
+| P3-087 | Global resource semantics with Person 1 | Implemented | Technical design uses unchanged P1 budgets plus an opt-in shared root-reservation authority across agentd instances. Live CPU/RAM/inference/GPU contention, bounded subtrees, durable claims, Guard protection and crash recovery verified. Registered-domain scope only; model-server processes/direct grants are outside it. Team agreement remains P3-010. |
 | P3-088 | Agent demand/priority signals | Implemented | Validated resource requests, CPU weights, inference priority grants and phase reports. |
 | P3-089 | Accept/reduce/queue/reject decisions | Implemented | Owner CPU/RAM admission implements accept/reduce/queue/reject with explicit minimums and no upward grants; root/child reservations and live kernel limits tested. Global Person 1 service integration is separate. |
 | P3-090 | Project/parent inference budgets | Implemented | Project, ancestor and session scopes share cancellation-safe coordinator admission. |
@@ -170,14 +172,14 @@ Evidence references:
 
 | ID | Task | Status | Evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| P3-099 | Stabilize shared APIs/IPC | Partial | Content-addressed candidate manifest, optional pre-mutation owner-client pin, generated schemas and actual previous-checkpoint Rust request/session round trips pass. Coordinated team compatibility review and stable-release acceptance remain open. |
+| P3-099 | Stabilize shared APIs/IPC | Partial | Content-addressed candidate, atomic server-side pin checks, actual historical Rust round trips and a committed protocol manifest checked by CI. Coordinated compatibility review and stable-release acceptance remain open. |
 | P3-100 | Persistent metadata/recovery | Implemented | Durable registry, artifact snapshots, archive ledger and explicit unknown outcomes. |
 | P3-101 | Shutdown/orphan cleanup | Implemented | Groups/scopes drained, startup cleanup, child cascade and crash tests. |
 | P3-102 | Backend unavailable behavior | Implemented | Bounded actionable errors, terminal failure evidence and no silent provider fallback. |
 | P3-103 | Health/diagnostics/errors | Implemented | Owner health, adapter status, host capability and supported diagnostics APIs. |
 | P3-104 | Performance/memory-leak regressions | Implemented | Reproducible 100-cycle lifecycle/archive regression after 10 warmups: 471,040-byte RSS growth, 148.22 ms p95, explicit 32 MiB/5 s thresholds; bounded synthetic coverage, not a proof of no leaks. |
 | P3-105 | Hermes/OpenCode/Codex/Claude mixed workload | Pending | Local harnesses exercised separately; authenticated cloud/mixed workflow not validated. |
-| P3-106 | Five-agent local/cloud scenario | Pending | Required authorized cloud configuration and complete resource/security integrations unavailable. |
+| P3-106 | Five-agent local/cloud scenario | Pending | Requires dedicated authorized cloud/harness configuration and the actual reference run. Shared managed-domain reservations are implemented; unregistered backend processes and bypassing workloads remain outside their coverage. |
 | P3-107 | Pin/test supported versions | Partial | Reproducible offline inventory verifies all installed harness/backend/engine pins; local adapter/protocol regressions and evidence matrix exist. Full authenticated cloud feature compatibility remains unqualified until deferred cloud tests. |
 | P3-108 | Install/config/troubleshooting docs | Implemented | Current runtime guide and reproducible commands; historical weekly guide retained. |
 | P3-109 | Person 1 image/startup integration | Implemented | Staged exact Rust/native Qt executables, desktop entry and user units; isolated runtime-linked service dependency startup, hardening, forced restart and session recovery verified. No ISO boot/upgrade/signing claim; distribution/release acceptance remains separate. |
@@ -185,10 +187,12 @@ Evidence references:
 | P3-111 | Publish inference/GPU support matrices | Implemented | Explicit backend, protocol, hardware and enforcement support in research/runtime docs. |
 | P3-112 | Release integration/regression review | Pending | Automated/local checks completed; cross-track release review and alpha acceptance remain outstanding. |
 
-Outstanding work follows the acceptance conditions above. Real nested accounting,
-reduced grants, model-residency actuation, a native event consumer and a verified
-heterogeneous copy workflow now exist. Remaining integration needs Person 1's
-actual allocation/pressure service, one machine-wide authority, reviewed shared
-contracts and release acceptance. Authoritative native tool-effect IDs and broader
-cache/privacy guarantees remain open. Cloud acceptance is deferred until last at
-the user's request and still needs an explicitly authorized dedicated configuration.
+Outstanding work follows the acceptance conditions above. P3-087 is closed for
+its technical resource-request design and tested registered-domain mechanism;
+this is not a claim of Person 1 agreement or complete workstation accounting.
+P3-010/P3-099/P3-112 still need actual cross-track review and release acceptance.
+P3-085/P3-105/P3-106/P3-107 need the dedicated cloud configuration and live runs
+deferred until last by the user. Owned model-server processes and administrative
+coordinator grants outside managed agent roots are not automatically included in
+the new authority. Hardware GPU partitioning and unsupported cache engines retain
+their explicit limitations. The weekly plan remains unchanged.

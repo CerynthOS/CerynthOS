@@ -2,7 +2,7 @@ use crate::{
     AgentService,
     registry::{Registry, now_ms},
 };
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, ensure};
 use cerynth_agent_api::{
     AgentMessage, Artifact, ArtifactKind, SessionSpec, SessionState, TaskAssignment, UnifiedEvent,
 };
@@ -117,6 +117,21 @@ impl AgentService {
         Ok(())
     }
     pub(crate) async fn archive_session(&self, id: Uuid) -> Result<Value> {
+        if self.shared_resources.is_some() {
+            let sessions = self.runtime.lock().await.registry.list();
+            let session = sessions
+                .iter()
+                .find(|s| s.id == id)
+                .context("unknown session")?;
+            ensure!(
+                session.state.is_terminal()
+                    && !sessions
+                        .iter()
+                        .any(|s| s.spec.runtime.parent_id == Some(id)),
+                "stop work and archive children before their parent"
+            );
+            self.revoke_shared_inference(id).await?;
+        }
         self.runtime.lock().await.registry.archive(id)?;
         Ok(json!({"archived":id,"metadata_preserved":true}))
     }
@@ -135,6 +150,15 @@ impl AgentService {
         ensure!(
             runtime.registry.get(id)?.spec.runtime.guard.is_none(),
             "observed sessions cannot claim a Guard launch boundary"
+        );
+        ensure!(
+            runtime
+                .registry
+                .get(id)?
+                .execution
+                .resource_allocation
+                .is_none(),
+            "observed sessions cannot inherit a managed resource allocation"
         );
         runtime.registry.update(id, |s| {
             s.execution.process = Some(identity);

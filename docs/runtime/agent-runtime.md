@@ -395,3 +395,11 @@ records current acceptance and the remaining review/cloud work. The actual
 [tool-effect journal](tool-effects.md), [private cache mode](cache-privacy.md),
 and [compatibility candidate](../contracts/agent-compatibility-candidate.md)
 describe the latest opt-in interfaces, enforcement boundaries and rollback limits.
+
+The [shared managed-domain authority](../contracts/global-resource-request-v1.md#shared-managed-domain-reservations--november-20)
+adds common CPU/RAM/GPU/inference reservations across explicitly participating
+agentd instances. It is enabled only after owner initialization. The saved
+binding prevents a restart from silently bypassing the selected domain.
+Unregistered model servers and ordinary applications are outside this accounting.
+The protocol candidate now has a committed manifest checked by the existing CI
+contract gate; this does not imply team approval or a stable public release.

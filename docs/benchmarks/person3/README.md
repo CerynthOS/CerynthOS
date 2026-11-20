@@ -43,3 +43,9 @@ and live client contract pinning. Separate `*-nov19.json` files preserve Guard
 and model-residency regressions without replacing the previous measured trials.
 Unknown-acknowledgement handling is tested by the Rust fault fixture; no
 exactly-once, arbitrary-shell, timing-noninterference or cloud result is implied.
+
+The November 20 follow-up adds `shared-authority-smoke.json`, separate dated
+contract/hierarchy/packaging results and `validation-summary-nov20.json`. These
+cover two participating daemons and their registered root subtrees; they do not
+assert accounting of unregistered model servers or bypassing clients. The
+272-test result and raw-log hashes are retained separately from November 19.

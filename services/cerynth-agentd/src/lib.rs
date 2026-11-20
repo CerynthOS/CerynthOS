@@ -14,6 +14,7 @@ mod process;
 mod registry;
 pub mod remote;
 mod resources;
+mod shared_resources;
 mod supervisor;
 mod workspace;
 
@@ -78,6 +79,7 @@ pub struct AgentService {
     native_guards: Mutex<std::collections::BTreeMap<Uuid, native_guard::OwnedGuard>>,
     resources: Option<cerynth_resources::systemd::Hierarchy>,
     resource_lock: Mutex<()>,
+    shared_resources: Option<shared_resources::Client>,
     effects: Arc<effects::Journal>,
     effect_gateways: Mutex<std::collections::BTreeMap<Uuid, effects::Gateway>>,
 }
@@ -96,9 +98,14 @@ impl AgentService {
         endpoint: &str,
         allow_unisolated: bool,
     ) -> Result<Self> {
+        let (registry, (resources, shared_resources)) = Registry::open_checked(directory, || {
+            let resources = resources::from_environment(directory)?;
+            let shared = shared_resources::Client::open(directory, resources.is_some())?;
+            Ok((resources, shared))
+        })?;
         Ok(Self {
             runtime: Mutex::new(Runtime {
-                registry: Registry::open(directory)?,
+                registry,
                 active: HashMap::new(),
                 processes: HashMap::new(),
             }),
@@ -116,7 +123,8 @@ impl AgentService {
                 .transpose()?,
             guard_cleanup_lock: Mutex::new(()),
             native_guards: Mutex::new(std::collections::BTreeMap::new()),
-            resources: resources::from_environment(directory)?,
+            resources,
+            shared_resources,
             resource_lock: Mutex::new(()),
             effects: Arc::new(effects::Journal::open(&directory.join("tool-effects"))?),
             effect_gateways: Mutex::new(std::collections::BTreeMap::new()),
@@ -295,8 +303,12 @@ impl AgentService {
                     "GPU request exceeds the session reservation"
                 );
                 let inventory = cerynth_resources::inventory().await?;
+                let sessions = self.runtime.lock().await.registry.list();
                 let mut gpu = self.gpu.lock().await;
                 gpu.update_devices(inventory.gpus);
+                if self.shared_resources.is_some() {
+                    self.check_shared_gpu(&sessions, &gpu, id, &device_id, memory_bytes)?;
+                }
                 gpu.set_pressure(
                     self.resources.is_some()
                         && cerynth_resources::pressure::sample()
@@ -559,6 +571,7 @@ pub async fn serve_with_policy(
     // An unavailable coordinator retains the durable lease for an explicit
     // cleanup retry; it must not prevent inspection of recovered sessions.
     let _ = service.release_model_residency().await;
+    service.reconcile_shared_resources().await?;
     let pressure_sampler = service.pressure_sampler();
     let socket = directory.join("agentd.sock");
     if let Ok(metadata) = std::fs::symlink_metadata(&socket) {

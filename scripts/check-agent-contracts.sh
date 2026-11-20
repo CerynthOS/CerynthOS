@@ -11,6 +11,9 @@ cd -- "$repo_root"
     > "$contract_tmp/request.json"
 "$cargo_binary" run --locked --quiet -p cerynth-agent-api --bin cerynth-agent-schema -- --session \
     > "$contract_tmp/session.json"
+"$cargo_binary" run --locked --quiet -p cerynth-agent-api --bin cerynth-agent-schema -- --manifest \
+    > "$contract_tmp/manifest.json"
 diff -u docs/contracts/schemas/agent-api-v1alpha1.schema.json "$contract_tmp/request.json"
 diff -u docs/contracts/schemas/agent-session-v1alpha1.schema.json "$contract_tmp/session.json"
-echo "Agent request and session schemas match their Rust contracts."
+diff -u docs/contracts/schemas/agent-protocol-v1alpha1.manifest.json "$contract_tmp/manifest.json"
+echo "Agent request, session and protocol manifest match their Rust contracts."

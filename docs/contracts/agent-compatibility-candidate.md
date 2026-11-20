@@ -7,6 +7,14 @@ explicit behavior revision and pinned resource/Guard contract identities.
 Behavior-only changes must update that revision even when schemas are unchanged.
 An ID is a compatibility pin, not a signature or a team approval record.
 
+The candidate manifest is now committed as
+`schemas/agent-protocol-v1alpha1.manifest.json` and exported by
+`cerynth-agent-schema --manifest`. The existing CI contract check compares it
+with the runtime alongside both JSON schemas. A behavior-only revision or new
+feature therefore requires an explicit, reviewable manifest change. The
+November 20 revision advertises `shared_resource_authority: 1`; older pins
+correctly fail before mutation. Shared API review remains outstanding.
+
 Owner clients using `cerynth_agentd::call` can set
 `CERYNTH_AGENT_CONTRACT=<64-character SHA-256>` to include the pin as optional
 `expected_contract` in the request frame. The server checks it in the same

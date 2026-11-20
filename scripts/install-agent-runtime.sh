@@ -31,7 +31,7 @@ if [[ -n "$observer_build" ]]; then
     install -D -m 0644 "$repo_root/apps/cerynth-observer/io.cerynth.Observer.desktop" \
         "$staging_root/usr/share/applications/io.cerynth.Observer.desktop"
 fi
-for binary in cerynth-agentd cerynth-worktree-checkout cerynth-harness-bridge cerynth-inferenced cerynth-hardware; do
+for binary in cerynth-agentd cerynth-worktree-checkout cerynth-harness-bridge cerynth-inferenced cerynth-hardware cerynth-resource-authority; do
     source_binary="$repo_root/target/$profile/$binary"
     if [[ ! -x "$source_binary" ]]; then
         echo "Missing $source_binary; build the runtime first." >&2
