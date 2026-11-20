@@ -403,3 +403,38 @@ binding prevents a restart from silently bypassing the selected domain.
 Unregistered model servers and ordinary applications are outside this accounting.
 The protocol candidate now has a committed manifest checked by the existing CI
 contract gate; this does not imply team approval or a stable public release.
+
+## Release qualification and the remaining cloud run
+
+`python3 tools/qualify_person3_release.py --run-local` runs formatting, the
+workspace check/tests, strict Person 3 lint, schema/manifest drift, shell checks,
+offline version pins and cloud-consent policy regressions. Its report preserves
+each return code and raw-log hash. A nonzero exit also identifies outstanding
+acceptance in the task ledger. Successful local checks do not create team
+approvals or qualify a release; `release_qualified` remains false pending the
+separate actual release review.
+Version inventory honors the same explicit Codex/Claude binary overrides as the
+runtime. The current host Claude 2.1.326 differs from the recorded 2.1.312
+baseline. An isolated copy of the installed 2.1.312 binary matches the earlier
+published SHA-256; select it explicitly with `CERYNTH_CLAUDE_BINARY` for baseline
+qualification. This does not downgrade the host CLI or qualify the newer CLI's
+cloud behavior. Launches must use the same binary selection as the probe.
+
+The live compatible-endpoint fixture is ready for an explicitly selected
+dedicated provider configuration:
+
+```sh
+python3 tools/cloud_routing_smoke.py --endpoint https://PROVIDER.example/v1 --model SUPPORTED_MODEL --credential-env CERYNTH_SMOKE_PROVIDER_KEY --consent
+```
+
+The credential must already exist in that dedicated environment variable; the
+fixture never searches ambient provider credentials. It sends one public
+challenge with an output limit of 32 tokens, checks both endpoint/session
+consent gates, attributes usage, revokes the session and verifies rejection of
+a subsequent replay. Only a matching real provider response counts as a live
+pass. Reports omit credentials, raw responses and provider error bodies.
+The Python policy tests exercise the real local coordinator without submitting
+a provider request; they do not close P3-085 or the cloud/mixed acceptance tasks.
+The mixed Claude Code run additionally requires the owner's approved native
+authentication method; compatible inference transport is not equivalent to
+Claude authentication or permission to reuse a subscription credential.

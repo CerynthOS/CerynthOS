@@ -189,3 +189,31 @@ plus P3-010/P3-099/P3-112 coordinated agreement, stabilization and release revie
 The dedicated provider configuration is still missing; cloud requests remain
 zero. No messages have been sent to teammates. The weekly plan, scheduler and
 frozen scheduler IPC remain unchanged.
+
+### Final acceptance audit and live-cloud readiness
+
+The release qualification runner now records all eight local checks, including
+272 passing Rust tests and three cloud-consent policy regressions. The latter
+exercise the actual local coordinator with a public fixture credential and no
+provider request. CI now runs those Python checks after building inferenced.
+The [qualification report](../benchmarks/person3/release-qualification-2026-11-20.json)
+preserves return codes, log hashes, the selected baseline and unmet acceptance.
+Its nonzero overall gate reflects external acceptance, not failing Rust tests.
+
+The inventory caught host Claude CLI drift from 2.1.312 to 2.1.326. An isolated
+copy of the older installed executable matches its previously published hash;
+the baseline check selects it explicitly through `CERYNTH_CLAUDE_BINARY`, which
+the inventory now honors consistently with all four runtime harness overrides.
+The user's current host CLI is unchanged. The newer version is not represented
+as having passed cloud feature validation.
+
+`tools/cloud_routing_smoke.py` is ready for a selected HTTPS provider, supported
+model and dedicated credential variable. It enforces endpoint/session consent,
+performs one bounded public challenge, verifies its actual response and usage,
+then revokes the grant. Credentials, response bodies and provider error bodies
+are excluded from reports. These preparatory checks do not close live acceptance.
+
+No dedicated cloud configuration is present, and the connected repository search
+returned no PR for this feature branch. Recorded interface/release approvals
+have not been supplied. P3-010/085/099/105/106/107/112 therefore retain their
+actual status; no test result or reviewer approval has been fabricated.

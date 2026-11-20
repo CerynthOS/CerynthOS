@@ -32,6 +32,10 @@ jobs:
           --all-targets -- -D warnings
       - name: Agent contract drift
         run: scripts/check-agent-contracts.sh
+      - name: Cloud consent preflight and real coordinator policy checks
+        run: |
+          cargo build --locked -p cerynth-inferenced --bin cerynth-inferenced
+          python3 -m unittest discover -s tools -p test_cloud_routing_smoke.py -v
   shell:
     runs-on: ubuntu-24.04
     steps:
