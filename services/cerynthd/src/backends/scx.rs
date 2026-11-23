@@ -116,7 +116,9 @@ impl ScxBackend {
         };
 
         match child.try_wait() {
-            Ok(Some(_status)) => {
+            Ok(Some(status)) => {
+                eprintln!("cerynthd: owned scheduler exited ({status}); adaptation paused");
+                self.adaptation_enabled = false;
                 self.child = None;
                 self.pid = None;
             }
@@ -278,6 +280,16 @@ impl ScxBackend {
     }
 }
 
+impl Drop for ScxBackend {
+    fn drop(&mut self) {
+        if self.child.is_some() {
+            if let Err(error) = self.stop() {
+                eprintln!("cerynthd: owned scheduler cleanup failed: {error}");
+            }
+        }
+    }
+}
+
 impl Backend for ScxBackend {
     fn status(&mut self) -> Result<SchedulerStatus, String> {
         self.reap_child()?;
@@ -309,10 +321,21 @@ impl Backend for ScxBackend {
         self.reap_child()?;
 
         if self.pid.is_some() {
+            let previous = self.profile;
             self.stop()?;
             self.profile = profile;
-            // Use internal helper that verifies profile
-            self.start_with_profile_internal(profile)?;
+            if let Err(error) = self.start_with_profile_internal(profile) {
+                self.adaptation_enabled = false;
+                let recovery = match self.rollback(previous) {
+                    RollbackResult::Success { .. } => {
+                        "previous healthy profile restored".to_string()
+                    }
+                    RollbackResult::Failed { error, .. } => format!("rollback failed: {error}"),
+                };
+                return Err(format!(
+                    "profile switch failed: {error}; {recovery}; adaptation paused"
+                ));
+            }
         } else {
             self.profile = profile;
         }
@@ -367,19 +390,28 @@ impl Backend for ScxBackend {
     /// then attempts to start the previous good profile.
     /// The Linux scheduler takes over during the stop/start gap.
     fn rollback(&mut self, previous_good_profile: Profile) -> RollbackResult {
-        // Step 1: Stop the Cerynth scheduler
-        // Linux scheduler takes over immediately
-        if let Err(e) = self.stop() {
+        // Stop only the scheduler process owned by this backend.
+        self.adaptation_enabled = false;
+        if let Err(e) = self.reap_child() {
             return RollbackResult::Failed {
-                error: format!("failed to stop scheduler during rollback: {e}"),
+                error: e,
                 previous_good_profile,
             };
+        }
+        if self.child.is_some() {
+            if let Err(e) = self.stop() {
+                return RollbackResult::Failed {
+                    error: format!("failed to stop scheduler during rollback: {e}"),
+                    previous_good_profile,
+                };
+            }
         }
 
         // Step 2: Attempt to start the previous good profile
         self.profile = previous_good_profile;
         if let Err(e) = self.start() {
-            // Rollback failed - adaptation will be disabled, Linux scheduler remains active
+            // Startup failure reaps the owned child. Do not infer the kernel's
+            // actual scheduler state from process ownership alone.
             return RollbackResult::Failed {
                 error: format!("failed to start previous good profile during rollback: {e}"),
                 previous_good_profile,
@@ -388,9 +420,15 @@ impl Backend for ScxBackend {
 
         // Step 3: Verify the rollback profile is healthy
         if let Err(e) = self.verify_post_switch_health(previous_good_profile) {
-            // Even if health check fails, the scheduler is running - but we consider this a failure
+            let cleanup = if self.child.is_some() {
+                self.stop().err()
+            } else {
+                None
+            };
             return RollbackResult::Failed {
-                error: format!("rollback profile unhealthy after start: {e}"),
+                error: format!(
+                    "rollback profile unhealthy after start: {e}; cleanup error: {cleanup:?}"
+                ),
                 previous_good_profile,
             };
         }

@@ -2,6 +2,9 @@
 
 echo "fake-cerynth-scx started"
 echo "arguments: $*"
+if [[ (-n "${CERYNTH_FAKE_FAIL_PROFILE:-}" && "${2:-}" == "$CERYNTH_FAKE_FAIL_PROFILE") || (-n "${CERYNTH_FAKE_FAIL_MARKER:-}" && -e "$CERYNTH_FAKE_FAIL_MARKER") ]]; then
+    exit 75
+fi
 
 trap 'echo "fake-cerynth-scx received SIGTERM"; exit 0' TERM
 

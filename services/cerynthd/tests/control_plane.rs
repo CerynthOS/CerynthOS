@@ -1,4 +1,6 @@
 use std::{
+    io::{Read, Write},
+    os::unix::net::UnixStream,
     path::{Path, PathBuf},
     process::{Child, Command, Output, Stdio},
     thread,
@@ -372,4 +374,171 @@ fn scx_failed_child_is_reaped_before_starting_a_new_process() {
     stop_daemon(&mut daemon, &socket);
     let _ = std::fs::remove_file(scx_state);
     let _ = std::fs::remove_file(heartbeat);
+}
+
+#[test]
+fn failed_profile_switch_restores_previous_healthy_profile() {
+    let scx_state = write_scx_state("rollback-state");
+    let heartbeat = temp_path("rollback-heartbeat");
+    let (mut daemon, socket, state) = start_daemon(
+        "rollback",
+        &[
+            ("CERYNTH_SCX_STATE_PATH", scx_state.to_str().unwrap()),
+            ("CERYNTH_HEARTBEAT_PATH", heartbeat.to_str().unwrap()),
+            ("CERYNTH_FAKE_FAIL_PROFILE", "performance"),
+        ],
+    );
+    let result = ctl(&socket, &["profile", "set", "performance"]);
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("restored"), "{error}");
+    let result = ctl(&socket, &["status"]);
+    let status = String::from_utf8_lossy(&result.stdout);
+    assert!(
+        status.contains("Balanced")
+            && status.contains("Running         : Yes")
+            && status.contains("Heartbeat       : OK"),
+        "{status}"
+    );
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(state).unwrap()).unwrap();
+    assert_eq!(saved["adaptation_enabled"], false);
+    stop_daemon(&mut daemon, &socket);
+    let _ = std::fs::remove_file(scx_state);
+    let _ = std::fs::remove_file(heartbeat);
+}
+
+#[test]
+fn failed_rollback_leaves_no_owned_scheduler_and_adaptation_paused() {
+    let scx_state = write_scx_state("rollback-failure-state");
+    let heartbeat = temp_path("rollback-failure-heartbeat");
+    let marker = temp_path("rollback-failure-marker");
+    let _ = std::fs::remove_file(&marker);
+    let (mut daemon, socket, _) = start_daemon(
+        "rollback-failure",
+        &[
+            ("CERYNTH_SCX_STATE_PATH", scx_state.to_str().unwrap()),
+            ("CERYNTH_HEARTBEAT_PATH", heartbeat.to_str().unwrap()),
+            ("CERYNTH_FAKE_FAIL_MARKER", marker.to_str().unwrap()),
+        ],
+    );
+    std::fs::write(&marker, "fail subsequent starts").unwrap();
+    let result = ctl(&socket, &["profile", "set", "performance"]);
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("rollback failed"), "{error}");
+    let result = ctl(&socket, &["status"]);
+    let status = String::from_utf8_lossy(&result.stdout);
+    assert!(
+        status.contains("Running         : No") && status.contains("Adaptation      : Disabled"),
+        "{status}"
+    );
+    stop_daemon(&mut daemon, &socket);
+    for file in [scx_state, heartbeat, marker] {
+        let _ = std::fs::remove_file(file);
+    }
+}
+
+#[test]
+fn fragmented_frames_work_and_incomplete_mutations_are_rejected() {
+    let (mut daemon, socket, _) = start_daemon("framing", &[]);
+    let mut stream = UnixStream::connect(&socket).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .unwrap();
+    for part in [
+        b"{\"version\":2,".as_slice(),
+        b"\"correlation_id\":\"fragment\",",
+        b"\"request\":{\"type\":\"status\"}}\n",
+    ] {
+        stream.write_all(part).unwrap();
+        thread::sleep(Duration::from_millis(15));
+    }
+    let mut bytes = Vec::new();
+    stream.read_to_end(&mut bytes).unwrap();
+    let response: cerynth_ipc::ResponseEnvelope = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(response.correlation_id.as_deref(), Some("fragment"));
+    for bytes in [
+        b"{\"version\":2,\"request\":{\"type\":\"set-profile\",\"profile\":\"performance\"}}"
+            .to_vec(),
+        vec![b'x'; cerynth_ipc::MAX_MESSAGE_SIZE + 1],
+    ] {
+        let mut stream = UnixStream::connect(&socket).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        stream.write_all(&bytes).unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
+        let mut response = Vec::new();
+        let _ = stream.read_to_end(&mut response);
+        assert!(response.is_empty());
+    }
+    let profile = ctl(&socket, &["profile", "get"]);
+    assert!(String::from_utf8_lossy(&profile.stdout).contains("Balanced"));
+    stop_daemon(&mut daemon, &socket);
+}
+
+#[test]
+fn sigterm_stops_owned_scheduler_and_removes_endpoint() {
+    let scx_state = write_scx_state("sigterm-state");
+    let heartbeat = temp_path("sigterm-heartbeat");
+    let (mut daemon, socket, _) = start_daemon(
+        "sigterm",
+        &[
+            ("CERYNTH_SCX_STATE_PATH", scx_state.to_str().unwrap()),
+            ("CERYNTH_HEARTBEAT_PATH", heartbeat.to_str().unwrap()),
+        ],
+    );
+    let record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&heartbeat).unwrap()).unwrap();
+    let scheduler_pid = record["pid"].as_u64().unwrap();
+    assert!(
+        Command::new("kill")
+            .args(["-TERM", &daemon.id().to_string()])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while daemon.try_wait().unwrap().is_none() {
+        if std::time::Instant::now() > deadline {
+            let _ = daemon.kill();
+            panic!("daemon ignored SIGTERM");
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!socket.exists());
+    assert!(!PathBuf::from(format!("/proc/{scheduler_pid}")).exists());
+    let _ = std::fs::remove_file(scx_state);
+    let _ = std::fs::remove_file(heartbeat);
+}
+
+#[test]
+fn second_daemon_cannot_replace_live_endpoint_or_regular_file() {
+    let (mut daemon, socket, _) = start_daemon("exclusive", &[]);
+    let mut second = Command::new(env!("CARGO_BIN_EXE_cerynthd"))
+        .env("CERYNTH_SOCKET", &socket)
+        .env("CERYNTH_CONFIG", config_path("exclusive"))
+        .env("CERYNTH_STATE", state_path("exclusive-second"))
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    thread::sleep(Duration::from_millis(200));
+    let exited = second.try_wait().unwrap();
+    if exited.is_none() {
+        let _ = second.kill();
+        let _ = second.wait();
+    }
+    assert!(exited.is_some_and(|exit| !exit.success()));
+    assert!(ctl(&socket, &["status"]).status.success());
+    stop_daemon(&mut daemon, &socket);
+    let _ = std::fs::remove_file(&socket);
+    std::fs::write(&socket, b"keep this file").unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_cerynthd"))
+        .env("CERYNTH_SOCKET", &socket)
+        .env("CERYNTH_CONFIG", config_path("exclusive"))
+        .env("CERYNTH_STATE", state_path("exclusive-file"))
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert_eq!(std::fs::read(&socket).unwrap(), b"keep this file");
+    std::fs::remove_file(socket).unwrap();
 }

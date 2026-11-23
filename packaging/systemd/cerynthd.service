@@ -11,6 +11,8 @@ ExecStart=/usr/lib/cerynth/cerynthd
 
 Restart=on-failure
 RestartSec=2
+TimeoutStopSec=60
+KillMode=control-group
 
 # /run/cerynth holds the IPC socket, the scheduler status file, and the
 # boot marker. RuntimeDirectoryPreserve is required: without it systemd
