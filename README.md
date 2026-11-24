@@ -48,6 +48,12 @@ acceptance are still pending; implemented controls advertise their actual limits
 The [validation report](docs/integration/2026-11-11-person3-runtime.md) retains
 measured results and failed coding trials.
 
+The [platform status](docs/platform/person1-status.md) covers advanced resource
+controls, booted KDE development images, signed installation and A/B recovery.
+See the [image guide](docs/platform/development-image.md) and
+[measured extension results](docs/benchmarks/person1-platform-extensions.md)
+for reproduction and the remaining physical/release acceptance gates.
+
 ``` bash
 cargo build --release --workspace
 ```

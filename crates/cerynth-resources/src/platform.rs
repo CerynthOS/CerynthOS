@@ -47,7 +47,11 @@ pub fn request(session: &Session) -> Result<ResourceBudget> {
                 .map(|quota| CpuMax::new(quota / 10, 100_000)),
             memory_high_bytes: Some(budget.memory_high_bytes),
             memory_max_bytes: Some(budget.memory_max_bytes),
-            io_weight: None,
+            io_weight: budget
+                .platform
+                .as_ref()
+                .and_then(|limits| limits.io_weight)
+                .map(u64::from),
             pids_max: Some(u64::from(budget.tasks_max)),
         },
     };
@@ -113,7 +117,19 @@ pub fn snapshot(session: &Session, path: &Path) -> Result<Snapshot> {
             .limits
             .pids_max
             .map(|v| observed(v, usage.pids_usage.max, written)),
-        io_weight: None,
+        // A weight is a configured preference, not a device throughput guarantee.
+        io_weight: request.limits.io_weight.map(|weight| {
+            observed(
+                weight,
+                read("io.weight").and_then(|text| {
+                    text.lines().find_map(|line| {
+                        line.strip_prefix("default ")
+                            .and_then(|value| value.parse().ok())
+                    })
+                }),
+                false,
+            )
+        }),
     };
     let status = BudgetStatus {
         schema_version: 1,

@@ -1,65 +1,68 @@
 # Person 1 platform implementation and acceptance
 
-This work covers the Person 1 responsibilities in the supplied master plan.
-No numbered Person 1 task list was present in the repository or supplied in
-the conversation. This report therefore records concrete deliverables and
-limits; it does not certify completion of an unknown checklist or the entire
-44-week OS roadmap. The weekly plan and Person 3 task ledger are unchanged.
+Updated November 24, 2026. This maps the supplied master plan's Person 1
+ownership to concrete code and evidence. The weekly plan and Person 3 task
+ledger are unchanged. Automated implementation/VM checks do not constitute
+physical hardware acceptance or approval by other team members.
 
-## Implemented and exercised
+## Delivered and tested
 
-| Area | Deliverable | Evidence |
+| Responsibility | Implementation and measured scope |
+| --- | --- |
+| Preserve Linux/SCX baseline | Frozen source/dependency manifest; original scheduler unchanged; four profiles and fault recovery qualified on pinned Linux 7.1 |
+| Core supervision/recovery | Endpoint ownership, peer authentication, bounded IPC, healthy profile rollback, atomic state, signal cleanup and fallback tests |
+| Process resource hierarchy | One systemd writer; owner/project/parent/child slices; CPU quota, RAM high/max, task limits, cancellation and crash cleanup |
+| Advanced controls | Versioned swap, cpuset, I/O preference and whole-device bandwidth API; actual kernel checks before launch; child inheritance/non-escalation |
+| Bounded workspace storage | Fixed-size ext4/FUSE volumes, owner/subtree reservations, real ENOSPC, private mount attestation and interrupted cleanup recovery |
+| Resource observations | Descendant CPU/RAM/PIDs, PSI, OOM/task events, advanced readback and structured runtime diagnostics |
+| Session-aware CPU policy | Owner opt-in phase preferences under Linux default scheduling, bounded ceilings and parent propagation; repeated fixed-work measurements |
+| SCX research | Separate hash-based baseline import, preloaded session/process snapshot experiment, lifetime bound, permission/stale-process rejection and five-trial comparisons |
+| System responsiveness | Real KDE Plasma/KWin Wayland and Observer boot; D-Bus responsiveness under bounded managed CPU contention |
+| OS image and packaging | Pinned Arch package snapshot, base/desktop/A-B mkosi definitions, system/user service integration, wired DHCP and development access |
+| Installation | Signed full-image verification, explicit new-file/serial-bound block-target installer, installed-byte readback and boot of the installed image in a VM |
+| Upgrade/recovery | Separate root slots plus persistent home/var; authenticated inactive-slot writes, one-shot trial, API/service health acceptance, automatic fallback and persistent manual rollback |
+| Signing/inventory | External-key Ed25519 verification, immutable manifest snapshot, tamper/replay rejection, development signatures and CycloneDX declared-license inventory |
+| Integration/review readiness | Real staged service restart and two-runtime/shared-authority/Guard tests; generated candidate schemas and a review packet |
+| Build/regression discipline | Pinned kernel and dependency checks, deterministic kernel appliance/runtime archives, baseline CI workflow, full Rust/Python checks and retained evidence |
+
+Read [advanced controls](advanced-controls.md),
+[development image and update instructions](development-image.md),
+the [extension measurements](../benchmarks/person1-platform-extensions.md),
+and the [interface review packet](../contracts/person1-interface-review.md).
+The earlier [foundation report](../benchmarks/person1-platform-validation.md)
+remains historical evidence for the baseline and its 123 kernel/SCX checks.
+
+## Actual guarantees
+
+| Control | Qualified behavior | Limit |
 | --- | --- | --- |
-| Baseline preservation | Frozen scheduler source/dependency manifest; algorithm unchanged | `tools/platform_inventory.py` and `docs/contracts/platform-baseline-v1.json` |
-| Kernel foundation | Pinned-source checks, cgroup/pressure configuration, isolated x86-64 VM profile | `scripts/vm/build-platform-kernel.sh`; completed Linux 7.1 build |
-| Boot and scheduler recovery | Four profiles, contention progress, heartbeat identity, crash/freeze/dispatch/reporting/SysRq faults | Real KVM guest; raw console and completion markers |
-| Runtime ownership | Endpoint lock, peer checks, bounded framing, concurrency cap and SIGTERM cleanup | Real daemon/CLI integration tests with a fake scheduler |
-| Failed profile changes | Restore prior healthy profile; pause adaptation; report rollback failure accurately | Healthy rollback and failed-rollback regressions |
-| Persistent configuration/state | First-boot settings, atomic fsync/rename, safe corrupt-state recovery | Concurrent-reader and symlink tests; staged release binaries |
-| CPU/RAM resource hierarchy | Existing pinned Person 1 API consumed through the single systemd writer | Three descendant levels, actual CPU quotas/memory limits, cancellation and SIGKILL recovery |
-| Accounting and pressure | Descendant PIDs/memory/CPU, cgroup PSI, machine pressure and process creation rate | Live hierarchy test and telemetry compatibility regression |
-| Responsiveness | Bounded CPU contention with owner IPC and native Qt observations | Synthetic workload; offscreen rendering, not physical compositor latency |
-| Packaging | Existing runtime layout, reproducible archive, upgrade config preservation, checksums, dependency inventory | Two identical payload builds and actual staged startup/recovery |
-| Reproducibility/CI | Deterministic guest initramfs, build manifests, pinned manual kernel workflow, retained failure logs | `tools/qualify_platform.py`; `.github/workflows/platform-kernel.yml` |
+| CPU quota / RAM / task count | Nested cgroup v2 enforcement under Linux default scheduling | Custom SCX quota/weight semantics remain unqualified |
+| CPU preference | Applied/observed cgroup weights; opt-in phase policy | Preference, not dedicated CPU reservation or general agent speedup |
+| Swap | Per-session `memory.swap.max=0`, including inherited child limit | No active-swap workload benchmark |
+| Affinity | Requested and effective cpuset plus observed task affinity | Requires delegated cpuset and online permitted CPUs |
+| I/O weight | systemd setting and kernel readback | Device fairness depends on storage stack/scheduler |
+| I/O throughput | Real direct writes under an enforced whole-device rate | Buffered I/O, layered storage and other hardware need separate qualification |
+| Workspace capacity | Actual fixed filesystem capacity and ENOSPC; sandbox hides backing image/journal | Other filesystems depend on the sandbox; external-metadata Git worktree seeds are rejected |
+| GPU | Existing shared cooperative accounting integration | No new hardware VRAM partitioning guarantee |
+| Desktop | Wayland/Observer and measured VM D-Bus replies under load | No physical input-to-photon, display/GPU-driver or energy claim |
+| Images/signatures | Booted UEFI disk images and authenticated development artifacts | Secure Boot and public release trust are separate |
 
-Published measurements and evidence digests are in
-[`person1-platform-validation.md`](../benchmarks/person1-platform-validation.md).
-Build/reproduction instructions are in [`kernel/build.md`](../kernel/build.md).
+The production resource hierarchy continues refusing SCX CPU control. The
+experimental slice policy did not demonstrate a useful CPU-share improvement;
+it is not installed as a production service. Its static identity snapshot only
+applies while the witnessed workers remain alive. Full-image bit reproducibility
+and broad representative workload improvements are not asserted.
 
-## Enforcement and support matrix
+## External acceptance required
 
-| Control | Implemented boundary | Qualified scope |
-| --- | --- | --- |
-| CPU quota | systemd/cgroup v2 bandwidth | Real nested owner hierarchy and Linux-default VM throttling |
-| CPU weight | Configured proportional preference | Value readback; no sched_ext weight guarantee |
-| RAM high/max | cgroup v2 thresholds/hard limit | Readback, descendant accounting and contained guest OOM; no claim that logical pause frees RAM |
-| Process count | cgroup v2 pids limit | Guest fork denied with kernel event; runtime process cleanup |
-| Swap | Kernel interface | VM `memory.swap.max=0` readback; no active-swap workload or per-session API extension |
-| I/O weight | Existing platform budget contract and kernel interface | VM readback; device fairness not benchmarked; session adapter does not request it |
-| I/O throughput | Kernel configuration | No managed per-device throughput API or live device benchmark in this change |
-| CPU affinity | Hardware/allowed-CPU inventory | No managed per-session cpuset API extension in this change |
-| Disk capacity | Filesystem-dependent | No enforced per-session filesystem quota |
-| GPU | Separate Person 3 subsystem | No new hardware partitioning guarantee |
+The software and VM evidence cannot complete these actions by itself:
 
-The production resource hierarchy continues refusing custom sched_ext CPU
-policy until its quota/weight semantics are separately qualified. The VM's
-cgroup limit checks run under Linux default scheduling before scheduler
-fault tests. These are intentionally distinct experiments.
+- An authorized disposable physical target for installation/reboots, display/GPU
+  driver checks, physical power-loss/recovery and desktop responsiveness tests.
+- An authorized public release signing identity and human dependency/license
+  review. Development test keys do not establish that identity.
+- Coordinated acceptance of the candidate interfaces by the responsible team
+  members and a release review. A review packet is not a fabricated approval.
 
-## Acceptance still required
-
-The following work is not represented as completed:
-
-- A complete numbered Person 1 checklist and its task-by-task reconciliation.
-- New session-aware sched_ext policies, cross-scheduler fairness comparisons,
-  and performance claims supported by repeated representative workloads.
-- Managed API extensions for per-session swap, affinity, device throughput
-  and filesystem quotas where the storage platform can enforce them.
-- A complete desktop distribution image, installation and upgrade validation,
-  bootloader/rollback design, release signing and a reviewed license/SBOM set.
-- Physical-machine boot, display/GPU drivers, hardware compatibility,
-  power-loss/reboot recovery and physical desktop responsiveness qualification.
-- Coordinated interface acceptance by Persons 1, 2 and 4 and release review.
-
-The kernel test appliance and development runtime archive are useful tested
-artifacts. They are not a public-alpha distribution or a signed release.
+These gates remain explicit. The development images and passing tests do not
+certify that every Person 1 public-alpha requirement is complete.

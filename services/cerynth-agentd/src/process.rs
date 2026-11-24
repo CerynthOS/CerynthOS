@@ -316,6 +316,7 @@ fn append_cpu_quota(wrapper: &mut Vec<String>, budget: &cerynth_agent_api::Resou
     }
 }
 
+#[allow(clippy::too_many_lines)] // Validate and construct one immutable launch plan.
 pub fn prepare(
     session: &Session,
     launch: &LaunchRequest,
@@ -403,6 +404,16 @@ pub fn prepare(
             command.to_string_lossy().into_owned(),
         ];
         append_cpu_quota(&mut wrapper, budget);
+        if let Some(limits) = &budget.platform {
+            let separator = wrapper
+                .iter()
+                .position(|argument| argument == "--")
+                .context("missing systemd separator")?;
+            wrapper.splice(
+                separator..separator,
+                cerynth_resources::advanced::scope_properties(limits)?,
+            );
+        }
         wrapper.extend(args);
         command = PathBuf::from("/usr/bin/systemd-run");
         ensure!(
@@ -412,6 +423,10 @@ pub fn prepare(
         args = wrapper;
         Some(unit_name(session.id))
     } else {
+        ensure!(
+            session.spec.runtime.budget.platform.is_none(),
+            "advanced platform limits require a managed cgroup hierarchy"
+        );
         None
     };
     let environment = launch_environment(session);

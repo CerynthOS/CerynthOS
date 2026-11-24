@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Versioned owner API for bounded ext4 workspace volumes over unprivileged FUSE.
+
+The filesystem capacity is enforced; isolation from other host filesystems is
+the sandbox's responsibility. Backing images and the journal must stay outside
+the agent's allowed filesystem. No host block device is opened or modified.
+"""
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+import re
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+import time
+import uuid
+
+
+def private(path, directory):
+    info=path.lstat()
+    if info.st_uid!=os.getuid() or stat.S_IMODE(info.st_mode)!=(0o700 if directory else 0o600) or (not stat.S_ISDIR(info.st_mode) if directory else not stat.S_ISREG(info.st_mode)):
+        raise ValueError('volume state must be private, owned and non-symlink')
+
+
+def store(root, state):
+    with tempfile.NamedTemporaryFile(dir=root,delete=False) as output:
+        temporary=Path(output.name);os.fchmod(output.fileno(),0o600)
+        output.write(json.dumps(state,sort_keys=True).encode());output.flush();os.fsync(output.fileno())
+    temporary.replace(root/'volumes.json')
+    descriptor=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(descriptor)
+    finally:os.close(descriptor)
+
+
+@contextlib.contextmanager
+def journal(root, initialize=False):
+    if initialize:root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    private(root,True)
+    descriptor=os.open(root/'volumes.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
+    try:
+        private(root/'volumes.lock',False);fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        path=root/'volumes.json'
+        if path.exists():
+            private(path,False)
+            if path.stat().st_size>1024**2:raise ValueError('volume journal too large')
+            state=json.loads(path.read_text())
+            if state['version']!=1:raise ValueError('unsupported volume journal')
+        else:state=None
+        yield state
+    finally:os.close(descriptor)
+
+
+def run(arguments, tool_root=None, timeout=30):
+    environment={'PATH':'/usr/bin:/bin','HOME':str(Path.home()),'XDG_RUNTIME_DIR':f'/run/user/{os.getuid()}',
+                 'DBUS_SESSION_BUS_ADDRESS':f'unix:path=/run/user/{os.getuid()}/bus','LANG':'C.UTF-8'}
+    if tool_root:environment['LD_LIBRARY_PATH']=str(tool_root/'usr/lib')
+    return subprocess.run(arguments,env=environment,text=True,capture_output=True,timeout=timeout,check=True).stdout.strip()
+
+
+def unit(root,identity):return 'cerynth-volume-'+hashlib.sha256(str(root).encode()).hexdigest()[:12]+'-'+str(uuid.UUID(identity))+'.service'
+
+
+def paths(root, identity):
+    identity=str(uuid.UUID(identity));directory=root/identity
+    private(directory,True)
+    return directory,directory/'workspace.ext4',directory/'mount'
+
+
+def mounted(path):
+    # stat/ismount can report false for a disconnected FUSE endpoint.
+    # mountinfo remains authoritative after the userspace helper crashes.
+    def unescape(value):return re.sub(r'\\([0-7]{3})',lambda match:chr(int(match[1],8)),value)
+    return any(unescape(line.split()[4])==str(path) for line in Path('/proc/self/mountinfo').read_text().splitlines())
+
+
+def stop_unit(root,identity):
+    name=unit(root,identity)
+    if run(['/usr/bin/systemctl','--user','show',name,'--property=LoadState','--value'])=='not-found':return
+    try:run(['/usr/bin/systemctl','--user','stop',name])
+    except subprocess.CalledProcessError:
+        if run(['/usr/bin/systemctl','--user','show',name,'--property=LoadState','--value'])!='not-found':raise
+
+
+def inspect(root, record):
+    directory,image,mount=paths(root,record['id'])
+    private(image,False)
+    if image.stat().st_size!=record['image_bytes']:raise ValueError('backing capacity changed')
+    active=mounted(mount)
+    stats=os.statvfs(mount) if active else None
+    return record|{'mounted':active,'workspace':str(mount),'image':str(image),
+        'filesystem_capacity_bytes':stats.f_blocks*stats.f_frsize if stats else None,
+        'filesystem_available_bytes':stats.f_bavail*stats.f_frsize if stats else None,
+        'enforcement':'fixed-size-ext4-filesystem','other_filesystems_constrained':False}
+
+
+def mount_volume(root, record, tool_root):
+    directory,image,mount=paths(root,record['id'])
+    if mounted(mount):return inspect(root,record)
+    binary=tool_root/'usr/bin/fuse2fs' if tool_root else Path('/usr/bin/fuse2fs')
+    if not binary.is_file():raise ValueError('install fuse2fs before mounting a bounded workspace')
+    arguments=['/usr/bin/systemd-run','--user','--quiet','--collect','--service-type=exec',f'--unit={unit(root,record["id"])}',
+        '--property=MemoryMax=134217728','--property=TasksMax=32','--property=CPUWeight=50','--property=KillMode=control-group']
+    if tool_root:arguments.append(f'--setenv=LD_LIBRARY_PATH={tool_root}/usr/lib')
+    arguments+=['--',str(binary),str(image),str(mount),'-f','-o',f'fakeroot,cache_size=8M,fsname=cerynth-{record["id"]},nosuid,nodev']
+    run(arguments,tool_root)
+    deadline=time.monotonic()+10
+    while not mounted(mount):
+        active=run(['/usr/bin/systemctl','--user','show',unit(root,record['id']),'--property=ActiveState','--value'])
+        if active in ['failed','inactive'] or time.monotonic()>deadline:
+            stop_unit(root,record['id'])
+            raise RuntimeError('FUSE workspace did not become ready; inspect the owned service journal')
+        time.sleep(.02)
+    result=inspect(root,record)
+    if result['filesystem_capacity_bytes']>record['image_bytes']:raise RuntimeError('filesystem capacity exceeds requested bound')
+    return result
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--directory',required=True,type=Path)
+    parser.add_argument('--tool-root',type=Path)
+    sub=parser.add_subparsers(dest='action',required=True)
+    init=sub.add_parser('init');init.add_argument('--capacity-bytes',type=int,required=True)
+    create=sub.add_parser('create');create.add_argument('--id',required=True);create.add_argument('--image-bytes',type=int,required=True)
+    create.add_argument('--subtree-bytes-max',type=int,required=True);create.add_argument('--parent');create.add_argument('--seed',type=Path)
+    for operation in ['mount','inspect','unmount','remove']:
+        command=sub.add_parser(operation);command.add_argument('id')
+    sub.add_parser('list')
+    args=parser.parse_args();root=args.directory.absolute()
+    if root==Path('/'):parser.error('select a private owner state directory')
+    with journal(root,args.action=='init') as state:
+        if args.action=='init':
+            if state is not None or args.capacity_bytes<16*1024**2:raise ValueError('existing or invalid volume authority')
+            state={'version':1,'capacity_bytes':args.capacity_bytes,'volumes':{}};store(root,state);result=state
+        else:
+            if state is None:raise ValueError('initialize the volume authority first')
+            if args.action=='list':result=[inspect(root,r) for r in state['volumes'].values()]
+            elif args.action=='create':
+                identity=str(uuid.UUID(args.id));parent=str(uuid.UUID(args.parent)) if args.parent else None
+                seed=args.seed.resolve(strict=True) if args.seed else None
+                if seed and (not seed.is_dir() or (seed/'.git').is_file()):raise ValueError('seed must be a directory; external Git worktree metadata is unsupported')
+                request={'id':identity,'parent':parent,'image_bytes':args.image_bytes,'subtree_bytes_max':args.subtree_bytes_max,'seed':str(seed) if seed else None}
+                if not 16*1024**2<=args.image_bytes<=args.subtree_bytes_max<=state['capacity_bytes'] or args.image_bytes%4096:raise ValueError('invalid or unbounded filesystem request')
+                if identity in state['volumes']:
+                    if {key:state['volumes'][identity].get(key) for key in request}!=request:raise ValueError('operation ID reused with different immutable details')
+                    if state['volumes'][identity]['status']=='removing':raise ValueError('complete the prior removal before reusing this volume')
+                    if state['volumes'][identity]['status']=='ready':
+                        print(json.dumps({'version':1,'result':inspect(root,state['volumes'][identity])}));return
+                else:
+                    if len(state['volumes'])>=128:raise ValueError('volume registry full')
+                    siblings=[r for r in state['volumes'].values() if r['parent']==parent]
+                    available=state['capacity_bytes'] if parent is None else state['volumes'][parent]['subtree_bytes_max']-state['volumes'][parent]['image_bytes']
+                    if sum(r['subtree_bytes_max'] for r in siblings)+args.subtree_bytes_max>available:raise ValueError('parent or owner storage reservation exhausted')
+                    state['volumes'][identity]=request|{'status':'preparing'};store(root,state)
+                directory=root/identity;directory.mkdir(mode=0o700,exist_ok=True);private(directory,True)
+                mount=directory/'mount';mount.mkdir(mode=0o700,exist_ok=True)
+                if mounted(mount):raise ValueError('preparing volume unexpectedly mounted; manual recovery required')
+                image=directory/'workspace.ext4';descriptor=os.open(image,os.O_CREAT|os.O_WRONLY|os.O_NOFOLLOW,0o600)
+                try:
+                    private(image,False);os.ftruncate(descriptor,args.image_bytes)
+                finally:os.close(descriptor)
+                command=['/usr/bin/mkfs.ext4','-q','-F','-m','0','-U',identity,'-E','lazy_itable_init=0,lazy_journal_init=0']
+                if seed:command+=['-d',str(seed)]
+                run(command+[str(image)],timeout=120)
+                state['volumes'][identity]['status']='ready';store(root,state);result=inspect(root,state['volumes'][identity])
+            else:
+                identity=str(uuid.UUID(args.id));record=state['volumes'][identity]
+                if args.action=='remove' and record['status']=='removing' and not (root/identity).exists():
+                    del state['volumes'][identity];store(root,state)
+                    print(json.dumps({'version':1,'result':{'removed':identity}}));return
+                directory,image,mount=paths(root,identity)
+                if args.action=='inspect':result=inspect(root,record)
+                elif args.action=='mount':
+                    if record['status']!='ready':raise ValueError('complete volume preparation before mounting')
+                    result=mount_volume(root,record,args.tool_root)
+                elif args.action=='unmount':
+                    if mounted(mount):run(['/usr/bin/fusermount3','-u',str(mount)])
+                    stop_unit(root,identity)
+                    result=inspect(root,record)
+                elif args.action=='remove':
+                    if mounted(mount) or any(r['parent']==identity for r in state['volumes'].values()):raise ValueError('unmount and remove descendants before deleting a volume')
+                    record['status']='removing';store(root,state)
+                    if image.exists():private(image,False);image.unlink()
+                    if mount.exists():mount.rmdir()
+                    directory.rmdir();del state['volumes'][identity];store(root,state);result={'removed':identity}
+        print(json.dumps({'version':1,'result':result}))
+
+
+if __name__=='__main__':
+    try:main()
+    except Exception as error:
+        print(json.dumps({'version':1,'error':str(error)}));raise SystemExit(1)

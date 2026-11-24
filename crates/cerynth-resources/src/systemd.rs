@@ -18,6 +18,7 @@ pub struct Hierarchy {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Accounting {
+    pub advanced: crate::advanced::Observed,
     pub unit: String,
     pub control_group: String,
     pub memory_current_bytes: Option<u64>,
@@ -26,6 +27,7 @@ pub struct Accounting {
     pub memory_events: std::collections::BTreeMap<String, u64>,
     pub cpu_stat: std::collections::BTreeMap<String, u64>,
     pub cpu_max: Option<String>,
+    pub cpu_weight: Option<u32>,
     pub tasks_current: Option<u64>,
     pub memory_pressure: Option<String>,
     pub cpu_pressure: Option<String>,
@@ -178,7 +180,7 @@ async fn ensure_slice(unit: &str, budget: &ResourceBudget) -> Result<()> {
                 && property(unit, "FragmentPath").await?.is_empty(),
             "refusing to replace an externally owned slice"
         );
-        let mut properties = vec![
+        let properties = vec![
             ("Description", "s", "Cerynth managed agent resources".into()),
             ("MemoryAccounting", "b", "true".into()),
             ("CPUAccounting", "b", "true".into()),
@@ -188,8 +190,21 @@ async fn ensure_slice(unit: &str, budget: &ResourceBudget) -> Result<()> {
             ("MemoryMax", "t", budget.memory_max_bytes.to_string()),
             ("TasksMax", "t", budget.tasks_max.to_string()),
         ];
+        let mut properties: Vec<crate::advanced::Property> = properties
+            .into_iter()
+            .map(|(key, signature, value): (&str, &str, String)| {
+                (key.into(), signature.into(), vec![value])
+            })
+            .collect();
         if let Some(quota) = budget.cpu_quota_micros_per_second {
-            properties.push(("CPUQuotaPerSecUSec", "t", quota.to_string()));
+            properties.push((
+                "CPUQuotaPerSecUSec".into(),
+                "t".into(),
+                vec![quota.to_string()],
+            ));
+        }
+        if let Some(limits) = &budget.platform {
+            properties.extend(crate::advanced::properties(limits)?);
         }
         let mut args: Vec<String> = [
             "--user",
@@ -206,8 +221,9 @@ async fn ensure_slice(unit: &str, budget: &ResourceBudget) -> Result<()> {
         .map(str::to_owned)
         .collect();
         args.push(properties.len().to_string());
-        for (key, signature, value) in properties {
-            args.extend([key.into(), signature.into(), value]);
+        for (key, signature, values) in properties {
+            args.extend([key, signature]);
+            args.extend(values);
         }
         args.push("0".into());
         let output = command("/usr/bin/busctl", args).await?;
@@ -244,6 +260,10 @@ async fn ensure_slice(unit: &str, budget: &ResourceBudget) -> Result<()> {
                     == u128::from(expected) * values[1].parse::<u128>()?,
             "kernel CPU quota differs from owner budget"
         );
+    }
+    if let Some(limits) = &budget.platform {
+        let path = cgroup_path(&property(unit, "ControlGroup").await?)?;
+        crate::advanced::verify(&path, limits)?;
     }
     Ok(())
 }
@@ -320,6 +340,7 @@ pub async fn accounting(unit: &str) -> Result<Accounting> {
             .collect()
     };
     Ok(Accounting {
+        advanced: crate::advanced::observe(&path),
         unit: unit.into(),
         control_group: group,
         memory_current_bytes: number("memory.current"),
@@ -328,10 +349,52 @@ pub async fn accounting(unit: &str) -> Result<Accounting> {
         memory_events: counters("memory.events"),
         cpu_stat: counters("cpu.stat"),
         cpu_max: text("cpu.max"),
+        cpu_weight: number("cpu.weight").and_then(|value| u32::try_from(value).ok()),
         tasks_current: number("pids.current"),
         memory_pressure: text("memory.pressure"),
         cpu_pressure: text("cpu.pressure"),
     })
+}
+
+/// # Errors
+/// Only updates an owned slice within its immutable owner-selected ceiling.
+pub async fn set_phase_weight(unit: &str, weight: u32, ceiling: u32) -> Result<()> {
+    ensure!(
+        valid_slice(unit) && (1..=ceiling).contains(&weight) && ceiling <= 10_000,
+        "phase preference exceeds owner authority"
+    );
+    let output = command(
+        "/usr/bin/busctl",
+        vec![
+            "--user".into(),
+            "call".into(),
+            "org.freedesktop.systemd1".into(),
+            "/org/freedesktop/systemd1".into(),
+            "org.freedesktop.systemd1.Manager".into(),
+            "SetUnitProperties".into(),
+            "sba(sv)".into(),
+            unit.into(),
+            "true".into(),
+            "1".into(),
+            "CPUWeight".into(),
+            "t".into(),
+            weight.to_string(),
+        ],
+    )
+    .await?;
+    ensure!(
+        output.status.success(),
+        "systemd refused semantic CPU preference"
+    );
+    let path = cgroup_path(&property(unit, "ControlGroup").await?)?;
+    ensure!(
+        std::fs::read_to_string(path.join("cpu.weight"))?
+            .trim()
+            .parse::<u32>()?
+            == weight,
+        "phase preference not applied by kernel"
+    );
+    Ok(())
 }
 
 #[cfg(test)]

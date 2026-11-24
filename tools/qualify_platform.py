@@ -63,11 +63,10 @@ def main():
               "rust_tests_passed": sum(int(passed) for passed, _, _ in counts), "rust_tests_ignored": sum(int(ignored) for _, _, ignored in counts),
               "kernel_check_count": len(vm["checks"]) if vm else 0, "gates": reports,
               "public_alpha_qualified": False,
-              "remaining_acceptance": ["No detailed numbered Person 1 checklist has been supplied",
-                  "Physical boot, driver compatibility, installation/upgrade and power-loss testing",
-                  "Bootable distribution with desktop defaults and signed release artifacts",
-                  "New sched_ext session-aware CPU policies and CPU-weight qualification",
-                  "Per-session swap, affinity and device-throughput API integration beyond current contract",
+              "remaining_acceptance": ["This command qualifies the core baseline; see the separate platform extension report for image and advanced-controller evidence",
+                  "Physical boot, driver compatibility, installation and power-loss testing on an authorized target",
+                  "Authorized release signing identity and human dependency/license review",
+                  "Representative workload evaluation before promoting experimental policies",
                   "Cross-team interface and release reviews"]}
     (output / "result.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({key: report[key] for key in ["local_platform_checks_passed", "rust_tests_passed", "kernel_check_count", "public_alpha_qualified"]}), flush=True)

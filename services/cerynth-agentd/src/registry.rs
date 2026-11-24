@@ -62,6 +62,34 @@ pub fn private_directory(path: &Path) -> Result<()> {
 }
 
 impl Registry {
+    pub(crate) fn phase_demands(&self) -> Vec<cerynth_resources::phase::Demand> {
+        self.snapshot
+            .sessions
+            .values()
+            .filter(|session| {
+                session
+                    .execution
+                    .resource_allocation
+                    .as_ref()
+                    .is_some_and(|allocation| allocation.active && allocation.kernel_enforced)
+            })
+            .filter_map(|session| {
+                session.execution.resource_slice.as_ref().map(|unit| {
+                    cerynth_resources::phase::Demand {
+                        id: session.id,
+                        parent: session.spec.runtime.parent_id,
+                        unit: unit.clone(),
+                        phase: if session.state.is_terminal() {
+                            cerynth_agent_api::WorkloadPhase::Cleanup
+                        } else {
+                            session.execution.phase
+                        },
+                        ceiling: session.spec.runtime.budget.cpu_weight,
+                    }
+                })
+            })
+            .collect()
+    }
     #[cfg(test)]
     pub fn open(directory: &Path) -> Result<Self> {
         Self::open_checked(directory, || Ok(())).map(|(registry, ())| registry)
@@ -274,6 +302,18 @@ impl Registry {
             if spec.runtime.budget.cpu_quota_micros_per_second.is_none() {
                 spec.runtime.budget.cpu_quota_micros_per_second =
                     parent.spec.runtime.budget.cpu_quota_micros_per_second;
+            }
+            if let Some(limits) = &parent.spec.runtime.budget.platform {
+                spec.runtime
+                    .budget
+                    .platform
+                    .get_or_insert_with(Default::default)
+                    .inherit_from(limits);
+                spec.runtime.budget.validate().map_err(anyhow::Error::msg)?;
+            }
+            if spec.runtime.budget.workspace_max_bytes.is_none() {
+                spec.runtime.budget.workspace_max_bytes =
+                    parent.spec.runtime.budget.workspace_max_bytes;
             }
             ensure!(!parent.state.is_terminal(), "parent session is terminal");
             ensure!(

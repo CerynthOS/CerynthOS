@@ -33,6 +33,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("artifacts/person1/qemu-local"))
     parser.add_argument("--extra-package", action="append", default=[], help="additional signature-verified build tools (for example pahole)")
+    parser.add_argument("--packages-only", nargs="+", help="extract specific packages instead of the default QEMU set")
+    parser.add_argument("--skip-dependency-resolution", action="store_true", help="use an existing tools tree; verify packages but do not resolve host dependency conflicts")
     args = parser.parse_args()
     destination = args.output.resolve()
     packages = destination / "packages"
@@ -47,7 +49,8 @@ def main():
     run("gpg", "--batch", "--yes", "--dearmor", "--output", str(trusted_keys), str(keyring))
     gpg_home = destination / "gnupg"
     gpg_home.mkdir(mode=0o700, exist_ok=True)
-    plan = run("pacman", "-Sp", "--print-format", "%n %s %l", "qemu-system-x86", "qemu-img", *args.extra_package)
+    requested = args.packages_only or ["qemu-system-x86", "qemu-img", *args.extra_package]
+    plan = run("pacman", "-Sp", *(["--nodeps"] if args.skip_dependency_resolution else []), "--print-format", "%n %s %l", *requested)
 
     def prepare(line):
         name, size, url = line.split(maxsplit=2)
@@ -86,9 +89,13 @@ def main():
     for archive, _ in verified:
         run("bsdtar", "--no-same-owner", "-xf", str(archive), "-C", str(root))
     environment = os.environ | {"LD_LIBRARY_PATH": str(root / "usr/lib"), "QEMU_MODULE_DIR": str(root / "usr/lib/qemu")}
-    version = run(str(root / "usr/bin/qemu-system-x86_64"), "--version", env=environment).splitlines()[0]
+    executable = root / "usr/bin/qemu-system-x86_64"
+    version = run(str(executable), "--version", env=environment).splitlines()[0] if executable.exists() else None
+    previous = json.loads((destination / "manifest.json").read_text()) if (destination / "manifest.json").exists() else {}
+    records = {record["name"]: record for record in previous.get("packages", [])}
+    records.update({record["name"]: record for _, record in verified})
     manifest = {"version": 1, "qemu": version, "host_modified": False,
-                "packages": [record for _, record in verified]}
+                "packages": list(records.values())}
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps({"root": str(root), "qemu": version, "packages": len(verified)}))
 

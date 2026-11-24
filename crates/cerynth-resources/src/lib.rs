@@ -1,10 +1,13 @@
 //! Accelerator monitoring and cooperative admission. No generic hard VRAM limits.
 pub mod admission;
+pub mod advanced;
 pub mod authority;
 pub mod global;
+pub mod phase;
 pub mod platform;
 pub mod pressure;
 pub mod systemd;
+pub mod workspace;
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, time::Duration};

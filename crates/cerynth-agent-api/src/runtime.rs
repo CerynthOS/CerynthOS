@@ -5,6 +5,12 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct ResourceBudget {
+    /// Optional owner-selected platform constraints, enforced before execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<crate::PlatformLimits>,
+    /// Capacity ceiling for the bounded workspace and its managed child volumes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_max_bytes: Option<u64>,
     /// Hard CPU bandwidth in microseconds per second; None means weight-only sharing.
     pub cpu_quota_micros_per_second: Option<u64>,
     pub cpu_weight: u32,
@@ -20,6 +26,8 @@ pub struct ResourceBudget {
 impl Default for ResourceBudget {
     fn default() -> Self {
         Self {
+            platform: None,
+            workspace_max_bytes: None,
             cpu_quota_micros_per_second: None,
             cpu_weight: 100,
             memory_high_bytes: 1024 * 1024 * 1024,
@@ -37,6 +45,9 @@ impl ResourceBudget {
     /// # Errors
     /// Returns an error if limits are zero, inconsistent, or outside supported ranges.
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(platform) = &self.platform {
+            platform.validate()?;
+        }
         if !(1..=10_000).contains(&self.cpu_weight)
             || self.cpu_quota_micros_per_second.is_some_and(|quota| {
                 !(10_000..=4_096_000_000).contains(&quota) || quota % 10_000 != 0
@@ -49,6 +60,9 @@ impl ResourceBudget {
             || self.inference_concurrency > 32
             || self.timeout_seconds == 0
             || self.timeout_seconds > 86400
+            || self
+                .workspace_max_bytes
+                .is_some_and(|bytes| bytes < 16 * 1024 * 1024)
         {
             return Err("invalid resource budget".into());
         }
@@ -57,7 +71,21 @@ impl ResourceBudget {
 
     #[must_use]
     pub fn fits_within(&self, parent: &Self) -> bool {
-        self.cpu_weight <= parent.cpu_weight
+        self.platform
+            .as_ref()
+            .unwrap_or(&crate::PlatformLimits::default())
+            .fits_within(
+                parent
+                    .platform
+                    .as_ref()
+                    .unwrap_or(&crate::PlatformLimits::default()),
+            )
+            && match (self.workspace_max_bytes, parent.workspace_max_bytes) {
+                (_, None) => true,
+                (Some(child), Some(parent)) => child <= parent,
+                (None, Some(_)) => false,
+            }
+            && self.cpu_weight <= parent.cpu_weight
             && match (
                 self.cpu_quota_micros_per_second,
                 parent.cpu_quota_micros_per_second,
@@ -177,6 +205,14 @@ impl RuntimeSpec {
     /// Returns an error for invalid identities, capabilities, budgets, or task metadata.
     pub fn validate(&self) -> Result<(), String> {
         self.budget.validate()?;
+        if self.budget.workspace_max_bytes.is_some()
+            && (self.isolation != IsolationPolicy::Required || !self.require_cgroup)
+        {
+            return Err("bounded workspace requests require an isolated managed session".into());
+        }
+        if self.budget.platform.is_some() && !self.require_cgroup {
+            return Err("advanced platform constraints require cgroup supervision".into());
+        }
         if let Some(guard) = &self.guard {
             guard.validate()?;
             if self.isolation != IsolationPolicy::Required
@@ -352,6 +388,8 @@ pub struct ProcessIdentity {
 // be pending simultaneously; these are not mutually exclusive lifecycle states.
 #[allow(clippy::struct_excessive_bools)]
 pub struct ExecutionRecord {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_volume: Option<WorkspaceVolume>,
     pub model_residency: Option<ModelResidencyBinding>,
     pub model_residency_cleanup_pending: bool,
     pub resource_allocation: Option<ResourceAllocation>,
@@ -380,6 +418,16 @@ pub struct ExecutionRecord {
     pub guard_cleanup_pending: bool,
     pub guard_profile_digest: Option<String>,
     pub workspace_preparing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct WorkspaceVolume {
+    pub volume_id: Uuid,
+    pub parent_volume_id: Option<Uuid>,
+    pub maximum_image_bytes: u64,
+    pub subtree_maximum_bytes: u64,
+    pub filesystem_capacity_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

@@ -32,7 +32,7 @@ pub fn manifest() -> Value {
     let session = canonical(
         serde_json::to_value(schemars::schema_for!(crate::Session)).expect("schema serializes"),
     );
-    let schemas = json!({"request":request,"session":session,"behavior_revision":"2026-11-20",
+    let schemas = json!({"request":request,"session":session,"behavior_revision":"2026-11-23-platform-limits",
         "platform_budget":1,"guard_revision":"e592fa47797179ad24a99fc76143be48191a7649"});
     let digest = format!(
         "{:x}",
@@ -40,6 +40,6 @@ pub fn manifest() -> Value {
     );
     json!({"version":crate::API_VERSION,"contract_id":digest,"status":"candidate_frozen_pending_team_review",
         "session_specification":"v1alpha1","fingerprint_algorithm":"sha256-canonical-schema-bundle",
-        "features":{"platform_resource_budget":1,"tool_effect_deduplication":1,"global_resource_plan":1,"atomic_contract_pin":1,"shared_resource_authority":1},
+        "features":{"platform_resource_budget":1,"advanced_platform_limits":1,"tool_effect_deduplication":1,"global_resource_plan":1,"atomic_contract_pin":1,"shared_resource_authority":1},
         "team_approval_claimed":false})
 }

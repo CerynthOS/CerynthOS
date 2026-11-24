@@ -122,6 +122,49 @@ fn local_admission(
 }
 
 impl AgentService {
+    pub(crate) fn phase_sampler(
+        self: &std::sync::Arc<Self>,
+    ) -> Option<tokio::task::JoinHandle<()>> {
+        if !self.phase_scheduling {
+            return None;
+        }
+        self.phase_status
+            .store(1, std::sync::atomic::Ordering::Relaxed);
+        let weak = std::sync::Arc::downgrade(self);
+        Some(tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                interval.tick().await;
+                let Some(service) = weak.upgrade() else { break };
+                if let Err(error) = service.reconcile_phase_weights().await {
+                    service
+                        .phase_status
+                        .store(2, std::sync::atomic::Ordering::Relaxed);
+                    eprintln!("phase scheduling stopped: {error:#}");
+                    break;
+                }
+            }
+        }))
+    }
+    async fn reconcile_phase_weights(&self) -> Result<()> {
+        let _writer = self.resource_lock.lock().await;
+        require_validated_cpu_scheduler()?;
+        let demands = self.runtime.lock().await.registry.phase_demands();
+        let pressure =
+            cerynth_resources::pressure::sample().blocks_new_work(crate::registry::now_ms());
+        let weights = cerynth_resources::phase::plan(&demands, pressure)?;
+        let mut applied = self.phase_weights.lock().await;
+        applied.retain(|id, _| weights.contains_key(id));
+        for demand in demands {
+            let weight = weights[&demand.id];
+            if applied.get(&demand.id) != Some(&weight) {
+                systemd::set_phase_weight(&demand.unit, weight, demand.ceiling).await?;
+                applied.insert(demand.id, weight);
+            }
+        }
+        Ok(())
+    }
     pub(crate) async fn plan_global_resources(
         &self,
         id: Uuid,
@@ -176,7 +219,7 @@ impl AgentService {
         Ok(
             json!({"version":1,"hierarchy_enabled":self.resources.is_some(),"pressure":pressure,
             "pressure_blocks_new_work":pressure.blocks_new_work(crate::registry::now_ms()),
-            "allocations":allocations,"enforcement":"systemd slices when enabled; cooperative GPU reservations",
+            "allocations":allocations,"phase_scheduling_enabled":self.phase_status.load(std::sync::atomic::Ordering::Relaxed) == 1,"phase_scheduling_status":match self.phase_status.load(std::sync::atomic::Ordering::Relaxed) {1 => "running", 2 => "failed", _ => "disabled"},"phase_cpu_weights":self.phase_weights.lock().await.clone(),"platform_limits_version":1,"enforcement":"systemd slices when enabled; cooperative GPU reservations",
             "shared_authority":self.shared_resources.as_ref().map(|c|c.authority.view()).transpose()?,
             "shared_accounting_scope":"participating agentd root subtrees only; backend servers and bypassing workloads are outside this domain"}),
         )
@@ -253,8 +296,22 @@ impl AgentService {
         Ok(response)
     }
 
+    #[allow(clippy::too_many_lines)] // Admission, attestation and binding share the resource writer lock.
     pub(crate) async fn bind_resources(&self, id: Uuid, plan: &mut PreparedLaunch) -> Result<()> {
         let Some(hierarchy) = &self.resources else {
+            let budget = self
+                .runtime
+                .lock()
+                .await
+                .registry
+                .get(id)?
+                .spec
+                .runtime
+                .budget;
+            ensure!(
+                budget.platform.is_none() && budget.workspace_max_bytes.is_none(),
+                "advanced platform limits require CERYNTH_RESOURCE_HIERARCHY=1"
+            );
             return Ok(());
         };
         let _writer = self.resource_lock.lock().await;
@@ -285,6 +342,30 @@ impl AgentService {
                 .parent_id
                 .map(|id| runtime.registry.get(id))
                 .transpose()?;
+            if let Some(ceiling) = session.spec.runtime.budget.workspace_max_bytes {
+                let root = std::env::var_os("CERYNTH_VOLUME_DIRECTORY")
+                    .context("configure the trusted workspace volume authority first")?;
+                let workspace = session
+                    .execution
+                    .worktree
+                    .as_ref()
+                    .unwrap_or(&session.spec.workspace);
+                let volume =
+                    cerynth_resources::workspace::attest(Path::new(&root), workspace, ceiling)?;
+                let expected = parent
+                    .as_ref()
+                    .and_then(|parent| parent.execution.workspace_volume.as_ref())
+                    .map(|volume| volume.volume_id);
+                ensure!(
+                    volume.parent_volume_id == expected,
+                    "workspace volume ancestry differs from the session authority"
+                );
+                runtime.registry.update(id, |session| {
+                    session.execution.workspace_volume = Some(volume.clone());
+                    Registry::record_event(session, "workspace_capacity_verified");
+                    Ok(())
+                })?;
+            }
             ensure!(
                 parent.as_ref().is_none_or(|s| s
                     .execution

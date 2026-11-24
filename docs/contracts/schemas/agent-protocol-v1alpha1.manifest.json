@@ -1,6 +1,7 @@
 {
-  "contract_id": "42c4810f785d74c73dcdb272f87cf0d2ed2601983edaa9455e05e730b6de3617",
+  "contract_id": "b9ef3f0a367d199e86c08d69e4cc0a9b00e6f630e01c74ca9418f537c4b9e7fa",
   "features": {
+    "advanced_platform_limits": 1,
     "atomic_contract_pin": 1,
     "global_resource_plan": 1,
     "platform_resource_budget": 1,

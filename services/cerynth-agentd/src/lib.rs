@@ -79,6 +79,9 @@ pub struct AgentService {
     native_guards: Mutex<std::collections::BTreeMap<Uuid, native_guard::OwnedGuard>>,
     resources: Option<cerynth_resources::systemd::Hierarchy>,
     resource_lock: Mutex<()>,
+    phase_scheduling: bool,
+    phase_status: std::sync::atomic::AtomicU8,
+    phase_weights: Mutex<std::collections::BTreeMap<Uuid, u32>>,
     shared_resources: Option<shared_resources::Client>,
     effects: Arc<effects::Journal>,
     effect_gateways: Mutex<std::collections::BTreeMap<Uuid, effects::Gateway>>,
@@ -103,6 +106,15 @@ impl AgentService {
             let shared = shared_resources::Client::open(directory, resources.is_some())?;
             Ok((resources, shared))
         })?;
+        let phase_scheduling = match std::env::var("CERYNTH_PHASE_SCHEDULING").as_deref() {
+            Err(_) | Ok("0") => false,
+            Ok("1") => true,
+            Ok(_) => anyhow::bail!("CERYNTH_PHASE_SCHEDULING must be 0 or 1"),
+        };
+        ensure!(
+            !phase_scheduling || resources.is_some(),
+            "semantic scheduling requires the owned resource hierarchy"
+        );
         Ok(Self {
             runtime: Mutex::new(Runtime {
                 registry,
@@ -113,6 +125,9 @@ impl AgentService {
             inference_slots: Semaphore::new(1),
             directory: directory.into(),
             allow_unisolated,
+            phase_scheduling,
+            phase_status: std::sync::atomic::AtomicU8::new(0),
+            phase_weights: Mutex::new(std::collections::BTreeMap::new()),
             workers: Mutex::new(JoinSet::new()),
             gpu: Mutex::new(cerynth_resources::GpuBroker::new(1024 * 1024 * 1024)),
             inference_control: inference::InferenceControl::from_environment()?,
@@ -232,7 +247,9 @@ impl AgentService {
             | Operation::GpuSubmit { .. }
             | Operation::GpuJobs
             | Operation::GpuFinish { .. }
-            | Operation::RequestResources { .. }) => self.resource_operation(operation).await,
+            | Operation::RequestResources { .. }) => {
+                Box::pin(self.resource_operation(operation)).await
+            }
         }
     }
 
@@ -573,6 +590,7 @@ pub async fn serve_with_policy(
     let _ = service.release_model_residency().await;
     service.reconcile_shared_resources().await?;
     let pressure_sampler = service.pressure_sampler();
+    let phase_sampler = service.phase_sampler();
     let socket = directory.join("agentd.sock");
     if let Ok(metadata) = std::fs::symlink_metadata(&socket) {
         ensure!(
@@ -598,6 +616,10 @@ pub async fn serve_with_policy(
         }
     };
     let cleanup = service.shutdown().await;
+    if let Some(sampler) = phase_sampler {
+        sampler.abort();
+        let _ = sampler.await;
+    }
     if let Some(sampler) = pressure_sampler {
         sampler.abort();
         let _ = sampler.await;

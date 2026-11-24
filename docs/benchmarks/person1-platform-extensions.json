@@ -1,0 +1,1792 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-24T09:03:57.668239+00:00",
+  "base_revision": "01505d5834c8ec90f1ef8f20b5d14a6b7410ea14",
+  "qualified_source_sha256": {
+    ".github/workflows/platform-kernel.yml": "ede25f03296998f0e312e0051e61f37c5c8fa8308f608b3eec9172e5899185b4",
+    "Cargo.lock": "f7b4ca8cb4482370f1c9ec652437552de7027f2cd2688e3725e4060c02615dfd",
+    "Cargo.toml": "6ae31d2c94e6431ec88d0c99d6ceecfeb00ac405dbd40d8b0cfbc303ad6d1fb6",
+    "cli/cerynthctl/Cargo.toml": "e107e28dcb5d9eff228d01be2d3b26e60af738f67607d2473c5eb64c733f8082",
+    "cli/cerynthctl/src/client.rs": "e33469a130086dd8b5a12f04f79d763b7f27b4a20d3ae652235c90709523b5c4",
+    "cli/cerynthctl/src/commands.rs": "cdb83d2f9a73127ad7547627852ce9657fed90a2af9ff0ad835799871c63c740",
+    "cli/cerynthctl/src/error.rs": "9081f9ef91ee701afc0cfbab385020ba7e8d51c11217c1cf30f95c14481947d7",
+    "cli/cerynthctl/src/ipc.rs": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cli/cerynthctl/src/main.rs": "e723e8dbfcdf425672b24f1b8f2e45f1428774777d255bb01879e33e645c0805",
+    "cli/cerynthctl/src/output.rs": "ae1ad6e51e1de1dcbd16f0b476d8cb0d9218c8c7a7312cc50fabd80135c112b5",
+    "cli/cerynthctl/src/timeout.rs": "d6a5957860464ae27ef0e75d45599049c6ab38e25551fab67138b565c6e091f4",
+    "cli/cerynthctl/src/transport.rs": "89c97f609288ab2e343ab9c189738fe5859495a535e4ce7ed887b88b5bb603cc",
+    "crates/cerynth-agent-api/Cargo.toml": "b5c7fdfd327383724415d6daa2c8071dd1032920141f4c57b25cafadcf39f906",
+    "crates/cerynth-agent-api/src/bin/cerynth-agent-schema.rs": "f2da0271ffaaeac268c0a676854ef6ecb48619c8d9a89248eab1fbfc6bbf56d1",
+    "crates/cerynth-agent-api/src/contract.rs": "e232ad610058a207baa2e11760a18d30f620495774443a27d909b565db651d4a",
+    "crates/cerynth-agent-api/src/lib.rs": "8d835b9c6e15e23e1cc7873d36c0605ade3ca630064e554a5d061db1da887ca9",
+    "crates/cerynth-agent-api/src/platform_limits.rs": "bae497014df2a0ac9985f57e1fc9ce4733ea0a5c90802786e98eb7a70b2f7dee",
+    "crates/cerynth-agent-api/src/runtime.rs": "d4dcc360c5199ce81b181152905fd1c6f611de824d791a45c6789ee43bcaaa78",
+    "crates/cerynth-agent-api/tests/compatibility.rs": "5cfe7d663014d887207cd27bcada8c9da01e3c81c1887cbdac7737956b92dafb",
+    "crates/cerynth-agent-api/tests/fixtures/legacy-2d8b5d4.json": "094494135340184c2bd430d2c6bad6bc451cab58808a50ca5de0c064d8689c13",
+    "crates/cerynth-agent-protocols/Cargo.toml": "0a47b9705870ac410e1be917979c30671a9e7242ddf495f89822cbb9b024a2e0",
+    "crates/cerynth-agent-protocols/src/guard.rs": "ce05486a178a21d545104f85e717ecd3f2a7c75e7d52d512b3b8dda30048cf73",
+    "crates/cerynth-agent-protocols/src/lib.rs": "8fe1760c6a607b3ffee54b840fc951b70e50c27461e8e2bf069eb19eefe408f8",
+    "crates/cerynth-agent-protocols/src/opencode.rs": "a74754bd4338b448312a825c98b5da29376c5af53377a812d7af449ba56c30ab",
+    "crates/cerynth-common/Cargo.toml": "1b8c8934447804ea7f7fc6cb97fd2db3647a57117c3c925691524ede25ac8877",
+    "crates/cerynth-common/src/lib.rs": "e1d33d2072cfd93f7aec082e5d0709915066321fac12dea9a7c7c2f779c74e77",
+    "crates/cerynth-config/Cargo.toml": "71f651d2ad6f8df8125b8a7bbad79ccc20a0cd03e27892b347df0a55e8e26bb8",
+    "crates/cerynth-config/src/config.rs": "29f64f929adc5de5e611100c56f647eb914746f406f4529710b46f91baf2f89f",
+    "crates/cerynth-config/src/error.rs": "2d9adbab9f5ae7da965159c07239bf8ec2c21972d6ff104538b45117fe374672",
+    "crates/cerynth-config/src/lib.rs": "61fe49c7c7139e2ee110c9a325c7fcb9f3ff57633b3840832d2ba3187cb0a97e",
+    "crates/cerynth-config/src/state.rs": "205e543f32d17b292cd93e3f67dc03b17c10fca3ca7e129ca8bef7dbd4f80563",
+    "crates/cerynth-ipc/Cargo.toml": "8a81585e9621fa2b74f5570dc9f1ef2849b7df2f44d9c4b1cb6235301321b776",
+    "crates/cerynth-ipc/src/backend.rs": "cb7e238385158e638a943a1ba4d62da7d9398a8b1766d558e2c61ff4ea76afd1",
+    "crates/cerynth-ipc/src/lib.rs": "8cb510313747a4b9402946fd91be383d61e9366a0ac466abd294bd078bed0983",
+    "crates/cerynth-ipc/src/profile.rs": "1f52eeddb2284c932bdb08b766e8ff7cdbb75169c8d52fcb82c7b7637356edd3",
+    "crates/cerynth-ipc/src/protocol.rs": "b5db7010b95d9da7f0688906ab715a22b73c1d941c9c6b646ee6ba74e2f54478",
+    "crates/cerynth-ipc/src/request.rs": "e4be46f9df74ee82c083e10570847b94f9a62dd525bde7e65ab2cfa7aa5342f8",
+    "crates/cerynth-ipc/src/response.rs": "f6897a35de5a79e1f06847348f6148175e1cbd3be88fbd1e6d595bdd0ddfcaaf",
+    "crates/cerynth-model-api/Cargo.toml": "1e5bf648f97e53d5b1263ea0a2cc1033c1110e2b02873498fc6767a56dd0ec68",
+    "crates/cerynth-model-api/src/admission.rs": "a6efb0508be45c5370ef1d23af39c2216c263b3b79d326d233dfd922c94b7486",
+    "crates/cerynth-model-api/src/cache.rs": "3924eb667bc311d7c886aea775ded77956d94ef27ddb5ef16b2aefd029b88276",
+    "crates/cerynth-model-api/src/compatible.rs": "ad0c964f1ee23b128bda08b4e5c375c7639d98229b0ceb10886142898973bc9f",
+    "crates/cerynth-model-api/src/lib.rs": "caef777946ac48f5896ed02979b78eebc780fa94f1ac7a7d2cc03cc1888f1cb7",
+    "crates/cerynth-model-api/src/placement.rs": "c0a3f36eff40b027fb7db29847229a2271d8335847df917cef7bdcd2b5cc4232",
+    "crates/cerynth-model-api/src/registry.rs": "633f42adc31c824fc2f998b4541ecf3d1a97a2437888f6b9776e05d7693a3333",
+    "crates/cerynth-platform-resources/Cargo.toml": "0454212b173a848b9e71f88538ad9e727411546aa285d9d92300c11128ff6131",
+    "crates/cerynth-platform-resources/PROVENANCE.json": "f9e0066046d428b6b93ab01481e8ef30470cecfd02db9fcfe381c1c3f28af2bd",
+    "crates/cerynth-platform-resources/README.md": "d0a02980d23c1ea0737acb2fd1dbeef35e1cceccb86647fbe07afdc59578c027",
+    "crates/cerynth-platform-resources/src/budget.rs": "3fe82fa8ef38bb44295d9ef4b0cc2175628b3a879d3d1638d9c2b7f35658c5b5",
+    "crates/cerynth-platform-resources/src/cgroup.rs": "d21ff86e384da095c4283b1e68a0ac16e517419467af80a04552a9321ca9845b",
+    "crates/cerynth-platform-resources/src/lib.rs": "9875668102a19b505b82688e1795bdcdb6c29fb9f1b9766024247ac972149ef7",
+    "crates/cerynth-platform-resources/src/stats.rs": "162f03b7578b2ecb5a8b20ba0e7ee3745c38582d8ca69479ca00457f8d5cafb0",
+    "crates/cerynth-platform-resources/src/support.rs": "e1d82e818f009bd893feb653068ba282ee1bbfc923e455d8026aeb7be3bcb3b4",
+    "crates/cerynth-policy/Cargo.toml": "a8754904de3443ecca1441fa295bfe9c360cbfbc3053d10874fdca34414c6030",
+    "crates/cerynth-policy/src/bin/cerynth-policy-live.rs": "f678fee3a4fab3423acc85435fab60334f326ab2ce0f802edf47c9d4482ca5d0",
+    "crates/cerynth-policy/src/bin/cerynth-policy-replay.rs": "d426a83a96f44bb356ddbb6955085768ff49f3479dc49c4bf43ecad239ca2565",
+    "crates/cerynth-policy/src/bin/cerynth-policy-report.rs": "a3ea901dd428adde3f328e4c3f3862001cfad9ce0051407edd10e73f7a828f0d",
+    "crates/cerynth-policy/src/lib.rs": "b51659053ab5b18cfd3df239fa526a84c9132b6cf3c54c5fb671c0ad4fe5bd4f",
+    "crates/cerynth-resources/Cargo.toml": "03d8fcdadc76e75f2a6cc0466d850632d343a805d091f1fe3f2060d035091cc1",
+    "crates/cerynth-resources/src/admission.rs": "10a95448e8050f8237a4703807007047d2d9aafb4d0926e3a1d8907539a5c6e3",
+    "crates/cerynth-resources/src/advanced.rs": "7e7ce742c173a031b6bf39251d3959331b5bc0171229db203002bc3ce2e8a4d5",
+    "crates/cerynth-resources/src/authority.rs": "124f31e4dde0ca63f48e2cfd45057743fe6c352b04dc04f52371e72ced486815",
+    "crates/cerynth-resources/src/bin/cerynth-hardware.rs": "1e8df75b4f542e5c6ec780d3133ef2fd069a37e85e2c039a11d1f2fe674c4272",
+    "crates/cerynth-resources/src/bin/cerynth-resource-authority.rs": "c7ecf54227ff2b927cc3e5d8477fc097d889b6c040df3d54c8221f18ff23d975",
+    "crates/cerynth-resources/src/global.rs": "4929c39765ba0749aa2539a25e71f4f8312556b2cbd7f951fd29ce98e10f6319",
+    "crates/cerynth-resources/src/lib.rs": "19cbe4e608a18faace84e318c0f1ee5de01bf9b922760a1f137a4340564d32d6",
+    "crates/cerynth-resources/src/phase.rs": "5b39f565ef5e6d3ec690ee2cae0126704060b8f8e2387221fad74744826b99ae",
+    "crates/cerynth-resources/src/platform.rs": "b722f18d420257c35912dfe2883033207c3079692729f9f2e31b9ea20692d33a",
+    "crates/cerynth-resources/src/pressure.rs": "490f252e440efeca82064b2ed81c80c59aae46636276b60392ae221ab94155d9",
+    "crates/cerynth-resources/src/systemd.rs": "edead2ad138f8047f25176944747da7df036968e66b748ee9e76ad0298b426bb",
+    "crates/cerynth-resources/src/workspace.rs": "791d75524ac8c870df4626e5f186d7060b1da1186793f076d49f28954903d2e1",
+    "crates/cerynth-resources/tests/authority.rs": "7664836342b4145afc5d6a11f1d56778462f1fa713efa6f823b6191a062bc81f",
+    "crates/cerynth-telemetry/Cargo.toml": "85dc1dd5b0401e970eb548b4ea0a3c55d99db2e676f7d5200161bbb39cb515da",
+    "crates/cerynth-telemetry/src/bin/cerynth-telemetry-record.rs": "ebde0ed36078b97617dbe011aa3724db7df506c867eafaf96a432919031bf3be",
+    "crates/cerynth-telemetry/src/lib.rs": "5f94e2607b7a2c4a5dece22f3877776eed6b3e25c16525d1d7ad5fee95c28ef7",
+    "kernel/COMMIT": "cf3245986e26eef0f8caea4ba88d091c7984d211eb60697760ace61427b629dc",
+    "kernel/VERSION": "ccec1d4f1848f958a124893cf6488220769079236c614a652f9b107a506ccbf6",
+    "kernel/config/base.config": "70787193c387f66fa8ab2a2985897498775b58522b3db9a72bc486270a47c415",
+    "kernel/config/platform-vm.fragment": "be343ff2be80c098fe96c0002904988da68fc5e3a4a1ebe88b5ae191830006c2",
+    "packaging/config/cerynth.toml": "185a9b1a9f44748778d2c0acbc4b31bcf80cd44939b94fc3232ed25948af7c83",
+    "packaging/image/mkosi.conf": "0906284b86511c4be3d16d0a98216beb5b5d69e0182b15ffb06bdcaa16ae9fc5",
+    "packaging/image/mkosi.profiles/ab.conf": "62bea3a1e2dbd4539468bd8db4c48923c2ef51d869993727d1b181cb5937aa39",
+    "packaging/image/mkosi.profiles/desktop.conf": "894fa911e228efc9bc92867c4d25cd5e192544b79435695ac2d509c1ccf51543",
+    "packaging/image/mkosi.repart-ab/00-esp.conf": "63ab173680f66df1cb6a905171da5e89dd1d23000afd570b0f162c97308af5eb",
+    "packaging/image/mkosi.repart-ab/10-root-a.conf": "43fa96a227deb9275f164807110eadcbbe2c0c05a6c9bf54ad8815b75ae477e4",
+    "packaging/image/mkosi.repart-ab/20-root-b.conf": "f5060eab6047c1da0833441a377306c180f859c1c1a27ec61d38ea87895f147b",
+    "packaging/image/mkosi.repart-ab/30-var.conf": "f47e0da010573cf25cda1a4b2a806df788e866ae04eb427b62ff65c283ed8005",
+    "packaging/image/mkosi.repart-ab/40-home.conf": "1f1981c24720baaa9ee73838adec8a961257b6bacc04126d1e37c11778a0e3f1",
+    "packaging/image/mkosi.sandbox/etc/pacman.conf": "444ae07dd845fbf457a4757f556d3fab90e9524ed449af4d59add207ad1a0904",
+    "packaging/scripts/cerynth-boot-marker": "1dab2caddf5b40466ccbe5fa539d5aece3df232857b13a046af9dd8fa7d65e4e",
+    "packaging/systemd/cerynth-boot-marker.service": "0959fb8ea2e18513b25250e21d48a3fa6fcbf145127fad8466b881c69ff826cb",
+    "packaging/systemd/cerynth-policy-live.service": "78ca1be4db437acaf83deef80dc4941bdd62dbe067e397ccdfe2fe9d0f2b10b8",
+    "packaging/systemd/cerynth-update-health.service": "076e22b01fe0b3f6efa59288ff92382a2f8080fbfcb80fa386966405f35cf774",
+    "packaging/systemd/cerynthd.service": "f093d1ccc7268c9a6cfdf7d803681524748e2c653d96cbebc8ac632ee90c5340",
+    "packaging/systemd/user/cerynth-agentd.service": "8a976302704d5d82d06d1e9a8d921160a39a54b2b8228954f68183023b45758a",
+    "packaging/systemd/user/cerynth-inferenced.service": "bc253d619d31778114150ff2e459aed710316d88bc48a6d1902ba6a2a90b1432",
+    "packaging/systemd/user@.service.d/20-cerynth-resources.conf": "117443c9108883b479e96765ea915c6487c8883f4974494479e49133478a8bd7",
+    "schedulers/SCX_COMMIT": "f90488189d31684ac5dd17163ccc0beab82fa859cb0bf51c65c471a7a6e5d01d",
+    "schedulers/SCX_VERSION": "6bf25061d3caea72d34f961997d35aca8c8d960aaddac2413516882e6706c97e",
+    "schedulers/cerynth-scx-phase/Cargo.toml": "739191b66bc8724f4baec2005d6e33966f5d58549398a35710b28571d89799da",
+    "schedulers/cerynth-scx-phase/baseline-main.sha256": "23fd963e29a087d735e7bd56ca87a82ccb9db0a9a8fc696e6e5bded09e9afa03",
+    "schedulers/cerynth-scx-phase/build.rs": "57e7f69502bd4839ec1e75353bb8eb8498ba9e2d4dbed3627b6cd4ae043d6171",
+    "schedulers/cerynth-scx-phase/src/main.rs": "61f9db6291655817adba3822fef5b53ff0b26ef475b70fd44c20a67999217dc4",
+    "schedulers/cerynth-scx-phase/src/policy.rs": "42c488e9037e7b110569ad2ddb0761ce6ccfb550e99ea3f2d4ded250bf1e03cf",
+    "schedulers/cerynth-scx/Cargo.toml": "a2071cb27f6a47919b39d148463164122a1c606c59eb8844d8087842f2e42660",
+    "schedulers/cerynth-scx/README.md": "18e714a792a82b9a98ab61269e41bcb99790559a7426e20f98e103517c1717d5",
+    "schedulers/cerynth-scx/build.rs": "a970835f813306215ecaedf03a1a0c0b7a5d1fe07e62dfaac18ba5997f2a0e5e",
+    "schedulers/cerynth-scx/dispatch.h": "783c73fe876a6f9ee293f9542fa10aa283367fa373e22e9123c04b01ce193419",
+    "schedulers/cerynth-scx/intf.h": "c30c920ce2a98a3ea1beb50f21456f93cb99923f57cf017a00705bd5fce14886",
+    "schedulers/cerynth-scx/main.bpf.c": "e1ed05f368462f2624edf8f357617ebf65aaa06e105a6fd57ee18c33977ed433",
+    "schedulers/cerynth-scx/src/bpf.rs": "35b1cf3d7118337131ef48842ce8c27e58467ed10454e3af303290a5e457794d",
+    "schedulers/cerynth-scx/src/bpf_intf.rs": "75faf246dcc180862100fab3cbf16028d3b3add0a873d2debb06d673cf6c8a9b",
+    "schedulers/cerynth-scx/src/bpf_skel.rs": "9c3eb66983057d44a164a9515e06ace27241ff0a26b6112483b350e6f891c12d",
+    "schedulers/cerynth-scx/src/error.rs": "aaf6c48b2865e4e50edc6884633c8628af766cb10a22121e4fd44f88ca0efd51",
+    "schedulers/cerynth-scx/src/initialization.rs": "ff628d727fb575d4cbceba36ebf8d03773afbb3f78de6ef23c3b95bbcb045ad5",
+    "schedulers/cerynth-scx/src/main.rs": "a6391d91f09696a94cda1da028b1200fd53faafb8fd80a97dfc1e00613d55a2e",
+    "schedulers/cerynth-scx/src/policy.rs": "7bd0d90faf7ae0caeda4a69652693b3d731507866af4708241371e7732589605",
+    "schedulers/cerynth-scx/src/process.rs": "3375885f51f8f41f2af098b23eb155240008ca60338c15985f64075c75d98975",
+    "schedulers/cerynth-scx/src/profile.rs": "aa2f611d0c84712aaf1189c2a1ed84d5b676454aad3cb161825d2df1e75de8d7",
+    "schedulers/cerynth-scx/src/reporter.rs": "142f3dac921daaa3853608ed0fdaf0c19ffc71bcbba9ed25bfb3ed8129d1e236",
+    "schedulers/cerynth-scx/src/stats.rs": "b8cd968d9daddc46a36643ac8ff315ba80149330b338a0811a96039e9511e231",
+    "schedulers/cerynth-scx/src/status.rs": "ecea8f5cc83706a4cb942ab02d92a03d8b0038111417554535ec2dbaa8c817ca",
+    "schedulers/cerynth-scx/tests/dispatch-progress.c": "77c6f7000309a69a55af48e17e539ae4e4c5aa62cc2fa49c4491953517ce3c6d",
+    "scripts/bootstrap.sh": "7cdf421ae6b779c7b576c03a7a09d12085f400c78e4edc4ff0b9b31c89df8b15",
+    "scripts/build-kernel.sh": "a81b931b11b0f60ab0e9221d8cde2ccc58d9a2c863d7265b2ea8c247814f579f",
+    "scripts/build-scx.sh": "e13b50ed0d20d8877e20d51aa22617874d1d8ea91a37a86d03238ce0e6cbfa1b",
+    "scripts/check-agent-contracts.sh": "eb86105d7c1f9f1f05057393a3678c6dfde43bf550e4e6308a4eaab48eeb1ca1",
+    "scripts/check-runtime-files.sh": "5fce71554e49fa8ac0f39b492787a2ecad4e265ec7f36a339c63def106d144c6",
+    "scripts/configure-kernel.sh": "f2c6473210b4229df1851709f1ec928a723c7c1be2f85eeda41770927ace939a",
+    "scripts/doctor.sh": "0ca918a2c7b3c23acb1f8281915d9dbcd6cedf9cdff720893577b15667397676",
+    "scripts/fetch-upstream.sh": "c10298a8ba8532ffbc2b8080bcef6e6596ae3e001b8b106d3eba5f24d0637437",
+    "scripts/install-agent-runtime.sh": "a54e8155658204748bf887328b1d61e1c77fda334d835c13fe02b2ddbae40abe",
+    "scripts/install-dev-runtime.sh": "4508c130c7d0f81c0b57ae5cd610d57fccd4768d5189ad5aa461a32c1d37d4f5",
+    "scripts/lib/source-pins.sh": "6f696cbb8618a487578a2b4635245a6664110c1fdc98ebc5aee1c8592baf5976",
+    "scripts/scx/check-support.sh": "102af1d9a34e8b74aff6177496ce28efe9ed2cf2f9784f749a6dfe018b145179",
+    "scripts/scx/fault-test.sh": "986a500763f31572e7932006a141b7973fa8f4413a60e05aa088ffb57298b2eb",
+    "scripts/scx/run-upstream.sh": "9731ec81864f50f5477d5a4b3f27cf2c860d3b921623c4aca6f0df2e95e12deb",
+    "scripts/scx/show-state.sh": "ed1d711f35a63a6356522013a55f0464d307f71c05240e7d804f6841238956bb",
+    "scripts/scx/stop-scheduler.sh": "8df3481dd0ac4e21222038d7fec86b5c5ff4eb7c1e9488900c2da1073fc882c7",
+    "scripts/scx/stress-lifecycle.sh": "1c9adf39bcc10474ecc428abf1ef52148780aff7c70c5d30dbd18c7d046c51ff",
+    "scripts/scx/test-lib.sh": "92239d2632d5d84cf2f22bf203ea7c2f14b578c95cdfb0a0b27bc36c7ee3929f",
+    "scripts/vm/build-platform-kernel.sh": "27a97702f824f1ddd60c757f32abdc171d1362529f391e214f6863f2f5e4d45d",
+    "scripts/vm/cerynth-vm-common.sh": "5b0647feaa57dd09d34146d11f32e2782e4364d983b74ddc82b61de47750bb3c",
+    "scripts/vm/collect-boot-info.sh": "c10f20ccbb073a89d53d99e88ac8f83647a3822a2e4b2520102996441ca52eba",
+    "scripts/vm/discover-root-filesystem.sh": "de1a1b16b671d6e597f98f8de19a5fb3622f49987ea6d8140cfc1de4fa47c071",
+    "scripts/vm/provision-cerynth-vm.sh": "8e8905906b23bc973d1003b3c5f386af99c3322e742d218beaa83d64e2941875",
+    "scripts/vm/reset-vm.sh": "b3301b864976c1c86bdefe4719b3b1dc9eb698269a1f32efe175b265d0748e33",
+    "scripts/vm/run-base-vm.sh": "1e8a129200393833931505dfc6b561be5046e44c2c8a6d43151839800f78017e",
+    "scripts/vm/run-cerynth-vm.sh": "24f647fa215db32bfbe755556149a61910dded536f9e29307c0adf38813234e7",
+    "scripts/vm/runtime-recovery.sh": "dfff337e0e45b97adb818367984d13bba33b75076551502a67df7122c24a74a3",
+    "scripts/vm/setup-base-vm.sh": "9221a05610a1e19794bd66828d1c3971f11d61900fabe24a3360c8e112cacdfa",
+    "scripts/vm/smoke-test.sh": "0be9186ba6f0b701e9a21931ed9b836a9587e1be09d39b48e56c5274e5cc4dfa",
+    "services/cerynth-agentd/Cargo.toml": "02f05dd8c071658debeac961dc199d0562cc2b8a520ceef56d060fcb835ead45",
+    "services/cerynth-agentd/src/a2a_http.rs": "1d75117772b7552b59fbeb3341eb3646a9867551fb5a8f5b2ae2f9c5ba3f0c06",
+    "services/cerynth-agentd/src/bin/cerynth-harness-bridge.rs": "9b76fdb0144a6d1fce3db0c63844806860047f15a87fd09bfbda5d303a4fcf2d",
+    "services/cerynth-agentd/src/bin/cerynth-worktree-checkout.rs": "12614501cd581b5ecf723daade76ef17818e7a7760813a54cd75d16f8464b549",
+    "services/cerynth-agentd/src/effects.rs": "d5d21e12f4a86c913cbe1469c786f7603a27155319fb255878fbbaba8b31f9d5",
+    "services/cerynth-agentd/src/gateway.rs": "cc6053d08035ea9b0c9ec21dcf33f85f32778fb193fe1e7f9b7a9aac874146fa",
+    "services/cerynth-agentd/src/gpu.rs": "48eb80beccaa04c5746ee31255efe14a788c47d0e5638361b9ba012d0f2ee346",
+    "services/cerynth-agentd/src/guard.rs": "4c4114348a946efdbe2fd64790fd493e69aa1b25c16d57ca8092affdc61ef78c",
+    "services/cerynth-agentd/src/harnesses.rs": "cf0d159416e54f999a0cd4ada32b6d339f645b4146a365392161092f2fbb7b30",
+    "services/cerynth-agentd/src/inference.rs": "84846bc08f30192735a66be24467a9f8fa1eec8d3e8feb0136760733cef95cd2",
+    "services/cerynth-agentd/src/lib.rs": "9c24bd2d930ef7205bd9494a335a944b170f583d036525ca04deca4aa2db4d32",
+    "services/cerynth-agentd/src/main.rs": "88f4efc036d75bb2b68dae59ee93fde71260fbd789016654a02e5cd8b178b37e",
+    "services/cerynth-agentd/src/model_residency.rs": "2085c14cf56d4cee797fec539d66f27eff22ddc176b53d2a74a30389d9b1d54a",
+    "services/cerynth-agentd/src/native_guard.rs": "4102cdb5189b82678a8135afeb861989e4765db1fcf7ef596d7a6f8c5a10c163",
+    "services/cerynth-agentd/src/orchestration.rs": "c78ac45078d3eef08f89e21c5166cf48ffc4805e87e8b405ab279405c35925f5",
+    "services/cerynth-agentd/src/process.rs": "1d5bdfca8a6bc85699618630839fb39fbc2fa1216e40639f8fee753d7f41ee88",
+    "services/cerynth-agentd/src/registry.rs": "2eb80aed17e0d1e989c85b9602b7aa202dfc77946ac7d707c17f9c26c0f8be3c",
+    "services/cerynth-agentd/src/remote.rs": "346288bb7f43b7f14e7a647946c17047032ee2800c3e73d9f36a009c17a2df2f",
+    "services/cerynth-agentd/src/resources.rs": "e8a71e57827474b4c46d7877dd5b6d9a6d25d96e67ba76edc2c55b3fbe978c2c",
+    "services/cerynth-agentd/src/shared_resources.rs": "a5215a45ea3d0ddeb2dc921dfdd377734cc5132bba9ee174a55e8b704c660a9e",
+    "services/cerynth-agentd/src/supervisor.rs": "04fae0d15f905a349706bb857fa381bd2b5e9aa2964818d173acc70580fd35b7",
+    "services/cerynth-agentd/src/workspace.rs": "45f2d1ef85aeebe8df1c8f7f6a333033d8871279b89f9608a87feb12c08c1ea1",
+    "services/cerynth-agentd/tests/a2a_http.rs": "7663f7155721755ff369966dbbab31b2f64c417f2f9ed720e63935e7824ba8a1",
+    "services/cerynth-agentd/tests/native_protocols.rs": "665d7e08819cead2679a5cca704c46362180838f6c62dcd342cc4f6c6e3c3123",
+    "services/cerynth-agentd/tests/orchestration.rs": "776cc5a610933bc14133b076a20a5d358649269a4330c9427d13deac99563c92",
+    "services/cerynth-agentd/tests/processes.rs": "8efaca51c36f813946ee65a67c168e68e986ab2b00efd2077be5f9868a0c6d92",
+    "services/cerynth-agentd/tests/runtime.rs": "43e26a1d2ff5080b4bace7cd702d4bd0a0cf45d75de13f7fe0e59da260c4fe29",
+    "services/cerynth-inferenced/Cargo.toml": "23cfada33010dd30e9324c6e09f534b5f5a7f27976ac19464eb5201811fa51b5",
+    "services/cerynth-inferenced/src/backend.rs": "aca4791f6f41d6c06c665ff3cfb6efab3811ea19fa782320df7613f19c46fdd7",
+    "services/cerynth-inferenced/src/backend_scope.rs": "33a22557ba546873e8627ef8bc580965fdcfe92226168d11119524c383570d5a",
+    "services/cerynth-inferenced/src/lib.rs": "cd297f53c8914051e38a644e5557d1ef53e30fd14802d33ea63a731e7dc15ca4",
+    "services/cerynth-inferenced/src/main.rs": "ba4b857a26b1305488b58306d7594f993c121576a9425a037cfa2db847d57803",
+    "services/cerynth-inferenced/src/models.rs": "843b4dfeca708a3a5874a848fc023c07c0ead1873fa179d695544c4cd6ee3604",
+    "services/cerynth-inferenced/src/privacy.rs": "3be37f85b5b5de0733d4996e236e91c39dec780d5fd7307ee18b91de8e802d35",
+    "services/cerynth-inferenced/src/proxy.rs": "3653eef74faf51a2a7b20313e1316588bb39393f740bb49a84553f7384dd9502",
+    "services/cerynth-inferenced/src/residency.rs": "d1dc9a2f78f2acf4575cda55c0aca8e1389b65150915dbf81fbe4b111889db9a",
+    "services/cerynth-inferenced/tests/cache_scopes.rs": "6315d27e89bf5eaf71f25aee1ab5c5ecd6c474e4ab47725292a33316eb2bd007",
+    "services/cerynth-inferenced/tests/coordinator.rs": "e771f8984135436fab5f3439afef7db6df1cbe65ab0e3bb49b75b5e8da1f51a8",
+    "services/cerynth-inferenced/tests/http.rs": "87c506ebc2a9d40959a80876710cb96147a73c728ed17525227880d1ae937578",
+    "services/cerynth-inferenced/tests/models.rs": "4cf3be2863a5386ec321526f10599a07d556a37467eaa38dce4c892fc223e666",
+    "services/cerynth-inferenced/tests/pressure.rs": "5b6e71014717c68ff5b0fa719f44051f63ed550f2e1b6b3d9c061d6ea1217c16",
+    "services/cerynthd/Cargo.toml": "e1a924d63fedbdf2b097f9547facc4789689866504a906d6584722c7e45fdbc5",
+    "services/cerynthd/runtime_state.json": "f1d5559f5db17bbd43a82ac0c51384089f8ebc5db0fa3b96a78c90752e9ab7ca",
+    "services/cerynthd/src/backend.rs": "ce9f9e9fff80443bae78845e0b6e4f436442a8eedf14fdfa526c044f3b5adb30",
+    "services/cerynthd/src/backends/mock.rs": "c6256ad3a0c7b8c76a5f936a757c9b1b0bacfb20a83fcb6a2af37b3d2b6198da",
+    "services/cerynthd/src/backends/mod.rs": "3b98bb7eaa221673e1185650db03f3630d9221ac17489473ec8012e7fbca5473",
+    "services/cerynthd/src/backends/rollback.rs": "480965e775a14214972ed6b8bf409fd8f7e8dd3c5303ded7d2b31d5ff3691dd0",
+    "services/cerynthd/src/backends/scx.rs": "2bcd3463e6c1859849e421b36a1ab90ce5b93f66af678cc4d8e0a9caa7a8a3b8",
+    "services/cerynthd/src/handlers.rs": "24fd8186ab75e1e4d7c1966c11bb8b96ab674d6f5cbf4173622cf36749bd7636",
+    "services/cerynthd/src/main.rs": "0745085d1ff7fcd6caf9917b0849e9948c36bb002399aaee6c3ab46a684df9ce",
+    "services/cerynthd/src/paths.rs": "06c988179e6d3fce01cb219aced66b7af84c1467fb142d3f170839bea3a9455b",
+    "services/cerynthd/src/server.rs.bak": "def1000d237642528c3d45b8afca82fd52e6cc5fe1766f6b36a7c370ac09094e",
+    "services/cerynthd/src/server/codec.rs": "d888272adb7d8264772b130d187f4ba286b9a67084ca7bf7894d3b2f19d35897",
+    "services/cerynthd/src/server/connection.rs": "03e2edb558d9e04847a4c6cd75c4e8d22470f4902c3e4e5fa27f736a76c54e54",
+    "services/cerynthd/src/server/listener.rs": "bd8f2569e49c43ecccf5a978ba3bb110308dd722be2a3e71eb8fd5286457c906",
+    "services/cerynthd/src/server/mod.rs": "68449e485a29f0960b2e50526c6e603240a4c44767b7d6cfe7dc8be443644c0c",
+    "services/cerynthd/src/server/signals.rs": "ca20afb9f1b36d210ce36f196d902a9d6df3e70cf5f2694ec40aa81a27ee168b",
+    "services/cerynthd/src/state.rs": "45da0c0e91449b43bcd956a3e4d49b16f0a1f31248beea32e6ccfc6af09f4e35",
+    "services/cerynthd/tests/control_plane.rs": "811a5c2f870bfeb4f65a7eaff917d0172ab963dcc7c5ee836487e5d73115ec69",
+    "services/cerynthd/tests/fake_scheduler.sh": "2f39b7800f60f49bdc96f9a821ad2f1712e571ec833b189567c50441d128e8cd",
+    "tests/resource/phase_guest.c": "90f826d4c09f9dad0c7f32d4a096db81066d3d8dc3b9d8066a5bfdd6985f9c79",
+    "tests/resource/platform_guest.c": "060f7edb4e63ccc2cd173dfdde9265460f00231de88ae17c88f20e93216cb452",
+    "third_party/scx.revision": "f90488189d31684ac5dd17163ccc0beab82fa859cb0bf51c65c471a7a6e5d01d",
+    "tools/a2a_runtime_smoke.py": "e8170690da25d196b39effd2baa350bd61691b40643ddfb757009fbf8da833e9",
+    "tools/ab_update_smoke.py": "0b26c0fd24f67154063dbb4418f98082e17c40360f83907520f8dbdbb02a4a05",
+    "tools/advanced_resources_smoke.py": "52495e0b02f6237e953e0837f6e22ef0f26644b5e7e8ec5247559fb18546f9bf",
+    "tools/agent_runtime_smoke.py": "d77ec8fda7c4617761d5e3ea5fcd5bd014f6a1d45ccfd5dc351ef000f3de747f",
+    "tools/agent_runtime_stress.py": "7a76e73c8171ad7d3b2a839d96274fa2aa62cce0b2669e55cd0b6be689601595",
+    "tools/auth_inventory_smoke.py": "693b6476d3a9afab9ce64d7455f5d4729c3025a7cb30536db95aca556e535828",
+    "tools/bootstrap_platform_qemu.py": "ac215b909bc65d4af7afee2257703003aee6ef285d24d1f7412bc023445a55c6",
+    "tools/build_os_image.py": "1fe8f9b8f5a350008916cc90b79b8dbd6d532ef97e18bc733a339ca49e845c49",
+    "tools/cache_baseline.py": "8c065af05883937f2972c8e06b83e41d3b9968cca8600310e6e520df457ee28c",
+    "tools/cache_privacy_smoke.py": "88e6bde79a5ed33007ef1e58b09afbbbb65c2bba19cb09581e0e790e1f5fbaf2",
+    "tools/cerynth-observe": "81466ef4c248df9df4583498d6e6779267f22e00ea4abcabdde1e767c40fc48c",
+    "tools/cerynth-slot-update": "2e295a4541dcfb544c424b08997364ce4bd44603075723a6edcaf379c5532241",
+    "tools/cerynth-stability.py": "a0edbcbf353224937c34c7772aebf8784d2a219b668a9aee35d496beaf732f2c",
+    "tools/cerynth-volume": "4602eff8f5b1af10889144e339b1d706109c4756fca0c4384f0179238d1eb53b",
+    "tools/cerynth_runtime.py": "eb5b0bd831ede3ed767363dd1ec6dee1d68a6d8fe5e442999215f2e219488ba6",
+    "tools/cloud_routing_smoke.py": "f4bd288a731a59032fe7fffe82d844040b09bd813a2067a5fd4dfc6991a849a9",
+    "tools/collect_task_evidence.py": "4fda48f1edcc4740b7f92b846f2bf5bed1cb6cf0180d668cb1bbbf62e63c0ba5",
+    "tools/contract_compatibility_smoke.py": "c64f56d77f3161223f88af40eb843c2c67a7f4d86b804c4fe27f9d69d195a705",
+    "tools/cross_harness_runtime_smoke.py": "5f57406bf51766730daf52a8d5ea818c253bfe4f509aaa3548780be2214efc1e",
+    "tools/cuda_contention.py": "4343e7f6d205657630e1cd593d4b0072935df455d30d01345f99ba3ece26d6ec",
+    "tools/desktop_responsiveness_smoke.py": "d763fd33f9733458fb0cc24458f3c15fca1a4f09c33c61a725da2a5620a24a47",
+    "tools/engine_cache_benchmark.py": "5c371a0a47e8b22e2af16bc685611c6345a2e1983ddd8bd175f55ca9dea3c79a",
+    "tools/generate_legacy_agent_fixture.py": "d5d9c3dc3e008fa97ddedf31c29d3229fe974d355d73f61246dbef01b8ea9619",
+    "tools/gpu_runtime_smoke.py": "90f93792827641c60df33efdf378528fefc3837fe06786adb4528d9ee95f1b66",
+    "tools/guard_runtime_smoke.py": "b7eafda231e6661514474d821e42f1d5ffec6c21c28aa2498181f88b5124420c",
+    "tools/harness_runtime_smoke.py": "75bad63d1fd266977a70edf5aa1081f3a553c1a2a33c42303a8efd7976ca2108",
+    "tools/image_sbom.py": "5ffa48c4f071f598c28b4b013f0acfd827184cf2496b71b6a96445a4413e5bd7",
+    "tools/inference_runtime_smoke.py": "4df0637c60f46b86a300835734e9740eeed69ba190f6c8e775d624dc51cea8e3",
+    "tools/install_image_smoke.py": "a99d286e5d27e37ac4c569a9f2074a4028d531510b305d1baa9e1e3064e31ae5",
+    "tools/kernel_build_manifest.py": "bfd39966338a3a5dc2ed7f413013b454e153da559d5b6db4f56133b41368e45b",
+    "tools/model_residency_smoke.py": "6581d11ddefa170ad21a09ee3cd138692b9dc66bf43ae3c0638142c73c793721",
+    "tools/mps_capability_probe.py": "de2c52e541e4325a4ec2a72676812d9c98518426d6e583e9d0a757bf69d2ecb1",
+    "tools/native_guard_runtime_smoke.py": "2e5dee0e9d669dd8880b456818070f1e71dd8444655a2dfc3be37ef70ae9dc85",
+    "tools/observer_runtime_smoke.py": "1f99b35844e3ec50e3a457665a791a0b767b79c1c81c3c225d930c18169078b5",
+    "tools/opencode_api_smoke.py": "ef64e946bdc05b6b133826bf18ac748b9da122b172800b96517993cfb1b4b6d1",
+    "tools/os_image_vm.py": "92b464ef2677707d7c72dfd05a1fb9b30cfde111651f5ef19aef1b88fb76a980",
+    "tools/package_ab_update.py": "c8e5c2d12111b9bc736b21bd0abb390e5c3ee3efa97aa274b1b4dac4546d7c07",
+    "tools/package_platform_runtime.py": "48dd2176aac6e2199bdff209b3a29bbca85c098e8e8d15f1236fcee19d3c01fb",
+    "tools/packaging_runtime_smoke.py": "de29187e3a5e8842e74584fa0132885b5fae394caadeeb897d295779117189ea",
+    "tools/phase_policy_benchmark.py": "4f9524fdc4be3d3a8c2abe02f9ad9382847444550880d70500f66e646f53bcf5",
+    "tools/placement_runtime_smoke.py": "4b02efef2d517dec40b7440daf565406f2f8422db617171e3a14f14117b24b17",
+    "tools/platform_inventory.py": "bff78d9951cfaa9f39af7fdbd9d9533a2099ece509292c114c942094c31413ed",
+    "tools/platform_runtime_smoke.py": "684b03479dcb3ee81f0115916f1256b11440ea2314a1e11f57931cc93f89fc07",
+    "tools/platform_vm_smoke.py": "09d4cb5f452dee9ff88b6801a13a23de720b011d209b8c4763a2d9e9a607fc7c",
+    "tools/prefetch_image_packages.py": "22d2ee16b9ebf4e1b20d0a27b703195cae74e05ef0ee1138fa50950a544a1773",
+    "tools/prepare_os_image.py": "ba8306fd1eea02e310e3815b9e2d0173e8b53e00eff48ea40878fc75500f05e9",
+    "tools/publish_person3_evidence.py": "bfe14584cfe31e0b6922d02e7e6120f6b81fd63bdedb524ccaf299e6a725bd9f",
+    "tools/qualify_person3_release.py": "76bee1d5dd2c6092f0cd580f36e2d84b50779e57ff88b86d1cd5c599bb2d1f75",
+    "tools/qualify_platform.py": "580f00443bef16d669d7ad6b4c2176710c53c7397b41f26e2a6eef6515c5a5b0",
+    "tools/release_image_smoke.py": "46e8a9e4a30366da7bb8b2c3379a01ac01fb4000870d643e3d0ca345bb6ea9bb",
+    "tools/release_os_image.py": "93cb4ed783dd57167e29b7e15ce1757301f4eca51889d18b915682c87c5df746",
+    "tools/remote_runtime_smoke.py": "e5ee6efd351ffa62b01c33b1b3810d34c91c17f351d77f93088896007004bc49",
+    "tools/report_platform_extensions.py": "98234bae9f532cca5cc67baf7df379754ed55d5b5f1c7af4aa7a8e3d4752840b",
+    "tools/resource_hierarchy_smoke.py": "5d73be551b810bf104825b50b6c783f8044e73d2ef9d6262aeb9ea00bbad0329",
+    "tools/resource_responsiveness_smoke.py": "a50ff4a9cbcdba2d5f84dafca3be7b523413a19d3b2295c303c81e118a86b328",
+    "tools/run-vm-validation.sh": "8238e0ff33c0a63a43330c3c1fd3982929f95050bcda79fc606f930f6b5a9e1f",
+    "tools/runtime_version_inventory.py": "9edf180db1d0cb13ad7d93402cb0da513a35d7561b8a9ea552fd2a5dfa5f5308",
+    "tools/sample-scheduler-stacks.py": "a31a4eb782be159e13dad7a25869373765ab187eea17a742344dd22b9a2cde75",
+    "tools/scx_phase_benchmark.py": "5ccb16591c385c9b6af18b344dea6ef7c2def00772a68500b3a4d1d145003b81",
+    "tools/shared_authority_smoke.py": "35cf781ffb6445de93a551b33ff0895784f0a7bcc27f5b7e2c197c6c17a33aa2",
+    "tools/shared_model_benchmark.py": "a57b80c4eb7b5b526d7f4853cfca4ab694a8f37531094dca9679426a36ebd6e7",
+    "tools/stability_source.py": "3954b89a74723f3f34bad1803905ea3f4adddcfc16c34c9d71a707f5ed4a615f",
+    "tools/task_evidence_runtime_smoke.py": "1b6a33cc2ee5cf4dc7f53b76ae44060a8165dc21a48ab3930315acdafb30f6fe",
+    "tools/test_cloud_routing_smoke.py": "87e5048cda2afb1564fa5ccb56ba223789bb98f0a927413f02dbc5cabf97cc9c",
+    "tools/test_completion.py": "0b8a0a58de7e0b70b785f4e7ce7bd432ebca5fa7fe0a181b6aa5de115bac6e2f",
+    "tools/test_dispatch_progress.py": "32288bd39677bf5aef5d09ed5272fdfe7038369625981182f129e4ab7714fd73",
+    "tools/test_observability.py": "300b47aa215cd1fd3e50fff4e410fe5c0d3233ff33be0be7b1381adeb30bd339",
+    "tools/test_stability.py": "d78b3bab34eac3a55ebcb77db8e2303e980670aafdf024afa1d51d3e309b0cef",
+    "tools/test_stack_discovery.py": "4eece2ef6a4108b631c1b550e3525f70d83abbea4575fb5e7b8270fbe87ddd36",
+    "tools/test_validation_driver.py": "5ec135f1456c7bee57e135bef2cf1a75d2356c1964bb4fa36c2f09cdfc0f9f7d",
+    "tools/tool_effects_smoke.py": "cef09d1fd7f43e76976841201c05762a5f439c4a04cc04053af6eea8effb7c8a",
+    "tools/validation-ctl": "5f23bcccc12f62368c6e873807a0f41c65cad02f05773fb643f1f559adc3931a",
+    "tools/validation_completion.py": "ca9eab5cbbce9cdeff335ed8e67ebd5faca74f34a9499a672eefecadd5edbfe1",
+    "tools/validation_manifest.py": "ed5e408ada98cb48b08b33be742d69acf16e3f6e7280a1ab21472e6689d1737f",
+    "tools/workspace_quota_smoke.py": "eb46af8dc0c37d1520c74314202b07c3eb010fef8cb6fa041621445fbc4d9759",
+    "tools/workspace_session_smoke.py": "229a5b511d37ec2bb6c11a7c6d1166189632612960d9e3b7c2b4b859f519c605",
+    "tools/worktree_runtime_smoke.py": "70d7d4dfad9e43ae374b800ec50912e263265687b8c0e2b0bbc5890b60231a84"
+  },
+  "automated_extension_checks_passed": true,
+  "checks": {
+    "frozen_baseline_unchanged": true,
+    "current_frozen_binary_kernel_regressions": true,
+    "workspace_enospc_and_crash_recovery": true,
+    "sandbox_volume_attestation": true,
+    "advanced_kernel_controls": true,
+    "desktop_under_managed_load": true,
+    "boot_persistence": true,
+    "ab_update_failure_and_recovery": true,
+    "signed_install_boot": true,
+    "immutable_manifest_verification": true,
+    "packaged_service_recovery": true,
+    "shared_domain_guard_and_cleanup": true,
+    "phase_preferences_stay_within_ceiling": true,
+    "scx_experiment_and_negative_checks": true,
+    "workspace_and_python_tests": true
+  },
+  "rust_tests_passed": 321,
+  "rust_tests_ignored": 3,
+  "python_tests_passed": 37,
+  "test_log_sha256": {
+    "rust": "ad91a82d89b1e3968e81ef5de8f9239d10e7d3acea343ec3dbee01e12e31c945",
+    "python": "fc7a9f3d739226e8d7e4edb953916d56c4c261a3838046e53f5045a7992fe2b1"
+  },
+  "evidence_sha256": {
+    "inventory": "7c6db8f633875d13fab2daafaff2199cc411eb5ebb498f9887546dac30c0f340",
+    "current_kernel_baseline": "518f3300d8e1554043cdde53cd4bbac13e2812c441f6101254d96d53fb07dd57",
+    "host_advanced": "42ae192dcf2986e64c1197e26e0dc53a3e4a8871a9afe40d7544bf01429d382d",
+    "workspace_capacity": "50ac50432a0d5fe654750fe02c816c00f9e2f51deb410d5b7f0c0726361e272f",
+    "workspace_sessions": "57b828ca3438776a2ffaddecd83592f92e750b236df056e2ec24a8456954af42",
+    "phase_policy": "34bdfd7deb0a58bf99e44122ebe4db936887258986ef892eec2985c15933a85a",
+    "scx_experiment": "a375d8997f56cba4d77390b05c8ea1733fe529a65cf731d834bb908c966dce19",
+    "base_image": "c863f4011cbc87b31ac5f0161471b210167dcd0712676bcffc3dbb5d7042a6aa",
+    "desktop_image": "916e3a2bb7549b3d50d41e308f5d7dd1394a93cd135bbfd55fed6e78dbc11414",
+    "ab_update": "853272c21f72e5b74d2a0ce5f10fd055ef046eb774c01d8f1ee54de77dff4f0a",
+    "signed_install": "0cff3352f9bef981eae70da7879fdebf3d2f9e8e7b01c2914e87fb6bcdbbb26b",
+    "signature_negative_tests": "18b8840d9ab0b9ff53d4c648353389b6e86fb24f138ead22ae9bd15ce48c2595",
+    "packaged_services": "aa61aac3119d16d47ce37faf3f8decd127e3dde528cf987a0881eebb895a6158",
+    "shared_authority": "d8f0e090b11e77e4499271f77b85cd09d99bc0ea3cc3405d3cb786ea85401880"
+  },
+  "evidence": {
+    "inventory": {
+      "schema_version": 1,
+      "observed_at_ms": 1795509551637,
+      "machine": "x86_64",
+      "kernel": "7.2.9-arch1-1",
+      "uid": 1000,
+      "cpu": {
+        "model": "13th Gen Intel(R) Core(TM) i7-13700HX",
+        "logical": 24,
+        "allowed": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "memory_bytes": {
+        "MemTotal": 16449392640,
+        "MemAvailable": 9135697920,
+        "SwapTotal": 21474828288,
+        "SwapFree": 13148160000
+      },
+      "pressure": {
+        "cpu": "some avg10=0.00 avg60=0.00 avg300=0.05 total=588367847\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+        "memory": "some avg10=0.00 avg60=0.00 avg300=0.18 total=149155100\nfull avg10=0.00 avg60=0.00 avg300=0.16 total=145687582",
+        "io": "some avg10=0.75 avg60=1.10 avg300=2.29 total=969948830\nfull avg10=0.60 avg60=0.91 avg300=2.00 total=916046362"
+      },
+      "cgroups": {
+        "version": 2,
+        "controllers": [
+          "cpuset",
+          "cpu",
+          "io",
+          "memory",
+          "hugetlb",
+          "pids",
+          "rdma",
+          "misc",
+          "dmem"
+        ],
+        "root_interface_availability": {
+          "cpu.weight": false,
+          "cpu.max": false,
+          "memory.high": false,
+          "memory.max": false,
+          "memory.swap.max": false,
+          "pids.max": false,
+          "io.weight": false,
+          "io.max": false,
+          "cpuset.cpus.effective": true
+        },
+        "self_membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-code-2616.scope",
+        "authority": "systemd-managed session hierarchy; root paths are inventory only"
+      },
+      "scheduler": {
+        "sched_ext_state": "disabled",
+        "cpu_weight_under_sched_ext_qualified": false,
+        "baseline_manifest": "docs/contracts/platform-baseline-v1.json"
+      },
+      "source": {
+        "linux": "8cd9520d35a6c38db6567e97dd93b1f11f185dc6",
+        "linux_pin_matches": true,
+        "scx": "67be0435c454dc8984a11064dc8b9c6476c46b6d",
+        "scx_pin_matches": true
+      },
+      "build": {
+        "cargo": null,
+        "rustc": null,
+        "clang": "/usr/bin/clang",
+        "gcc": "/usr/bin/gcc",
+        "make": "/usr/bin/make",
+        "qemu-system-x86_64": null,
+        "qemu-img": null,
+        "systemd-repart": "/usr/bin/systemd-repart",
+        "shellcheck": "/usr/bin/shellcheck",
+        "gpgv": "/usr/bin/gpgv"
+      },
+      "kvm_accessible": true,
+      "workspace_free_bytes": 7002710016,
+      "limitations": [
+        "Read-only observations do not prove delegated controller access",
+        "I/O fairness depends on block device and scheduler",
+        "Physical desktop latency and boot recovery require separate evidence"
+      ],
+      "baseline_integrity": {
+        "passed": true,
+        "differences": [],
+        "frozen_source_revision": "71c8f6bacfdb74d0a57d586473b05b79d49721a1"
+      }
+    },
+    "current_kernel_baseline": {
+      "schema_version": 1,
+      "kind": "real-kernel-resource-vm",
+      "passed": true,
+      "acceleration": "kvm",
+      "returncode": 0,
+      "timeout": false,
+      "duration_seconds": 54.90716630296083,
+      "kernel_source_revision": "8cd9520d35a6c38db6567e97dd93b1f11f185dc6",
+      "kernel_sha256": "867ea6b1d919e2264033b480133410d421ef168224ea08e6f90defc0d3cbef5b",
+      "kernel_config_sha256": "6df0b77a2b2a51da235f548eeffbde51a814bb70d988552aef509fc8a6650a14",
+      "guest_init_sha256": "b56aabd42eade5c4aa6f309c7448649aacb0ea6aff096f3fc4b5d7536561f6e8",
+      "initramfs_sha256": "d645183ff1ef4a6699346ec317db6960fe5df2a3f5a62db942c77b1774671139",
+      "double_build_identical": true,
+      "scheduler_tested": true,
+      "bundled_binary_hashes": {
+        "cerynth-scx": "5498d382a5947f70910d30ff140041b1af0271c24e34b047ac7c182311b3f4e2",
+        "/usr/lib/libseccomp.so.2": "7cb971c30c6e854dedffe8b74f7548ed8f7b0f2e03233cd00f61f76a334dc5c3",
+        "/usr/lib/libelf.so.1": "1cff588f1129943c7391fab3e16d95eaa6586cf3c0483e7f95e50784f1389d94",
+        "/usr/lib/libz.so.1": "9ba92a0b85dc9b659e8f5e596a69452cec801def6ece0883a8a2c1f032e52397",
+        "/usr/lib/libgcc_s.so.1": "e618cb9c90c2eb3a1dad1cfea5b6c1eebcf2e799ad805976f4ae47bdd61c716a",
+        "/usr/lib/libm.so.6": "965106704753eefe8c31ae7da6daba3ead3d18c52b19b5fcc41178bcc4aa999d",
+        "/usr/lib/libc.so.6": "02c8c3d06180beee9c7d0392aa85736c7d19f274a81e7f8f0b3d9e28e0641524",
+        "/usr/lib64/ld-linux-x86-64.so.2": "f5e11cc62f8f2c24dff532982559f4303dba3b17e7450551372a88c8e7ea8757",
+        "/usr/lib/libzstd.so.1": "f023d49e85fb22057bfdd21857263d2638b73356c06f3b342f678a75212379f8",
+        "/lib64/ld-linux-x86-64.so.2": "f5e11cc62f8f2c24dff532982559f4303dba3b17e7450551372a88c8e7ea8757"
+      },
+      "profiles": [
+        "balanced",
+        "interactive",
+        "performance",
+        "background"
+      ],
+      "additional_fault_scenarios": [
+        "crash-sigabrt",
+        "status-deleted",
+        "status-corrupt",
+        "heartbeat-freeze",
+        "dispatch-errors",
+        "dispatch-stall",
+        "sysrq-disable"
+      ],
+      "kernel_build_provenance": {
+        "schema_version": 1,
+        "source_revision": "8cd9520d35a6c38db6567e97dd93b1f11f185dc6",
+        "source_date_epoch": 1781449118,
+        "kernel_release": "7.1.0",
+        "files_sha256": {
+          "arch/x86/boot/bzImage": "867ea6b1d919e2264033b480133410d421ef168224ea08e6f90defc0d3cbef5b",
+          ".config": "6df0b77a2b2a51da235f548eeffbde51a814bb70d988552aef509fc8a6650a14",
+          "vmlinux": "b71e0f0ad2eac760e75b7c16e1e88f019c9a058b046169a0ab72c5d85edd3bd8"
+        },
+        "compiler": "gcc (GCC) 16.2.1 20260810",
+        "double_kernel_build_qualified": false
+      },
+      "compiler": "gcc (GCC) 16.2.1 20260810",
+      "qemu": "QEMU emulator version 11.1.3",
+      "checks": [
+        {
+          "name": "mount_proc",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "mount_sys",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "mount_dev",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "mount_cgroup2",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "linux_fallback_initially_disabled_scx",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "enable_controllers",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "create_hierarchy",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "delegate_controllers",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "create_hierarchy",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "delegate_controllers",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "create_hierarchy",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "parent_memory_max",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "child_memory_max",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "memory_high",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "swap_disabled",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "cpu_weight_readback_only",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "cpu_quota",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "io_weight_readback_only",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "worker_ready",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "ancestor_memory_accounting",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "cpu_quota_actually_throttles",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "pids_limit",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "pids_fork_denied",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "pids_event_recorded",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "oom_test_high_reset",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "oom_test_quota_reset",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "memory_oom_contained",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "memory_pressure_available",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "cpu_pressure_available",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "io_pressure_available",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "no_descendant_processes",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "hierarchy_cleanup",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "hierarchy_cleanup",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "hierarchy_cleanup",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "init_survived_child_oom",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "scheduler_memlock",
+          "passed": true,
+          "scope": "resources"
+        },
+        {
+          "name": "scheduler_attached",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "scheduler_progress_under_contention",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "scheduler_fresh_heartbeat",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "scheduler_process_profile_identity",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "clean_stop_linux_fallback",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "scheduler_child_reaped",
+          "passed": true,
+          "scope": "profile/balanced"
+        },
+        {
+          "name": "scheduler_attached",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "scheduler_progress_under_contention",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "scheduler_fresh_heartbeat",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "scheduler_process_profile_identity",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "clean_stop_linux_fallback",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "scheduler_child_reaped",
+          "passed": true,
+          "scope": "profile/interactive"
+        },
+        {
+          "name": "scheduler_attached",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "scheduler_progress_under_contention",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "scheduler_fresh_heartbeat",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "scheduler_process_profile_identity",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "clean_stop_linux_fallback",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "scheduler_child_reaped",
+          "passed": true,
+          "scope": "profile/performance"
+        },
+        {
+          "name": "scheduler_attached",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "scheduler_progress_under_contention",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "scheduler_fresh_heartbeat",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "scheduler_process_profile_identity",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "sigkill_linux_fallback",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "scheduler_child_reaped",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "injected_load_failure_exits_75",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "load_failure_linux_fallback",
+          "passed": true,
+          "scope": "profile/background"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/crash-sigabrt"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "reporter_restores_status_identity",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "reporter_restores_stats_progress",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "reporter_fault_keeps_scheduler_enabled",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/status-deleted"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "reporter_restores_status_identity",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "reporter_restores_stats_progress",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "reporter_fault_keeps_scheduler_enabled",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/status-corrupt"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "kernel_watchdog_ejects_frozen_scheduler",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/heartbeat-freeze"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "dispatch_errors_counted",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "dispatch_retries_preserve_progress",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "dispatch_pending_bounded",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/dispatch-errors"
+        },
+        {
+          "name": "stalled_scheduler_exits",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "stalled_scheduler_loaded_before_exit",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "stalled_scheduler_reports_failure",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/dispatch-stall"
+        },
+        {
+          "name": "fault_scheduler_attached",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "sysrq_disable_accepted",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "fault_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "fault_returns_to_linux",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "fresh_scheduler_after_fault",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "fresh_scheduler_identity_after_fault",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "recovery_scheduler_reaped",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        },
+        {
+          "name": "recovery_returns_to_linux",
+          "passed": true,
+          "scope": "fault/sysrq-disable"
+        }
+      ],
+      "console": "artifacts/person1/kernel-vm-current/console.log",
+      "limitations": [
+        "No desktop/systemd in this kernel test appliance",
+        "I/O weight readback does not prove device fairness",
+        "No arbitrary GPU enforcement",
+        "No sched_ext CPU-weight guarantee"
+      ]
+    },
+    "host_advanced": {
+      "schema_version": 1,
+      "kind": "real-advanced-platform-resource-api",
+      "swap_limit_and_child_inheritance": true,
+      "child_authority_expansion_denied": true,
+      "cascade_cleanup": true,
+      "delegated_controllers": [
+        "cpu",
+        "memory",
+        "pids"
+      ],
+      "affinity_and_io_qualified": false,
+      "missing_controller_fails_before_process": true,
+      "direct_io_timing": null,
+      "host_policy_modified": false
+    },
+    "workspace_capacity": {
+      "schema_version": 1,
+      "kind": "real-fixed-filesystem-workspace-quota",
+      "enospc_observed": true,
+      "payload_bytes_before_enospc": 22020096,
+      "image_bytes": 33554432,
+      "filesystem_capacity_bytes": 31448064,
+      "data_persisted_across_unmount_and_helper_crash": true,
+      "parent_and_owner_reservations_bound": true,
+      "descendant_first_removal_required": true,
+      "interrupted_removal_recovered": true,
+      "cleanup_complete": true,
+      "scope": "workspace filesystem only; a sandbox must deny other host filesystems"
+    },
+    "workspace_sessions": {
+      "schema_version": 1,
+      "kind": "real-bounded-workspace-agent-sessions",
+      "managed_child_hit_enospc": true,
+      "backing_image_and_owner_journal_hidden_by_sandbox": true,
+      "kernel_mount_and_private_journal_attested": true,
+      "session_and_volume_ancestry_match": true,
+      "forged_workspace_metadata_rejected_before_process": true,
+      "child_workspace_volume": {
+        "filesystem_capacity_bytes": 31448064,
+        "maximum_image_bytes": 33554432,
+        "parent_volume_id": "f1db23ff-91a8-4ebe-8e31-90e4d3e6211e",
+        "subtree_maximum_bytes": 67108864,
+        "volume_id": "0a357a99-82b0-4bd7-9e71-d57dff08888b"
+      },
+      "receipt": {
+        "enospc": true,
+        "bytes": 22020096,
+        "backing_image_hidden": true
+      },
+      "cloud_requests": 0
+    },
+    "phase_policy": {
+      "schema_version": 1,
+      "kind": "repeated-phase-priority-fixed-work-benchmark",
+      "repeats": 5,
+      "iterations": 4000000,
+      "runtime_sha256": "fae05143fbd3c9ba92e5ff38bdc4d499f450339e123f320e46ea32b436c35c39",
+      "observations": [
+        {
+          "repeat": 0,
+          "condition": "equal",
+          "background_weight": 100,
+          "wall_seconds": 0.5522292809910141,
+          "cpu_seconds": 0.274298235,
+          "answer": 997944007
+        },
+        {
+          "repeat": 0,
+          "condition": "semantic",
+          "background_weight": 40,
+          "wall_seconds": 0.38587518798885867,
+          "cpu_seconds": 0.273394304,
+          "answer": 997944007
+        },
+        {
+          "repeat": 1,
+          "condition": "semantic",
+          "background_weight": 40,
+          "wall_seconds": 0.3881899190018885,
+          "cpu_seconds": 0.27278933399999994,
+          "answer": 997944007
+        },
+        {
+          "repeat": 1,
+          "condition": "equal",
+          "background_weight": 100,
+          "wall_seconds": 0.5518066859804094,
+          "cpu_seconds": 0.27447229500000003,
+          "answer": 997944007
+        },
+        {
+          "repeat": 2,
+          "condition": "equal",
+          "background_weight": 100,
+          "wall_seconds": 0.55006813199725,
+          "cpu_seconds": 0.2744909470000001,
+          "answer": 997944007
+        },
+        {
+          "repeat": 2,
+          "condition": "semantic",
+          "background_weight": 40,
+          "wall_seconds": 0.3888633280294016,
+          "cpu_seconds": 0.2741898039999999,
+          "answer": 997944007
+        },
+        {
+          "repeat": 3,
+          "condition": "semantic",
+          "background_weight": 40,
+          "wall_seconds": 0.38359921996016055,
+          "cpu_seconds": 0.272881731,
+          "answer": 997944007
+        },
+        {
+          "repeat": 3,
+          "condition": "equal",
+          "background_weight": 100,
+          "wall_seconds": 0.5499933519749902,
+          "cpu_seconds": 0.27426428700000005,
+          "answer": 997944007
+        },
+        {
+          "repeat": 4,
+          "condition": "equal",
+          "background_weight": 100,
+          "wall_seconds": 0.5526862890110351,
+          "cpu_seconds": 0.27447700500000005,
+          "answer": 997944007
+        },
+        {
+          "repeat": 4,
+          "condition": "semantic",
+          "background_weight": 40,
+          "wall_seconds": 0.3857018920243718,
+          "cpu_seconds": 0.272858421,
+          "answer": 997944007
+        }
+      ],
+      "paired_semantic_over_equal_wall_time": [
+        0.6987590141840698,
+        0.7034889733388809,
+        0.7069366600414977,
+        0.6974615576400711,
+        0.6978676686815198
+      ],
+      "mean_paired_ratio": 0.7009027747772079,
+      "stdev_paired_ratio": 0.004145652791199221,
+      "hard_cpu_quotas_unchanged": true,
+      "weights_within_owner_ceiling": true,
+      "policy_opt_in": true,
+      "host_scheduler_modified": false,
+      "fixture_cpu": 0,
+      "limitations": [
+        "Synthetic fixed-work task; not coding-agent completion",
+        "Both fixture processes voluntarily pinned to one CPU for controlled contention",
+        "Normal host applications and background image downloads were not stopped",
+        "Linux default scheduling; no sched_ext cgroup guarantee",
+        "Five paired trials are not a broad statistical performance claim"
+      ]
+    },
+    "scx_experiment": {
+      "schema_version": 1,
+      "kind": "isolated-scx-phase-snapshot-comparison",
+      "samples": [
+        {
+          "trial": 0,
+          "mode": "linux-default",
+          "foreground_ticks": 150,
+          "background_ticks": 150
+        },
+        {
+          "trial": 0,
+          "mode": "frozen-balanced",
+          "foreground_ticks": 132,
+          "background_ticks": 151
+        },
+        {
+          "trial": 0,
+          "mode": "phase-snapshot",
+          "foreground_ticks": 144,
+          "background_ticks": 137
+        },
+        {
+          "trial": 1,
+          "mode": "phase-snapshot",
+          "foreground_ticks": 142,
+          "background_ticks": 150
+        },
+        {
+          "trial": 1,
+          "mode": "frozen-balanced",
+          "foreground_ticks": 133,
+          "background_ticks": 140
+        },
+        {
+          "trial": 1,
+          "mode": "linux-default",
+          "foreground_ticks": 150,
+          "background_ticks": 150
+        },
+        {
+          "trial": 2,
+          "mode": "linux-default",
+          "foreground_ticks": 150,
+          "background_ticks": 151
+        },
+        {
+          "trial": 2,
+          "mode": "frozen-balanced",
+          "foreground_ticks": 142,
+          "background_ticks": 146
+        },
+        {
+          "trial": 2,
+          "mode": "phase-snapshot",
+          "foreground_ticks": 131,
+          "background_ticks": 145
+        },
+        {
+          "trial": 3,
+          "mode": "phase-snapshot",
+          "foreground_ticks": 142,
+          "background_ticks": 132
+        },
+        {
+          "trial": 3,
+          "mode": "frozen-balanced",
+          "foreground_ticks": 148,
+          "background_ticks": 133
+        },
+        {
+          "trial": 3,
+          "mode": "linux-default",
+          "foreground_ticks": 150,
+          "background_ticks": 150
+        },
+        {
+          "trial": 4,
+          "mode": "linux-default",
+          "foreground_ticks": 150,
+          "background_ticks": 151
+        },
+        {
+          "trial": 4,
+          "mode": "frozen-balanced",
+          "foreground_ticks": 130,
+          "background_ticks": 144
+        },
+        {
+          "trial": 4,
+          "mode": "phase-snapshot",
+          "foreground_ticks": 127,
+          "background_ticks": 148
+        }
+      ],
+      "summary": {
+        "frozen-balanced": {
+          "foreground_cpu_share_mean": 0.4895618168690007,
+          "sample_stdev": 0.023236462904121753,
+          "trials": 5
+        },
+        "linux-default": {
+          "foreground_cpu_share_mean": 0.4993355481727575,
+          "sample_stdev": 0.0009098381353906473,
+          "trials": 5
+        },
+        "phase-snapshot": {
+          "foreground_cpu_share_mean": 0.4906921848074665,
+          "sample_stdev": 0.024205937198599724,
+          "trials": 5
+        }
+      },
+      "checks": [
+        {
+          "name": "phase_memlock",
+          "passed": true
+        },
+        {
+          "name": "collector_cpu",
+          "passed": true
+        },
+        {
+          "name": "phase_worker_fork",
+          "passed": true
+        },
+        {
+          "name": "phase_worker_fork",
+          "passed": true
+        },
+        {
+          "name": "snapshot_created",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "both_session_workers_make_progress",
+          "passed": true
+        },
+        {
+          "name": "phase_linux_fallback",
+          "passed": true
+        },
+        {
+          "name": "untrusted_snapshot_refused_before_attach",
+          "passed": true
+        },
+        {
+          "name": "stale_process_witness_refused_before_attach",
+          "passed": true
+        }
+      ],
+      "kernel_sha256": "867ea6b1d919e2264033b480133410d421ef168224ea08e6f90defc0d3cbef5b",
+      "binary_sha256": {
+        "cerynth-scx-baseline": "5498d382a5947f70910d30ff140041b1af0271c24e34b047ac7c182311b3f4e2",
+        "cerynth-scx-phase": "4b28a5fcf6defe75f04643e8e90250ab931d1f0425fd2deeee7a833ecf29e4fd"
+      },
+      "hard_cpu_quota_or_cgroup_weight_guarantee": false,
+      "host_scheduler_modified": false,
+      "limitations": [
+        "synthetic pinned CPU workers, held alive throughout",
+        "static process snapshot; no PID-reuse guarantee after witnessed workers exit",
+        "experimental scheduler exits after 60 seconds",
+        "production resource API continues refusing sched_ext",
+        "CPU service share is not task-completion speedup"
+      ]
+    },
+    "base_image": {
+      "schema_version": 1,
+      "kind": "development-os-uefi-kvm-boot",
+      "image_sha256": "77f97fffde610195ddd3a537d8ef5f5ec3974b57f984c9126a1f08e0db15a2c9",
+      "qualification_harness_sha256": "52495e0b02f6237e953e0837f6e22ef0f26644b5e7e8ec5247559fb18546f9bf",
+      "kernel_and_services": [
+        "7.3.5-arch1-1",
+        "active",
+        "active",
+        "active",
+        "active"
+      ],
+      "advanced_resources": {
+        "schema_version": 1,
+        "kind": "real-advanced-platform-resource-api",
+        "swap_limit_and_child_inheritance": true,
+        "child_authority_expansion_denied": true,
+        "cascade_cleanup": true,
+        "delegated_controllers": [
+          "cpu",
+          "cpuset",
+          "dmem",
+          "hugetlb",
+          "io",
+          "memory",
+          "misc",
+          "pids",
+          "rdma"
+        ],
+        "affinity_and_io_qualified": true,
+        "missing_controller_fails_before_process": false,
+        "direct_io_timing": {
+          "seconds": 4.309407042999998,
+          "bytes": 4194304
+        },
+        "host_policy_modified": false
+      },
+      "fsynced_marker_survived_power_cut": true,
+      "physical_hardware_qualified": false,
+      "secure_boot_qualified": false,
+      "guest_network_external_access": false
+    },
+    "desktop_image": {
+      "schema_version": 1,
+      "kind": "development-os-uefi-kvm-boot",
+      "image_sha256": "34a6980ccdc150a9bab7197ff68f8f9c8aabc4244f71c1f11f919319c8cdc895",
+      "qualification_harness_sha256": "52495e0b02f6237e953e0837f6e22ef0f26644b5e7e8ec5247559fb18546f9bf",
+      "kernel_and_services": [
+        "7.3.5-arch1-1",
+        "active",
+        "active",
+        "active",
+        "active"
+      ],
+      "advanced_resources": {
+        "schema_version": 1,
+        "kind": "real-advanced-platform-resource-api",
+        "swap_limit_and_child_inheritance": true,
+        "child_authority_expansion_denied": true,
+        "cascade_cleanup": true,
+        "delegated_controllers": [
+          "cpu",
+          "cpuset",
+          "dmem",
+          "hugetlb",
+          "io",
+          "memory",
+          "misc",
+          "pids",
+          "rdma"
+        ],
+        "affinity_and_io_qualified": true,
+        "missing_controller_fails_before_process": false,
+        "direct_io_timing": {
+          "seconds": 3.9715891359999986,
+          "bytes": 4194304
+        },
+        "host_policy_modified": false
+      },
+      "desktop": {
+        "schema_version": 1,
+        "kind": "kwin-dbus-under-managed-cpu-load",
+        "samples_ms": [
+          3.384144000001754,
+          3.6203470000018,
+          5.714863999997988,
+          5.689736999997308,
+          5.603523999994309,
+          6.079919000001155,
+          4.349258999994277,
+          6.2978309999977,
+          4.094584999997153,
+          4.46322999999893,
+          5.126498999999285,
+          4.465981000002728,
+          4.465074999998819,
+          3.957925000001694,
+          5.501469999998676,
+          3.044211000002406,
+          6.460787999998274,
+          6.5262740000022745,
+          4.407564000004527,
+          4.6107329999998115,
+          3.3077360000035583,
+          4.274437999995939,
+          4.288375999998095,
+          6.278319000003307,
+          2.9427119999994034,
+          8.69905000000415,
+          4.963132999996844,
+          5.952413000002821,
+          4.597625999998911,
+          3.0008300000048393
+        ],
+        "p50_ms": 4.465981000002728,
+        "p95_ms": 6.5262740000022745,
+        "managed_cpu_microseconds": [
+          1023584,
+          905749
+        ],
+        "all_replies_within_two_seconds": true,
+        "sessions_cleaned_up": true,
+        "scope": "VM D-Bus service responsiveness; not physical input-to-photon latency"
+      },
+      "fsynced_marker_survived_power_cut": true,
+      "physical_hardware_qualified": false,
+      "secure_boot_qualified": false,
+      "guest_network_external_access": false
+    },
+    "ab_update": {
+      "schema_version": 1,
+      "kind": "real-uefi-ab-update-and-rollback",
+      "image_sha256": "a33b1ca35b07b0c08f6e427ea0ea715a160a4af3e47f370ae1fa47c9b7a25570",
+      "signed_rootfs_sha256": "bf9461211c8184b0df396f28af888d3dffe287517102ecf0c368a9d3190e26a3",
+      "test_signer_sha256": "1c8e8a1d048b62e758e25ae1fa4bacfc73ee6207a0e8dbba302a90cfd63669a3",
+      "interrupted_inactive_write_kept_previous_root_bootable": true,
+      "unbootable_trial_fell_back_automatically": true,
+      "healthy_trial_became_persistent_default": true,
+      "explicit_configuration_and_home_var_preserved": true,
+      "manual_rollback_persisted": true,
+      "host_block_devices_written": false,
+      "official_release_approved": false
+    },
+    "signed_install": {
+      "schema_version": 1,
+      "kind": "signed-full-image-install-and-uefi-boot",
+      "installed_sha256": "77f97fffde610195ddd3a537d8ef5f5ec3974b57f984c9126a1f08e0db15a2c9",
+      "installation_readback_verified": true,
+      "booted_installed_bytes": true,
+      "kernel_and_services": [
+        "7.3.5-arch1-1",
+        "active",
+        "active"
+      ],
+      "host_block_devices_written": false,
+      "physical_installation_qualified": false
+    },
+    "signature_negative_tests": {
+      "schema_version": 1,
+      "kind": "signed-image-installation-negative-tests",
+      "authentic_bundle_verified": true,
+      "wrong_trust_key_rejected": true,
+      "tampered_and_symlink_artifacts_rejected": true,
+      "installed_bytes_verified": true,
+      "journal_replay_rejected_before_target_write": true,
+      "host_block_devices_written": false,
+      "manifest_substitution_after_signature_verification_prevented": true
+    },
+    "packaged_services": {
+      "kind": "staged-user-service-startup-and-restart",
+      "staged_sha256": {
+        "usr/bin/cerynth-observer": "18b456c55fed6468b218830833da56bbf638d79869ebd52cb772dca83b9f66f4",
+        "usr/share/applications/io.cerynth.Observer.desktop": "8fe1b836e0a8b24f18854b0d143f64dac90587b3f1fbcce23dee8a9064ef84a7",
+        "usr/share/doc/cerynth/agent-runtime.md": "4eb2f704e9227b0b5a2431fd2cdcdde887dc20218daa072518823aa73a4eaf14",
+        "usr/lib/cerynth/cerynth-agentd": "fae05143fbd3c9ba92e5ff38bdc4d499f450339e123f320e46ea32b436c35c39",
+        "usr/lib/cerynth/cerynth-inferenced": "8ac6adefeb11c9b6b46bbb9061e12c7703b60fdd3ad294eceded90ca46356473",
+        "usr/lib/cerynth/cerynth-harness-bridge": "2b06e800b73ea0eea9294af6b151a098778bb180f2b7ec99c2ac4e8d48ee8d19",
+        "usr/lib/cerynth/cerynth-hardware": "e61d6767940f2723daf0e5bbef5bc2b55b1d1209e94c1bde7247018cba9d9f7e",
+        "usr/lib/cerynth/cerynth-volume": "4602eff8f5b1af10889144e339b1d706109c4756fca0c4384f0179238d1eb53b",
+        "usr/lib/cerynth/cerynth-resource-authority": "6e1f128518bb46c01e344e3231dbfcaa32060f6111fb0c8ca7a40dce3feed794",
+        "usr/lib/cerynth/cerynth-worktree-checkout": "962d0a5ad16873f4c57372684495a6abfbca7053bced2b82b6d9d98f03068694",
+        "usr/lib/systemd/user/cerynth-inferenced.service": "bc253d619d31778114150ff2e459aed710316d88bc48a6d1902ba6a2a90b1432",
+        "usr/lib/systemd/user/cerynth-agentd.service": "8a976302704d5d82d06d1e9a8d921160a39a54b2b8228954f68183023b45758a"
+      },
+      "staged_native_observer": true,
+      "staged_resource_authority_init_status_verified": true,
+      "exact_expected_payload_and_binary_hashes": true,
+      "actual_unit_hardening_preserved": true,
+      "isolated_state_and_dynamic_port": true,
+      "restart_on_failure_verified": true,
+      "managed_scope_and_nested_slice_recovered": true,
+      "unknown_prior_effects_preserved": true,
+      "inference_dependency_started": true,
+      "production_units_enabled": false,
+      "booted_iso": false,
+      "cloud_requests": 0,
+      "limitations": [
+        "Runtime-linked copies use staged executable paths and unique unit/state names",
+        "This staged-service test does not boot an image; use os_image_vm.py and ab_update_smoke.py for separate image qualification"
+      ]
+    },
+    "shared_authority": {
+      "kind": "real-two-agentd-shared-reservation-domain",
+      "daemons": 2,
+      "cross_instance_memory_and_cpu_reservations": true,
+      "child_not_double_charged": true,
+      "shared_cpu_quota_gate_with_available_ram": true,
+      "observed_process_cannot_inherit_managed_allocation": true,
+      "crashed_member_claim_retained_until_verified_recovery": true,
+      "saved_authority_binding_used_on_restart": true,
+      "copied_member_rejected_before_original_scope_cleanup": true,
+      "global_inference_concurrency_reservations": true,
+      "live_gpu_device_cooperative_reservations": true,
+      "reduced_gpu_grant_preserves_owner_minimum": true,
+      "parent_plus_child_gpu_jobs_bound_by_root": true,
+      "authority_workspace_exposure_rejected": true,
+      "cloud_requests": 0,
+      "team_approval_claimed": false,
+      "guard_filesystem_grant_cannot_expose_authority": true,
+      "guard_and_shared_kernel_cleanup_verified": true,
+      "terminal_session_archival_checked": true,
+      "scope": "Participating agentd root subtrees only; unmanaged model servers and bypassing clients excluded",
+      "gpu_enforcement": "cooperative_reservation; no hardware partition claim"
+    }
+  },
+  "desktop_sbom_sha256": "3fbed72fd00b4bf0a946f81576c63c74ecc27cd8eb1a6112e8b079ca05284b04",
+  "physical_hardware_qualified": false,
+  "release_identity_approved": false,
+  "team_approval_claimed": false,
+  "public_alpha_qualified": false,
+  "external_acceptance_required": [
+    "Authorized disposable physical installation/reboot target and hardware tests",
+    "Authorized public release signing identity and human dependency/license review",
+    "Coordinated acceptance of the candidate API/schema and release review"
+  ],
+  "policy_limits": [
+    "SCX cgroup quota/weight semantics remain unqualified; production resource control rejects SCX",
+    "SCX snapshot result does not demonstrate a useful CPU-share improvement",
+    "Full-image bit reproducibility, broad hardware support and representative agent speedups are not asserted"
+  ]
+}

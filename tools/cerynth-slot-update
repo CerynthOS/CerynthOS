@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Explicit development A/B updates, one-shot trial boots and health acceptance.
+
+Requires the Cerynth A/B GPT layout. Never selects the active root for writing.
+Artifact authentication uses an operator-selected key; Secure Boot is separate.
+"""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import tempfile
+import time
+from release_os_image import verify, bounded_regular_bytes
+
+SLOTS = {name: 'ad67ad3a-5554-41d8-a025-8b6617848a0' + str(index)
+         for name, index in [('a', 1), ('b', 2)]}
+STATE = Path('/var/lib/cerynth/updates')
+ESP = Path('/efi')
+
+
+def run(*arguments):
+    return subprocess.check_output(arguments, stderr=subprocess.PIPE, text=True).strip()
+
+
+def atomic(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
+        temporary = Path(stream.name); stream.write(data); stream.flush(); os.fsync(stream.fileno())
+    temporary.chmod(0o644 if path.is_relative_to(ESP) else 0o600)
+    temporary.replace(path)
+    with path.open('rb') as stream: os.fsync(stream.fileno())
+    descriptor = os.open(path.parent, os.O_DIRECTORY)
+    try: os.fsync(descriptor)
+    finally: os.close(descriptor)
+    if path.is_relative_to(ESP): os.sync()
+
+
+def record(value):
+    atomic(STATE / 'pending.json', (json.dumps(value, sort_keys=True, indent=2) + '\n').encode())
+
+
+def active():
+    root = run('findmnt', '-n', '-o', 'MAJ:MIN', '/')
+    for slot, identity in SLOTS.items():
+        device = Path('/dev/disk/by-partuuid') / identity
+        if not device.exists(): raise ValueError('Cerynth A/B slot is missing')
+        info = device.stat()
+        if f'{os.major(info.st_rdev)}:{os.minor(info.st_rdev)}' == root:
+            return slot, device.resolve(), Path('/sys/dev/block', root).resolve().parent
+    raise ValueError('running root is not a Cerynth A/B slot')
+
+
+def entry(slot, kernel, trial=False):
+    name = f'cerynth-{"trial" if trial else "stable"}-{slot}.conf'
+    text = f'title CerynthOS {"trial" if trial else "stable"} slot {slot}\nlinux {kernel}\noptions root=PARTUUID={SLOTS[slot]} rw panic=5\n'
+    atomic(ESP / 'loader/entries' / name, text.encode())
+    return name
+
+
+def stage(args):
+    release = verify(args.directory, args.public_key)
+    if 'rootfs' not in release or not {'rootfs.ext4.zst', 'kernel.efi'} <= release['files'].keys():
+        raise ValueError('signed rootfs and UKI pair required')
+    kernel_payload = bounded_regular_bytes(args.directory / 'kernel.efi', 512 * 1024**2)
+    expected_kernel = release['files']['kernel.efi']
+    if len(kernel_payload) != expected_kernel['size'] or hashlib.sha256(kernel_payload).hexdigest() != expected_kernel['sha256']:
+        raise ValueError('UKI changed after authentication')
+    if not isinstance(release['sequence'], int): raise ValueError('invalid sequence')
+    current, root, disk = active(); target = 'b' if current == 'a' else 'a'
+    destination = (Path('/dev/disk/by-partuuid') / SLOTS[target]).resolve()
+    info = destination.stat()
+    identity = f'{os.major(info.st_rdev)}:{os.minor(info.st_rdev)}'
+    if not stat.S_ISBLK(info.st_mode) or Path('/sys/dev/block', identity).resolve().parent != disk:
+        raise ValueError('inactive slot is not on the running root disk')
+    mounts = Path('/proc/self/mountinfo').read_text().splitlines()
+    if any(line.split()[2] == identity for line in mounts): raise ValueError('inactive slot is mounted')
+    if destination == root: raise ValueError('refusing to write active root')
+    size = int(run('blockdev', '--getsize64', str(destination)))
+    if release['rootfs']['unpacked_size'] != size or size > 16 * 1024**3:
+        raise ValueError('rootfs size differs from inactive partition capacity')
+    previous = json.loads((STATE / 'pending.json').read_text()) if (STATE / 'pending.json').exists() else None
+    if previous and release['sequence'] <= previous['sequence']:
+        raise ValueError('sequence replay or downgrade refused')
+    # Establish an explicit known-good default before changing the inactive slot.
+    stable = ESP / f'loader/entries/cerynth-stable-{current}.conf'
+    if not stable.exists() or f'root=PARTUUID={SLOTS[current]}' not in stable.read_text():
+        retained = ESP / f'EFI/cerynth/slot-{current}.efi'
+        kernels = [retained] if retained.exists() else list((ESP / 'EFI/Linux').glob('*.efi'))
+        if len(kernels) != 1: raise ValueError('factory fallback UKI is ambiguous')
+        entry(current, '/' + str(kernels[0].relative_to(ESP)))
+    run('bootctl', 'set-default', stable.name)
+    pending = {'version': 1, 'sequence': release['sequence'], 'previous_slot': current,
+               'target_slot': target, 'state': 'writing', 'rootfs_sha256': release['rootfs']['sha256']}
+    record(pending)
+    decompressor = subprocess.Popen(['zstd', '-dc', str(args.directory / 'rootfs.ext4.zst')], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    actual = hashlib.sha256(); written = 0
+    try:
+        with destination.open('wb', buffering=0) as output:
+            while chunk := decompressor.stdout.read(1024**2):
+                written += len(chunk)
+                if written > size: raise ValueError('expanded rootfs exceeds signed size')
+                output.write(chunk); actual.update(chunk)
+            os.fsync(output.fileno())
+        if decompressor.wait(timeout=10) != 0 or written != size or actual.hexdigest() != pending['rootfs_sha256']:
+            raise ValueError('rootfs decompression integrity failed; previous root remains default')
+    finally:
+        decompressor.stdout.close()
+        if decompressor.poll() is None: decompressor.kill(); decompressor.wait()
+    with destination.open('rb') as stream:
+        if hashlib.file_digest(stream, 'sha256').hexdigest() != pending['rootfs_sha256']:
+            raise ValueError('inactive root readback failed')
+    # Preserve an explicit configuration allowlist. /var and /home are separate
+    # persistent partitions; arbitrary /etc migration is deliberately not guessed.
+    with tempfile.TemporaryDirectory(prefix='cerynth-inactive-', dir='/run') as directory:
+        mount = Path(directory)
+        subprocess.run(['mount', '-o', 'nosuid,nodev', str(destination), directory], check=True)
+        try:
+            for relative in ['etc/cerynth', 'etc/machine-id', 'etc/ssh/ssh_host_ed25519_key', 'etc/ssh/ssh_host_ed25519_key.pub']:
+                source = Path('/') / relative; target_path = mount / relative
+                if source.is_dir(): shutil.copytree(source, target_path, dirs_exist_ok=True, symlinks=True)
+                elif source.is_file(): shutil.copy2(source, target_path, follow_symlinks=False)
+            os.sync()
+        finally: subprocess.run(['umount', directory], check=True)
+    kernel = ESP / f'EFI/cerynth/slot-{target}.efi'
+    atomic(kernel, kernel_payload)
+    name = entry(target, '/' + str(kernel.relative_to(ESP)), trial=True)
+    pending['state'] = 'trial_ready'; record(pending)
+    run('bootctl', 'set-oneshot', name)
+    return pending | {'reboot_required': True, 'active_root_written': False}
+
+
+def health():
+    pending = json.loads((STATE / 'pending.json').read_text())
+    if pending['state'] not in ['trial_ready', 'health_failed']: return pending
+    current, _, _ = active()
+    if current != pending['target_slot']:
+        pending['state'] = 'rolled_back'; record(pending); return pending
+    deadline = time.monotonic() + 45
+    while time.monotonic() < deadline:
+        try:
+            run('systemctl', 'is-active', 'cerynthd.service', 'user@1000.service')
+            run('/usr/bin/cerynthctl', 'status')
+            run('runuser', '-u', 'cerynth', '--', 'env', 'XDG_RUNTIME_DIR=/run/user/1000',
+                'systemctl', '--user', 'is-active', 'cerynth-agentd', 'cerynth-inferenced')
+            run('runuser', '-u', 'cerynth', '--', '/usr/lib/cerynth/cerynth-agentd',
+                '--directory', '/home/cerynth/.local/state/cerynth/agentd', 'list')
+            kernel = f'/EFI/cerynth/slot-{current}.efi'
+            run('bootctl', 'set-default', entry(current, kernel))
+            pending['state'] = 'committed'; record(pending); return pending
+        except subprocess.CalledProcessError:
+            time.sleep(1)
+    pending['state'] = 'health_failed'; record(pending)
+    subprocess.run(['systemctl', 'reboot'], check=True)
+    raise RuntimeError('trial health failed; rebooting into retained default')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='operation', required=True)
+    update = commands.add_parser('stage')
+    update.add_argument('--directory', required=True, type=Path)
+    update.add_argument('--public-key', required=True, type=Path)
+    commands.add_parser('health'); commands.add_parser('status'); commands.add_parser('rollback')
+    args = parser.parse_args()
+    if os.geteuid() != 0: raise PermissionError('run only in the installed A/B OS as its administrator')
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    lock = os.open(STATE / 'writer.lock', os.O_CREAT | os.O_NOFOLLOW | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.operation == 'stage': result = stage(args)
+        elif args.operation == 'health': result = health()
+        elif args.operation == 'status': result = json.loads((STATE / 'pending.json').read_text())
+        else:
+            result = json.loads((STATE / 'pending.json').read_text())
+            run('bootctl', 'set-default', f'cerynth-stable-{result["previous_slot"]}.conf')
+            run('bootctl', 'set-oneshot', f'cerynth-stable-{result["previous_slot"]}.conf')
+            result['state'] = 'manual_rollback'; record(result)
+            result = result | {'rollback_reboot_required': True}
+        print(json.dumps(result))
+    finally: os.close(lock)
+
+
+if __name__ == '__main__':
+    main()
