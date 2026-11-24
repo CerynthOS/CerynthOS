@@ -125,6 +125,8 @@ including build/dev dependencies. It does not conclude binary reachability or
 grant release approval. GPL headers in the reused SCX/BPF sources remain intact;
 the workspace's declared license is accompanied by its Apache-2.0 text. A human
 dependency/license review and authorized release identity remain release gates.
+The [acceptance procedure](release-acceptance.md) describes physical checkpoints,
+signed review records and the explicit public signing/verification path.
 
 Troubleshooting: preserve the build/serial logs; inspect the JSON status and
 system/user journals. Missing FUSE helpers, cpuset/I/O delegation, PE-parser or

@@ -63,7 +63,7 @@ def entry(slot, kernel, trial=False):
 
 
 def stage(args):
-    release = verify(args.directory, args.public_key)
+    release = verify(args.directory, args.public_key, args.acceptance_authority_public_key, args.require_release)
     if 'rootfs' not in release or not {'rootfs.ext4.zst', 'kernel.efi'} <= release['files'].keys():
         raise ValueError('signed rootfs and UKI pair required')
     kernel_payload = bounded_regular_bytes(args.directory / 'kernel.efi', 512 * 1024**2)
@@ -165,6 +165,8 @@ def main():
     update = commands.add_parser('stage')
     update.add_argument('--directory', required=True, type=Path)
     update.add_argument('--public-key', required=True, type=Path)
+    update.add_argument('--acceptance-authority-public-key', type=Path)
+    update.add_argument('--require-release', action='store_true')
     commands.add_parser('health'); commands.add_parser('status'); commands.add_parser('rollback')
     args = parser.parse_args()
     if os.geteuid() != 0: raise PermissionError('run only in the installed A/B OS as its administrator')

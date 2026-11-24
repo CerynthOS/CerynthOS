@@ -53,6 +53,7 @@ def main():
         copy(ROOT/'tools/cerynth-volume','usr/lib/cerynth/cerynth-volume',0o755)
         copy(ROOT/'tools/cerynth-slot-update','usr/lib/cerynth/cerynth-slot-update',0o755)
         copy(ROOT/'tools/release_os_image.py','usr/lib/cerynth/release_os_image.py',0o755)
+        copy(ROOT/'tools/platform_release_acceptance.py','usr/lib/cerynth/platform_release_acceptance.py')
         copy(ROOT/'packaging/systemd/cerynth-update-health.service','etc/systemd/system/cerynth-update-health.service')
         write('etc/systemd/system-preset/01-cerynth-update.preset','enable cerynth-update-health.service\n')
         write('usr/lib/systemd/user/cerynth-agentd.service.d/20-resources.conf','[Service]\nEnvironment=CERYNTH_RESOURCE_HIERARCHY=1\nEnvironment=CERYNTH_AGENT_MEMORY_MAX_BYTES=1073741824\nEnvironment=CERYNTH_VOLUME_DIRECTORY=%S/cerynth/volumes\n')

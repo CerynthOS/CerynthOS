@@ -1,0 +1,34 @@
+name: Platform acceptance tools
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - 'tools/**'
+      - '.github/workflows/platform-acceptance.yml'
+  pull_request:
+    paths:
+      - 'tools/**'
+      - '.github/workflows/platform-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Python and public-release acceptance regressions
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
+      - name: Development-signing compatibility and substitution checks
+        run: python3 tools/release_image_smoke.py --output "${RUNNER_TEMP}/release-image-smoke.json"
+      - name: Retain test evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: acceptance-regression-evidence
+          path: ${{ runner.temp }}/release-image-smoke.json
+          if-no-files-found: ignore

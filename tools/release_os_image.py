@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sign, verify and explicitly install a development image with an external trust key.
+"""Sign, verify and explicitly install development or externally approved public images.
 
 No private key is placed in the bundle. Artifact signatures do not imply UEFI
 Secure Boot, release approval, or physical hardware qualification.
@@ -49,7 +49,7 @@ def unique(pairs):
     return result
 
 
-def verify(directory, public_key):
+def verify(directory, public_key, acceptance_authority_public_key=None, require_release=False):
     directory = Path(directory).resolve(strict=True)
     manifest = directory / 'release.json'
     metadata = bounded_regular_bytes(manifest, 1024**2)
@@ -62,11 +62,20 @@ def verify(directory, public_key):
         run('openssl', 'pkeyutl', '-verify', '-pubin', '-inkey', str(public_key), '-rawin',
             '-in', str(staged / 'manifest'), '-sigfile', str(staged / 'signature'))
     release = json.loads(metadata, object_pairs_hook=unique)
-    if release['schema_version'] != 1 or not 1 <= release['sequence'] <= 2**63 - 1:
+    if release['schema_version'] != 1 or type(release['sequence']) is not int or not 1 <= release['sequence'] <= 2**63 - 1:
         raise ValueError('unsupported release metadata')
+    if release.get('channel') not in ['development', 'release']:
+        raise ValueError('unsupported artifact channel')
+    if require_release and release['channel'] != 'release':
+        raise ValueError('a development artifact cannot satisfy a required public release')
     files = release['files']
     if not 1 <= len(files) <= 32 or not ('system.raw' in files or {'rootfs.ext4.zst', 'kernel.efi'} <= files.keys()):
         raise ValueError('incomplete release')
+    if release['channel'] == 'release' and (release.get('release_approved') is not True or
+            not {'acceptance.json', 'acceptance.sig', 'physical-recovery.json'} <= files.keys() or
+            not re.fullmatch('[a-f0-9]{40}', release.get('source_revision', '')) or
+            not re.fullmatch('[a-f0-9]{64}', release.get('contract_id', ''))):
+        raise ValueError('public release approval metadata is incomplete')
     for name, record in files.items():
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}', name):
             raise ValueError('invalid artifact name')
@@ -74,10 +83,24 @@ def verify(directory, public_key):
         regular(path)
         if path.stat().st_size != record['size'] or digest(path) != record['sha256']:
             raise ValueError('artifact integrity check failed: ' + name)
+    if release['channel'] == 'release':
+        if acceptance_authority_public_key is None:
+            raise ValueError('public artifacts require an independently trusted acceptance authority public key')
+        from platform_release_acceptance import candidate, verify_acceptance
+        subject = candidate(release, release['source_revision'], release['contract_id'], release.get('qualified_image_sha256'))
+        accepted = verify_acceptance(directory / 'acceptance.json', directory / 'acceptance.sig',
+            acceptance_authority_public_key, subject, directory / 'physical-recovery.json')
+        if any(release.get(name) != value for name, value in accepted.items()):
+            raise ValueError('acceptance authority binding differs from the release manifest')
     return release
 
 
 def sign(args):
+    channel = getattr(args, 'channel', 'development')
+    if channel not in ['development', 'release']: raise ValueError('unsupported artifact channel')
+    if channel == 'release' and not all(getattr(args, name, None) for name in [
+            'acceptance', 'acceptance_signature', 'acceptance_authority_public_key', 'physical_recovery', 'source_revision', 'contract_id']):
+        raise ValueError('public signing requires an externally signed acceptance record and actual physical recovery evidence')
     if args.image:
         regular(args.image)
     if not args.image and not args.rootfs:
@@ -98,22 +121,32 @@ def sign(args):
             if source:
                 regular(source)
                 shutil.copyfile(source, stage / name)
+        if channel == 'release':
+            for source, name in [(args.acceptance_signature, 'acceptance.sig'), (args.physical_recovery, 'physical-recovery.json')]:
+                regular(source); shutil.copyfile(source, stage / name)
         public = run('openssl', 'pkey', '-in', str(args.private_key), '-pubout')
         with tempfile.NamedTemporaryFile() as key:
             key.write(public); key.flush()
             fingerprint = hashlib.sha256(run('openssl', 'pkey', '-pubin', '-in', key.name, '-outform', 'DER')).hexdigest()
-        manifest = {'schema_version': 1, 'channel': 'development', 'sequence': args.sequence,
+        manifest = {'schema_version': 1, 'channel': channel, 'sequence': args.sequence,
                     'version': args.version, 'public_key_sha256': fingerprint,
                     'secure_boot_qualified': False, 'release_approved': False,
                     'files': {path.name: {'size': path.stat().st_size, 'sha256': digest(path)}
                               for path in sorted(stage.iterdir())}}
         if args.rootfs:
             manifest['rootfs'] = {'unpacked_size': args.rootfs_size, 'sha256': args.rootfs_sha256}
+        if channel == 'release':
+            from platform_release_acceptance import candidate, verify_acceptance
+            subject = candidate(manifest, args.source_revision, args.contract_id, getattr(args, 'qualified_image_sha256', None))
+            accepted = verify_acceptance(stage / 'acceptance.json', stage / 'acceptance.sig',
+                args.acceptance_authority_public_key, subject, stage / 'physical-recovery.json')
+            manifest.update(accepted | {'release_approved': True, 'source_revision': args.source_revision, 'contract_id': args.contract_id,
+                                        'qualified_image_sha256': subject['qualified_image_sha256']})
         (stage / 'release.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
         run('openssl', 'pkeyutl', '-sign', '-inkey', str(args.private_key), '-rawin',
             '-in', str(stage / 'release.json'), '-out', str(stage / 'release.sig'))
         with tempfile.NamedTemporaryFile() as key:
-            key.write(public); key.flush(); verify(stage, Path(key.name))
+            key.write(public); key.flush(); verify(stage, Path(key.name), getattr(args, 'acceptance_authority_public_key', None), channel == 'release')
         shutil.copytree(stage, args.output)
     return manifest
 
@@ -132,7 +165,7 @@ def block_target(path, serial):
 
 
 def install(args):
-    release = verify(args.directory, args.public_key)
+    release = verify(args.directory, args.public_key, getattr(args, 'acceptance_authority_public_key', None), getattr(args, 'require_release', False))
     source = args.directory / 'system.raw'
     target = args.target.absolute()
     if target == source.resolve():
@@ -202,17 +235,26 @@ def main():
     create.add_argument('--sequence', required=True, type=int)
     create.add_argument('--inventory', type=Path)
     create.add_argument('--acceptance', type=Path)
+    create.add_argument('--channel', choices=['development', 'release'], default='development')
+    create.add_argument('--acceptance-signature', type=Path)
+    create.add_argument('--acceptance-authority-public-key', type=Path)
+    create.add_argument('--physical-recovery', type=Path)
+    create.add_argument('--source-revision')
+    create.add_argument('--contract-id')
+    create.add_argument('--qualified-image-sha256')
     check = operations.add_parser('verify')
     deploy = operations.add_parser('install')
     for operation in [check, deploy]:
         operation.add_argument('--directory', required=True, type=Path)
         operation.add_argument('--public-key', required=True, type=Path)
+        operation.add_argument('--acceptance-authority-public-key', type=Path)
+        operation.add_argument('--require-release', action='store_true')
     deploy.add_argument('--target', required=True, type=Path)
     deploy.add_argument('--journal', required=True, type=Path)
     deploy.add_argument('--erase-all-data', action='store_true')
     deploy.add_argument('--expected-serial')
     args = parser.parse_args()
-    result = sign(args) if args.operation == 'sign' else verify(args.directory, args.public_key) if args.operation == 'verify' else install(args)
+    result = sign(args) if args.operation == 'sign' else verify(args.directory, args.public_key, args.acceptance_authority_public_key, args.require_release) if args.operation == 'verify' else install(args)
     print(json.dumps(result))
 
 

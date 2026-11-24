@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "kind": "read-only-platform-hardware-observation",
+  "observed_at_ms": 1795530772851,
+  "architecture": "x86_64",
+  "kernel": "7.2.9-arch1-1",
+  "virtualization": "none",
+  "physical_host_observed": true,
+  "cpu": {
+    "models": [
+      "13th Gen Intel(R) Core(TM) i7-13700HX"
+    ],
+    "logical": 24,
+    "allowed": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ]
+  },
+  "memory_total_kib": 16063860,
+  "system": {
+    "vendor": "LENOVO",
+    "product": "83JE"
+  },
+  "graphics": [
+    {
+      "pci_address": "0000:00:02.0",
+      "vendor": "0x8086",
+      "device": "0xa788",
+      "driver": "i915"
+    },
+    {
+      "pci_address": "0000:01:00.0",
+      "vendor": "0x10de",
+      "device": "0x2d59",
+      "driver": "nvidia"
+    }
+  ],
+  "display_connectors": [
+    {
+      "connector": "card0-HDMI-A-3",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card0-eDP-2",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-DP-1",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-DP-2",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-DP-3",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-HDMI-A-1",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-HDMI-A-2",
+      "status": "disconnected",
+      "modes": []
+    },
+    {
+      "connector": "card1-eDP-1",
+      "status": "connected",
+      "modes": [
+        "1920x1080",
+        "1920x1080"
+      ]
+    }
+  ],
+  "nvidia": {
+    "returncode": 0,
+    "stdout": "NVIDIA GeForce RTX 5060 Laptop GPU, 615.78.08, 8151\n"
+  },
+  "cgroup_v2": true,
+  "available_controllers": [
+    "cpuset",
+    "cpu",
+    "io",
+    "memory",
+    "hugetlb",
+    "pids",
+    "rdma",
+    "misc",
+    "dmem"
+  ],
+  "boot": {
+    "efi": true,
+    "root_mount": [
+      {
+        "fstype": "ext4",
+        "options": "rw,relatime"
+      }
+    ]
+  },
+  "image_overlay_sha256": null,
+  "expected_image_overlay_matches": false,
+  "installation_or_reboot_performed": false,
+  "physical_boot_acceptance": false,
+  "limitations": [
+    "An observation on the development host does not qualify a different OS image",
+    "Physical installation, reboot/power-loss and workload evidence require an authorized test target",
+    "Driver binding and connected outputs do not prove rendering correctness or responsiveness"
+  ]
+}

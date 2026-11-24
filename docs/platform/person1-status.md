@@ -22,6 +22,7 @@ physical hardware acceptance or approval by other team members.
 | Installation | Signed full-image verification, explicit new-file/serial-bound block-target installer, installed-byte readback and boot of the installed image in a VM |
 | Upgrade/recovery | Separate root slots plus persistent home/var; authenticated inactive-slot writes, one-shot trial, API/service health acceptance, automatic fallback and persistent manual rollback |
 | Signing/inventory | External-key Ed25519 verification, immutable manifest snapshot, tamper/replay rejection, development signatures and CycloneDX declared-license inventory |
+| Acceptance execution | Exact-candidate signed review validation, explicit public-channel enforcement and physical recovery checkpoints; synthetic key/record regressions pass |
 | Integration/review readiness | Real staged service restart and two-runtime/shared-authority/Guard tests; generated candidate schemas and a review packet |
 | Build/regression discipline | Pinned kernel and dependency checks, deterministic kernel appliance/runtime archives, baseline CI workflow, full Rust/Python checks and retained evidence |
 
@@ -29,6 +30,10 @@ Read [advanced controls](advanced-controls.md),
 [development image and update instructions](development-image.md),
 the [extension measurements](../benchmarks/person1-platform-extensions.md),
 and the [interface review packet](../contracts/person1-interface-review.md).
+The [acceptance procedure](release-acceptance.md) supplies commands and record
+formats for executing the remaining physical/review gates.
+The [hardware matrix](hardware-matrix.md) separates observed development-host
+drivers from the VM-qualified candidate and unexecuted physical-image tests.
 The earlier [foundation report](../benchmarks/person1-platform-validation.md)
 remains historical evidence for the baseline and its 123 kernel/SCX checks.
 
