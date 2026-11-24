@@ -42,5 +42,18 @@
     "Checkpoint positive paths use fixtures until the selected physical image is booted",
     "Power-cut classification is an explicit operator attestation, not a remotely provable event",
     "Physical rendering/driver/workload review is distinct from marker persistence"
-  ]
+  ],
+  "github_actions": {
+    "run_id": 45419077513,
+    "url": "https://github.com/CerynthOS/CerynthOS/actions/runs/45419077513",
+    "source_commit": "02fb6dd25b8ac7a98a2e810e179248e109fc195a",
+    "job_id": 138533293971,
+    "job": "acceptance-regressions",
+    "conclusion": "success",
+    "verified_steps": [
+      "Python and public-release acceptance regressions",
+      "Development-signing compatibility and substitution checks"
+    ],
+    "physical_or_team_approval_supplied": false
+  }
 }
