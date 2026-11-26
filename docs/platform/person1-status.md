@@ -24,7 +24,7 @@ physical hardware acceptance or approval by other team members.
 | Signing/inventory | External-key Ed25519 verification, immutable manifest snapshot, tamper/replay rejection, development signatures and CycloneDX declared-license inventory |
 | Acceptance execution | Exact-candidate signed review validation, explicit public-channel enforcement and physical recovery checkpoints; synthetic key/record regressions pass |
 | Integration/review readiness | Real staged service restart and two-runtime/shared-authority/Guard tests; generated candidate schemas and a review packet |
-| Build/regression discipline | Pinned kernel and dependency checks, deterministic kernel appliance/runtime archives, baseline CI workflow, full Rust/Python checks and retained evidence |
+| Build/regression discipline | Pinned kernel/dependencies, deterministic kernel appliance/runtime archives, two byte-identical full base-disk builds from a frozen payload, CI and retained evidence |
 
 Read [advanced controls](advanced-controls.md),
 [development image and update instructions](development-image.md),
@@ -41,7 +41,7 @@ remains historical evidence for the baseline and its 123 kernel/SCX checks.
 
 | Control | Qualified behavior | Limit |
 | --- | --- | --- |
-| CPU quota / RAM / task count | Nested cgroup v2 enforcement under Linux default scheduling | Custom SCX quota/weight semantics remain unqualified |
+| CPU quota / RAM / task count | Nested cgroup v2 enforcement under Linux default scheduling | Separate upstream LAVD test exceeded child CPU caps; production SCX gate retained |
 | CPU preference | Applied/observed cgroup weights; opt-in phase policy | Preference, not dedicated CPU reservation or general agent speedup |
 | Swap | Inherited zero limit plus active-swap workload: 100 MiB payload within 64 MiB RAM + 96 MiB swap; zero-swap control hit a contained cgroup OOM | Qualified inside the disposable VM; no physical swap-latency claim |
 | Affinity | Requested and effective cpuset plus observed task affinity | Requires delegated cpuset and online permitted CPUs |
@@ -55,8 +55,12 @@ remains historical evidence for the baseline and its 123 kernel/SCX checks.
 The production resource hierarchy continues refusing SCX CPU control. The
 experimental slice policy did not demonstrate a useful CPU-share improvement;
 it is not installed as a production service. Its static identity snapshot only
-applies while the witnessed workers remain alive. Full-image bit reproducibility
-and broad representative workload improvements are not asserted.
+applies while the witnessed workers remain alive. Two full base disks reproduced
+byte-for-byte and the rebuilt image passed boot/resource/recovery checks. Five
+paired build/test/archive tool trials found a compilation benefit and a noisy
+archive regression. Cross-machine builds and general end-to-end agent speedups
+are not asserted. Read the
+[software follow-up and raw evidence](../benchmarks/person1-software-followup.md).
 
 ## External acceptance deferred
 

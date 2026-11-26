@@ -6,10 +6,16 @@ on:
     branches: [main, 'feat/**']
     paths:
       - 'tools/**'
+      - 'docs/benchmarks/person1-*'
+      - 'docs/contracts/scx-bandwidth-candidate.lock'
+      - 'tests/resource/scx_bandwidth_guest.c'
       - '.github/workflows/platform-acceptance.yml'
   pull_request:
     paths:
       - 'tools/**'
+      - 'docs/benchmarks/person1-*'
+      - 'docs/contracts/scx-bandwidth-candidate.lock'
+      - 'tests/resource/scx_bandwidth_guest.c'
       - '.github/workflows/platform-acceptance.yml'
 
 permissions:
@@ -25,6 +31,8 @@ jobs:
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Development-signing compatibility and substitution checks
         run: python3 tools/release_image_smoke.py --output "${RUNNER_TEMP}/release-image-smoke.json"
+      - name: Retained rebuild, workload and rejected-SCX evidence consistency
+        run: python3 tools/verify_platform_followup.py
       - name: Retain test evidence only
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

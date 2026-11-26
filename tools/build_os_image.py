@@ -17,7 +17,12 @@ def main():
     parser.add_argument('--ab', action='store_true', help='build the explicitly partitioned development A/B variant')
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--offline', action='store_true', help='require previously populated metadata and authenticated package cache')
+    parser.add_argument('--output-directory', type=Path, help='separate destination for an independent build')
+    parser.add_argument('--workspace-directory', type=Path, help='separate temporary build root')
+    parser.add_argument('--disk-only', action='store_true', help='omit split kernel/initrd/UKI copies')
     args = parser.parse_args()
+    if args.desktop and args.ab:
+        parser.error('--desktop and --ab are separate image variants')
     tools = args.tool_root.resolve()
     site = tools / 'usr/lib/python3.14/site-packages'
     shim = ROOT / 'artifacts/person1/mkosi-python'
@@ -40,21 +45,25 @@ def main():
     command = [str(shim / 'mkosi-python'), str(tools / 'usr/bin/mkosi'), '-C', str(ROOT / 'packaging/image'),
                '--extra-search-path=' + str(shim), '--extra-search-path=' + str(tools / 'usr/lib/systemd'),
                '--cache-directory=' + str(ROOT / 'artifacts/person1/image-cache'),
-               '--workspace-directory=' + str(ROOT / 'artifacts/person1/image-work'),
+               '--workspace-directory=' + str((args.workspace_directory or ROOT / 'artifacts/person1/image-work').resolve()),
                '--package-cache-dir=' + str(ROOT / 'artifacts/person1/image-package-cache'),
                '--source-date-epoch=1795190400']
     if args.desktop:
-        command += ['--profile=desktop', '--output-directory=' + str(ROOT / 'artifacts/person1/os-image-desktop')]
+        command += ['--profile=desktop']
     if args.ab:
-        command += ['--profile=ab', '--output-directory=' + str(ROOT / 'artifacts/person1/os-image-ab')]
+        command += ['--profile=ab']
+    name = 'os-image-ab' if args.ab else 'os-image-desktop' if args.desktop else 'os-image'
+    output = (args.output_directory or ROOT / 'artifacts/person1' / name).resolve()
+    command += ['--output-directory=' + str(output)]
+    if args.disk_only:
+        command += ['--split-artifacts=']
     if args.force:
         command += ['--force']
     if args.offline:
         command += ['--cache-only=always']
     subprocess.run(command + ['build'], check=True, cwd=ROOT, env=os.environ | {'PYTHONPATH': str(site)})
-    name = 'os-image-ab' if args.ab else 'os-image-desktop' if args.desktop else 'os-image'
     print(json.dumps({'development_image': True, 'desktop': args.desktop, 'ab': args.ab,
-                      'output_directory': str(ROOT / 'artifacts/person1' / name)}))
+                      'output_directory': str(output)}))
 
 
 if __name__ == '__main__':

@@ -22,8 +22,11 @@ python3 tools/build_os_image.py --tool-root artifacts/person1/qemu-local/root
 The first build syncs the pinned metadata. `tools/prefetch_image_packages.py`
 can fill the cache concurrently once those databases exist. Subsequent builds
 may use `--offline`. The builder propagates a fixed source epoch and partition
-seed, but byte-identical full-image builds are not asserted: filesystem UUIDs,
-filesystem population and external package tools still need comparison.
+seed. Independent base-image rebuilds from a frozen overlay were byte-identical
+after removing glibc's disposable inode-dependent auxiliary cache. The rebuilt
+disk passed UEFI/resource/recovery checks. See the
+[comparison and scope](../benchmarks/person1-software-followup.md). This is not
+cross-machine or independent upstream-package-build qualification.
 
 The base variant writes `artifacts/person1/os-image`. For KDE Plasma/KWin,
 Konsole, Dolphin, SDDM and the existing native observer:

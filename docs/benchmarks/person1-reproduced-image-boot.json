@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "kind": "development-os-uefi-kvm-boot",
+  "image_sha256": "7cc46158e7c3d198e4bb803fe1a1e226d1cb9b1e8609a07b473fb5cf83983fd9",
+  "qualification_harness_sha256": "52495e0b02f6237e953e0837f6e22ef0f26644b5e7e8ec5247559fb18546f9bf",
+  "kernel_and_services": [
+    "7.3.5-arch1-1",
+    "active",
+    "active",
+    "active",
+    "active"
+  ],
+  "advanced_resources": {
+    "schema_version": 1,
+    "kind": "real-advanced-platform-resource-api",
+    "swap_limit_and_child_inheritance": true,
+    "child_authority_expansion_denied": true,
+    "cascade_cleanup": true,
+    "delegated_controllers": [
+      "cpu",
+      "cpuset",
+      "dmem",
+      "hugetlb",
+      "io",
+      "memory",
+      "misc",
+      "pids",
+      "rdma"
+    ],
+    "affinity_and_io_qualified": true,
+    "missing_controller_fails_before_process": false,
+    "direct_io_timing": {
+      "seconds": 3.9775672009999994,
+      "bytes": 4194304
+    },
+    "host_policy_modified": false
+  },
+  "desktop": null,
+  "fsynced_marker_survived_power_cut": true,
+  "physical_hardware_qualified": false,
+  "secure_boot_qualified": false,
+  "guest_network_external_access": false
+}
