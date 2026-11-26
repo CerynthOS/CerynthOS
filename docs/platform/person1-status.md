@@ -1,6 +1,6 @@
 # Person 1 platform implementation and acceptance
 
-Updated November 24, 2026. This maps the supplied master plan's Person 1
+Updated November 26, 2026. This maps the supplied master plan's Person 1
 ownership to concrete code and evidence. The weekly plan and Person 3 task
 ledger are unchanged. Automated implementation/VM checks do not constitute
 physical hardware acceptance or approval by other team members.
@@ -43,7 +43,7 @@ remains historical evidence for the baseline and its 123 kernel/SCX checks.
 | --- | --- | --- |
 | CPU quota / RAM / task count | Nested cgroup v2 enforcement under Linux default scheduling | Custom SCX quota/weight semantics remain unqualified |
 | CPU preference | Applied/observed cgroup weights; opt-in phase policy | Preference, not dedicated CPU reservation or general agent speedup |
-| Swap | Per-session `memory.swap.max=0`, including inherited child limit | No active-swap workload benchmark |
+| Swap | Inherited zero limit plus active-swap workload: 100 MiB payload within 64 MiB RAM + 96 MiB swap; zero-swap control hit a contained cgroup OOM | Qualified inside the disposable VM; no physical swap-latency claim |
 | Affinity | Requested and effective cpuset plus observed task affinity | Requires delegated cpuset and online permitted CPUs |
 | I/O weight | systemd setting and kernel readback | Device fairness depends on storage stack/scheduler |
 | I/O throughput | Real direct writes under an enforced whole-device rate | Buffered I/O, layered storage and other hardware need separate qualification |
@@ -58,7 +58,11 @@ it is not installed as a production service. Its static identity snapshot only
 applies while the witnessed workers remain alive. Full-image bit reproducibility
 and broad representative workload improvements are not asserted.
 
-## External acceptance required
+## External acceptance deferred
+
+The owner requested completion of available work on November 26 and confirmed
+that external target/signing/review inputs cannot be supplied currently. These
+gates are deferred without being recorded as successful.
 
 The software and VM evidence cannot complete these actions by itself:
 

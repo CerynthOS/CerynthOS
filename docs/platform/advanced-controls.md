@@ -99,6 +99,7 @@ guarantee. The frozen scheduler sources remain unchanged.
 
 ```sh
 python3 tools/advanced_resources_smoke.py
+python3 tools/active_swap_vm.py --tool-root artifacts/person1/qemu-local/root
 python3 tools/workspace_quota_smoke.py --tool-root artifacts/person1/qemu-local/root
 python3 tools/workspace_session_smoke.py --tool-root artifacts/person1/qemu-local/root
 python3 tools/phase_policy_benchmark.py
@@ -108,3 +109,11 @@ python3 tools/scx_phase_benchmark.py --tool-root artifacts/person1/qemu-local/ro
 The host advanced-control test deliberately reports unsupported cpuset/I/O
 delegation as unsupported. Full qualification runs inside the development OS
 VM with `--require-advanced`; no host delegation or scheduler setting is changed.
+
+The active-swap wrapper creates a swap file only inside its disposable VM,
+disables guest zswap for the device-I/O check, and removes the swap file after
+the fixture. A 100 MiB anonymous workload runs within a 64 MiB resident limit
+with a 96 MiB swap budget; the same allocation with a zero swap budget is
+contained by a specific cgroup OOM. Memory high equals memory max in this test
+to isolate the hard limit from reclaim-throttling latency. Kernel swap-out and
+cgroup-specific OOM evidence are retained. No host swap configuration changes.

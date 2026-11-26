@@ -55,5 +55,24 @@
       "Development-signing compatibility and substitution checks"
     ],
     "physical_or_team_approval_supplied": false
-  }
+  },
+  "pull_request": {
+    "number": 12,
+    "url": "https://github.com/CerynthOS/CerynthOS/pull/12",
+    "draft": true,
+    "base": "feat/person3-agent-runtime",
+    "review_approval_claimed": false
+  },
+  "full_ci_verification": {
+    "source_commit": "1c374cc809756dfb8b8ae29fba21659ee4a44d1f",
+    "run_id": 45809557902,
+    "url": "https://github.com/CerynthOS/CerynthOS/actions/runs/45809557902",
+    "rust": "success",
+    "shell": "success",
+    "strict_lint": "success",
+    "contract_drift": "success",
+    "acceptance_run_id": 45809558157,
+    "acceptance": "success"
+  },
+  "external_acceptance_state": "deferred_by_owner_2026-11-26_inputs_unavailable"
 }
