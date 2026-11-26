@@ -1,0 +1,28 @@
+{
+  "source_artifact": "shared-authority-smoke.json",
+  "source_sha256": "d8f0e090b11e77e4499271f77b85cd09d99bc0ea3cc3405d3cb786ea85401880",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-two-agentd-shared-reservation-domain",
+    "daemons": 2,
+    "cross_instance_memory_and_cpu_reservations": true,
+    "child_not_double_charged": true,
+    "shared_cpu_quota_gate_with_available_ram": true,
+    "observed_process_cannot_inherit_managed_allocation": true,
+    "crashed_member_claim_retained_until_verified_recovery": true,
+    "saved_authority_binding_used_on_restart": true,
+    "copied_member_rejected_before_original_scope_cleanup": true,
+    "global_inference_concurrency_reservations": true,
+    "live_gpu_device_cooperative_reservations": true,
+    "reduced_gpu_grant_preserves_owner_minimum": true,
+    "parent_plus_child_gpu_jobs_bound_by_root": true,
+    "authority_workspace_exposure_rejected": true,
+    "cloud_requests": 0,
+    "team_approval_claimed": false,
+    "guard_filesystem_grant_cannot_expose_authority": true,
+    "guard_and_shared_kernel_cleanup_verified": true,
+    "terminal_session_archival_checked": true,
+    "scope": "Participating agentd root subtrees only; unmanaged model servers and bypassing clients excluded",
+    "gpu_enforcement": "cooperative_reservation; no hardware partition claim"
+  }
+}

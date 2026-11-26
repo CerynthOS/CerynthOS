@@ -36,6 +36,18 @@ This repository contains the initial control plane for **CerynthOS**.
 
 ## Build
 
+The experimental Person 3 runtime includes a persistent session supervisor,
+CLI/PTY and harness launch adapters, Bubblewrap/systemd execution, authenticated
+shared inference, and cooperative GPU admission. See the
+[runtime guide](docs/runtime/agent-runtime.md),
+[draft AgentSession contract](docs/contracts/agent-session-v1alpha1.md), and
+[112-task status ledger](docs/roadmap/person3-tasks.md).
+The [Week 1 guide](docs/runtime/person3-week1.md) is retained as historical context.
+Cross-track authorization, advanced engine experiments, and public-alpha
+acceptance are still pending; implemented controls advertise their actual limits.
+The [validation report](docs/integration/2026-11-11-person3-runtime.md) retains
+measured results and failed coding trials.
+
 ``` bash
 cargo build --release --workspace
 ```

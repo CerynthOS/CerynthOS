@@ -1,0 +1,23 @@
+{
+  "source_artifact": "gpu-runtime-smoke-final.json",
+  "source_sha256": "efe95612aaa18ee1a08092dde6ceef7be8948f1c0e7b881efd31ca78e93e57ef",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-guard-supervised-cuda-smoke",
+    "boundary": "guard_systemd",
+    "allocated_bytes": 67108864,
+    "cooperative_reservation_bytes": 268435456,
+    "guard_gpu_authorized": true,
+    "manual_lease_release_denied": true,
+    "guard_policy_enforcement": "advisory",
+    "runtime_launch_gate": "enforced for owned GPU execution",
+    "changed_launch_replay_denied": true,
+    "duplicate_launch_not_replayed": true,
+    "deadline_stops_process": true,
+    "missing_guard_capability_denied": true,
+    "process_and_reservation_cleanup": true,
+    "cloud_requests": 0,
+    "hard_vram_limit": false,
+    "device_access": "Guard GPU profile exposes all supported device nodes; no per-device partition"
+  }
+}

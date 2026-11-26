@@ -1,0 +1,51 @@
+{
+  "source_artifact": "validation-summary-nov19.json",
+  "source_sha256": "9d9ba033fff3960c92a7f664b1fd47de140b9f23432d77eb666d967d5dd4e3cc",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "person3-november19-local-validation",
+    "workspace_tests_passed": 268,
+    "workspace_tests_failed": 0,
+    "workspace_tests_ignored": 3,
+    "strict_person3_packages": 8,
+    "workspace_check_all_targets": true,
+    "format_check": true,
+    "generated_schema_drift_check": true,
+    "expanded_global_planner_tests_passed": true,
+    "upstream_platform_source_files_unchanged": 5,
+    "cloud_requests": 0,
+    "raw_log_sha256": {
+      "scheduler-initial-failure.log": "6c1f2d0cf95ecf2b5fc67f7741ad58eef9dc3baf7fe9133fb174596b87dda2da",
+      "scheduler-isolated-recheck.log": "bb474f41a0f87e57911e1ca69c802246fb9dc0ca53439b8419f39e6e271f7c90",
+      "workspace-disk-failure.log": "d2e2d75d9060c600ec00b1ada4dd5849565ef7549456c0ce0fb5d2e007e85075",
+      "guard-denial-code-regression.log": "d69dc02025f5cf603efc41bf0dd5c9e4fe5dfe764589dfc985d433cb05a8a54f",
+      "workspace-accepted.log": "ba4e6600bbb2cce05bb7e581a6220f07de8e15592078b8d0f2447cb40b40b9fb",
+      "strict-lint-accepted.log": "7c946028166355e4cc98737738685741f52e11743200ca6463e6e2a010ece8f7",
+      "platform-upstream-lint-limit.log": "e34bd6a0e904c6a0d3e90bb05cff882097ed33a8e7cd5672bc251da0139dea5d",
+      "workspace-check.log": "56b0c1de8561b43665eb476e3717326f9684890e32f5d40ba060a2e36ad771a6",
+      "schemas.log": "57ab468ed76454e382736a60e7208dcef1e3b0a0f1b911eea37840ee8ab21420",
+      "expanded-global-planner.log": "841ca707abe70b0cf02d77dcfb85f6c80b0237b93d0f61c51c13c6d6d2664c23",
+      "platform-live.log": "a8e23c90a9378678a9b029f9e7a0bef056d7ed62143d01cd7db01c5552453dbb",
+      "effects-live.log": "0a06e6bcca051cb2914f903ae3a2077ecbec5d76efc5bb0c17198b10d7eddf73",
+      "cache-privacy-live.log": "f591307b21d75ebd25568374df388467d16b58840c9e067c546d88c50a2f7c25",
+      "guard-live.log": "46fd9bb90435b2bbfbb7045bb3a649e00fc6c60fafdddaab560894c084534c98",
+      "native-guard-live.log": "fc7ce2553acc71737c00efe82cf2842615ecd96f60915e42eb44068a3a59f38d",
+      "residency-live.log": "fbb947b5cafd46d50c9b34d107351e46fdfbad59e70231a7d1769d488ab3eda6",
+      "contract-live.log": "ce581346b8682bdfa34bd43a8d1211e2ed1e472b480047df74404e2aef1eadc0"
+    },
+    "retained_failures": [
+      "Initial existing scheduler reporter timing failure; isolated and full reruns pass without scheduler changes",
+      "Disk exhaustion during doctest linking; obsolete generated build executables removed, full rerun passes",
+      "Guard gateway denial-code regression corrected and actual Guard rerun passes",
+      "Two unchanged original platform test assertions trigger newer Clippy assert_is_empty; strict eight-package check and platform unit tests pass"
+    ],
+    "acceptance": {
+      "implemented": 104,
+      "partial": 4,
+      "pending": 4
+    },
+    "team_approval_claimed": false,
+    "contract_id": "30f6f4c4095bb534e93d14fcd7e6d08db8b172dfad2a6d397b3796cc623b01b7",
+    "atomic_contract_pin_checked_in_same_request": true
+  }
+}

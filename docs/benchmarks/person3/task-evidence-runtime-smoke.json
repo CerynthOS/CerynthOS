@@ -1,0 +1,19 @@
+{
+  "source_artifact": "task-evidence-runtime-smoke.json",
+  "source_sha256": "40f206ff26fcca8be6212ead0df373b634a5a79136b35d0e3c9dfb239c7084d4",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-managed-child-evidence-smoke",
+    "child_task_parent_correlated": true,
+    "immutable_candidate_diff_output_and_test_artifacts": true,
+    "independent_checker_boundary": "bubblewrap_systemd",
+    "checker_network": "deny",
+    "passing_assertions_collected": true,
+    "failed_assertions_preserved": true,
+    "checker_mutation_detected": true,
+    "symlink_candidate_denied": true,
+    "agent_claim_trusted": false,
+    "general_task_correctness_claim": false,
+    "cloud_requests": 0
+  }
+}

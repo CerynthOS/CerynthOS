@@ -1,0 +1,24 @@
+{
+  "source_artifact": "resource-hierarchy-smoke.json",
+  "source_sha256": "7916f0cd6f50765a2de0c77f6225f0d3700cb33bf705a41366f0142910ae8e3d",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-nested-systemd-resource-smoke",
+    "depth": 3,
+    "parent_includes_descendant_memory": true,
+    "kernel_memory_limits_verified": true,
+    "kernel_cpu_quotas": [
+      "100000 100000",
+      "50000 100000",
+      "25000 100000"
+    ],
+    "admission_accept_reduce_queue_reject": true,
+    "owner_minimum_preserved": true,
+    "sibling_cpu_reservations_bound_by_parent": true,
+    "leaf_first_cancellation_cleanup": true,
+    "crash_recovery_releases_kernel_and_reservation": true,
+    "scheduler_ipc_changed": false,
+    "person1_review_claimed": false,
+    "cloud_requests": 0
+  }
+}

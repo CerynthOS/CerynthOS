@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/CerynthOS/CerynthOS",
+  "revision": "648c149be39f5ea8df612b3266857472976238eb",
+  "source_sha256": {
+    "crates/cerynth-resources/src/lib.rs": "9875668102a19b505b82688e1795bdcdb6c29fb9f1b9766024247ac972149ef7",
+    "crates/cerynth-resources/src/budget.rs": "3fe82fa8ef38bb44295d9ef4b0cc2175628b3a879d3d1638d9c2b7f35658c5b5",
+    "crates/cerynth-resources/src/cgroup.rs": "d21ff86e384da095c4283b1e68a0ac16e517419467af80a04552a9321ca9845b",
+    "crates/cerynth-resources/src/stats.rs": "162f03b7578b2ecb5a8b20ba0e7ee3745c38582d8ca69479ca00457f8d5cafb0",
+    "crates/cerynth-resources/src/support.rs": "e1d82e818f009bd893feb653068ba282ee1bbfc923e455d8026aeb7be3bcb3b4"
+  },
+  "adaptation": "Package name only, to avoid collision with existing Person 3 crate; Rust source unchanged."
+}

@@ -1,0 +1,34 @@
+{
+  "source_artifact": "packaging-runtime-smoke.json",
+  "source_sha256": "9c7a089a0a4bd2eb1e08822f69ab667d74cd62137382b30e2bdaaa3a85ef145e",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "staged-user-service-startup-and-restart",
+    "staged_sha256": {
+      "usr/bin/cerynth-observer": "18b456c55fed6468b218830833da56bbf638d79869ebd52cb772dca83b9f66f4",
+      "usr/share/applications/io.cerynth.Observer.desktop": "8fe1b836e0a8b24f18854b0d143f64dac90587b3f1fbcce23dee8a9064ef84a7",
+      "usr/share/doc/cerynth/agent-runtime.md": "6b6ee8ea4a84c5718ceceb4b4838d259e44ca9d17c1fd3928eb6a79151317223",
+      "usr/lib/cerynth/cerynth-agentd": "dcf8ff836208e038c2dfaa94536898755c6e20883f0435150adf9afce2c504f4",
+      "usr/lib/cerynth/cerynth-inferenced": "1fdca73a2119a52053031085a5a1dd653893a436c5e3a84bdce54dd2339b39a9",
+      "usr/lib/cerynth/cerynth-harness-bridge": "308c3e888a6f432e470025b7c967005da43bd8a1131ba47404d52df0908dba33",
+      "usr/lib/cerynth/cerynth-hardware": "a374223e21a19768346c0eed78b8f96496cca668ca672ed1884613e49d466701",
+      "usr/lib/cerynth/cerynth-worktree-checkout": "d478ffc03b558808684cbc8839eaad3c2b6ca7bf06c5c8072b99819793fe8767",
+      "usr/lib/systemd/user/cerynth-inferenced.service": "bc253d619d31778114150ff2e459aed710316d88bc48a6d1902ba6a2a90b1432",
+      "usr/lib/systemd/user/cerynth-agentd.service": "8a976302704d5d82d06d1e9a8d921160a39a54b2b8228954f68183023b45758a"
+    },
+    "staged_native_observer": true,
+    "actual_unit_hardening_preserved": true,
+    "isolated_state_and_dynamic_port": true,
+    "restart_on_failure_verified": true,
+    "managed_scope_and_nested_slice_recovered": true,
+    "unknown_prior_effects_preserved": true,
+    "inference_dependency_started": true,
+    "production_units_enabled": false,
+    "booted_iso": false,
+    "cloud_requests": 0,
+    "limitations": [
+      "Runtime-linked copies use staged executable paths and unique unit/state names",
+      "No distribution image definition exists in upstream checkout; no boot/upgrade/signing qualification"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "source_artifact": "native-guard-runtime-smoke-final.json",
+  "source_sha256": "fc7ce2553acc71737c00efe82cf2842615ecd96f60915e42eb44068a3a59f38d",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-guard-native-inference-boundary-smoke",
+    "guard_revision": "e592fa47797179ad24a99fc76143be48191a7649",
+    "upstream": "local synthetic backend; generated canary credential",
+    "harness": "adversarial synthetic OpenCode-compatible probe",
+    "two_root_gateways": true,
+    "provider_credential_hidden": true,
+    "session_credential_hidden": true,
+    "forged_agent_identity_ignored": true,
+    "model_allowlist_enforced": true,
+    "host_network_and_files_denied": true,
+    "cancel_during_provisioning_has_no_execution": true,
+    "generic_workspace_cannot_expose_inference_control": true,
+    "supervisor_crash_recovers_scopes_and_revokes_grants": true,
+    "vault_provisioning_files_removed": true,
+    "session_cleanup": true,
+    "cloud_requests": 0,
+    "delegation_supported": false
+  }
+}

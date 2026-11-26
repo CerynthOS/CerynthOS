@@ -1,0 +1,18 @@
+{
+  "source_artifact": "opencode-api-smoke.json",
+  "source_sha256": "57c64bc37649460054d9e9678c9f2248855302d350a8f184e0ccbc88ba730b53",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "kind": "native-opencode-api-smoke",
+    "version": "1.19.5",
+    "authenticated_discovery_verified": true,
+    "anonymous_access_rejected": true,
+    "control_acquired": false,
+    "registry_unchanged": true,
+    "discovered_count": 1,
+    "inference_requests": 0,
+    "limitations": [
+      "Discovery only; native sessions are not automatically sandboxed or imported"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "source_artifact": "packaging-runtime-smoke-nov20.json",
+  "source_sha256": "17e9d4331e73853e93698592090fd8a072a3d35fc969033bdbff41157179dabd",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "staged-user-service-startup-and-restart",
+    "staged_sha256": {
+      "usr/bin/cerynth-observer": "18b456c55fed6468b218830833da56bbf638d79869ebd52cb772dca83b9f66f4",
+      "usr/share/applications/io.cerynth.Observer.desktop": "8fe1b836e0a8b24f18854b0d143f64dac90587b3f1fbcce23dee8a9064ef84a7",
+      "usr/share/doc/cerynth/agent-runtime.md": "ab5bbe7e62a2f31846054ec358cb1440a58aabf8332ed516dfe67dd63d7b0c74",
+      "usr/lib/cerynth/cerynth-agentd": "50797ce63a022ec9bf124dc2f9830e08ad101e50d48aa589ee9e799efb93c1d7",
+      "usr/lib/cerynth/cerynth-inferenced": "17a173d42ef9abd7ee0033188ff2940f61742879cd20d6f55a094da8ca99fee6",
+      "usr/lib/cerynth/cerynth-harness-bridge": "95af0a4d014955acd0582b4bc9355347b68d94e8d588250e616de0b530fa1e22",
+      "usr/lib/cerynth/cerynth-hardware": "7a1e7adffd04d2396eaaec2f3b59e679ae376c2283e3de2f74384be6baacbe65",
+      "usr/lib/cerynth/cerynth-resource-authority": "da7bdf3d4ab04bf19d38f771e6c590426506d974434b5524ceee89911819cd59",
+      "usr/lib/cerynth/cerynth-worktree-checkout": "ece9df0f866a6ee9364d783ad573e7158a659b9b00247dedcc677008ec325080",
+      "usr/lib/systemd/user/cerynth-inferenced.service": "bc253d619d31778114150ff2e459aed710316d88bc48a6d1902ba6a2a90b1432",
+      "usr/lib/systemd/user/cerynth-agentd.service": "8a976302704d5d82d06d1e9a8d921160a39a54b2b8228954f68183023b45758a"
+    },
+    "staged_native_observer": true,
+    "staged_resource_authority_init_status_verified": true,
+    "exact_expected_payload_and_binary_hashes": true,
+    "actual_unit_hardening_preserved": true,
+    "isolated_state_and_dynamic_port": true,
+    "restart_on_failure_verified": true,
+    "managed_scope_and_nested_slice_recovered": true,
+    "unknown_prior_effects_preserved": true,
+    "inference_dependency_started": true,
+    "production_units_enabled": false,
+    "booted_iso": false,
+    "cloud_requests": 0,
+    "limitations": [
+      "Runtime-linked copies use staged executable paths and unique unit/state names",
+      "No distribution image definition exists in upstream checkout; no boot/upgrade/signing qualification"
+    ]
+  }
+}

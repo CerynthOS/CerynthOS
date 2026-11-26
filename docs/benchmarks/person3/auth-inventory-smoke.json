@@ -1,0 +1,16 @@
+{
+  "source_artifact": "auth-inventory-smoke.json",
+  "source_sha256": "dd95f1c20369ac97949561bd7cd64a2019fd01ae9c79ba03d0fd354efddafb53",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "offline-native-auth-inventory",
+    "opencode_configured_key_detected": true,
+    "hermes_empty_profile_state": "no_saved_credentials",
+    "provider_and_canary_absent_from_api": true,
+    "native_inventory_network_namespace": "unshare user/net; no external network",
+    "host_account_used": false,
+    "live_provider_key_validated": false,
+    "ambient_environment_credentials_forwarded": false,
+    "cloud_requests": 0
+  }
+}

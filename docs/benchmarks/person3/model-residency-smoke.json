@@ -1,0 +1,204 @@
+{
+  "source_artifact": "model-residency-smoke.json",
+  "source_sha256": "599ea94f1d54479b907b8b95b3e726df9b15fdfdbd1140e35b5304de9bed457f",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-ollama-guard-cuda-residency-and-policy-comparison",
+    "model": "qwen3:0.6b",
+    "trials": [
+      {
+        "trial": 0,
+        "policy": "engine_default",
+        "prepare_ms": 0.001400010660290718,
+        "wall_ms": 2626.232456008438,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 930401484,
+        "new_inference_held_until_gpu_cleanup": false,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.176283,
+            "request_ms": 12.843620999999999,
+            "tokens_per_second": 595.2380952380952,
+            "ttft_ms": 9.783933
+          },
+          "load_duration_ns": 2116462,
+          "eval_count": 2
+        },
+        "recommendation": null
+      },
+      {
+        "trial": 0,
+        "policy": "cerynth_idle_evict",
+        "prepare_ms": 239.85665699001402,
+        "wall_ms": 5099.207738006953,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 0,
+        "new_inference_held_until_gpu_cleanup": true,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 2605.605751,
+            "request_ms": 2056.092349,
+            "tokens_per_second": 89.60974954075004,
+            "ttft_ms": 2033.9489629999998
+          },
+          "load_duration_ns": 1951639555,
+          "eval_count": 2
+        },
+        "recommendation": {
+          "decisions": [
+            {
+              "action": "evict",
+              "cache_id": "idle-model",
+              "estimated_cost_ms": 2124
+            }
+          ],
+          "experimental": true,
+          "reclaimable_bytes": 930401484,
+          "remaining_shortfall_bytes": 0
+        }
+      },
+      {
+        "trial": 1,
+        "policy": "cerynth_idle_evict",
+        "prepare_ms": 1028.0412819993217,
+        "wall_ms": 8252.418622985715,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 0,
+        "new_inference_held_until_gpu_cleanup": true,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 2622.469298,
+            "request_ms": 2025.8249429999998,
+            "tokens_per_second": 80.08008008008008,
+            "ttft_ms": 2000.820118
+          },
+          "load_duration_ns": 1909921500,
+          "eval_count": 2
+        },
+        "recommendation": {
+          "decisions": [
+            {
+              "action": "evict",
+              "cache_id": "idle-model",
+              "estimated_cost_ms": 2124
+            }
+          ],
+          "experimental": true,
+          "reclaimable_bytes": 930401484,
+          "remaining_shortfall_bytes": 0
+        }
+      },
+      {
+        "trial": 1,
+        "policy": "engine_default",
+        "prepare_ms": 0.0010759977158159018,
+        "wall_ms": 2462.4115120095666,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 930401484,
+        "new_inference_held_until_gpu_cleanup": false,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.12948500000000002,
+            "request_ms": 11.983805,
+            "tokens_per_second": 613.1207847946046,
+            "ttft_ms": 9.196475000000001
+          },
+          "load_duration_ns": 2098334,
+          "eval_count": 2
+        },
+        "recommendation": null
+      },
+      {
+        "trial": 2,
+        "policy": "engine_default",
+        "prepare_ms": 0.0010789954103529453,
+        "wall_ms": 2447.3425449978095,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 930401484,
+        "new_inference_held_until_gpu_cleanup": false,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 0.099545,
+            "request_ms": 10.005513,
+            "tokens_per_second": 623.4413965087282,
+            "ttft_ms": 6.847498
+          },
+          "load_duration_ns": 1105837,
+          "eval_count": 2
+        },
+        "recommendation": null
+      },
+      {
+        "trial": 2,
+        "policy": "cerynth_idle_evict",
+        "prepare_ms": 143.21759997983463,
+        "wall_ms": 4769.842608977342,
+        "model_vram_before_bytes": 930401484,
+        "model_vram_during_gpu_bytes": 0,
+        "new_inference_held_until_gpu_cleanup": true,
+        "model_gate_released_after_cleanup": true,
+        "reload": {
+          "metrics": {
+            "generated_tokens": 2,
+            "queue_ms": 2498.8783510000003,
+            "request_ms": 2065.4628470000002,
+            "tokens_per_second": 81.25126955108674,
+            "ttft_ms": 2040.480284
+          },
+          "load_duration_ns": 1943469281,
+          "eval_count": 2
+        },
+        "recommendation": {
+          "decisions": [
+            {
+              "action": "evict",
+              "cache_id": "idle-model",
+              "estimated_cost_ms": 2124
+            }
+          ],
+          "experimental": true,
+          "reclaimable_bytes": 930401484,
+          "remaining_shortfall_bytes": 0
+        }
+      }
+    ],
+    "coordinator_restart_retains_gate": true,
+    "new_grant_after_restart_waits_for_release": true,
+    "owner_stop_releases_unused_lease": true,
+    "backend_scope_and_processes_removed_on_restart": true,
+    "loaded_model_runner_scope_cleanup_verified": true,
+    "live_scope_release_rejected": true,
+    "guard_cuda_all_trials_verified": true,
+    "cloud_requests": 0,
+    "limitations": [
+      "One GPU and small installed model; no general speedup claim",
+      "Idle phase explicitly supplied by owner; no prediction",
+      "Engine defaults retain model memory but avoid reload overhead",
+      "Policy evicts whole model weights; no KV transfer or LMCache policy actuation",
+      "Reservations are cooperative; arbitrary GPU clients can bypass them",
+      "Restart fixture verifies durable gate metadata; backend ownership dies with coordinator"
+    ],
+    "policy_summary": {
+      "engine_default": {
+        "n": 3,
+        "mean_wall_ms": 2511.995504338605,
+        "mean_during_gpu_model_vram_bytes": 930401484
+      },
+      "cerynth_idle_evict": {
+        "n": 3,
+        "mean_wall_ms": 6040.48965665667,
+        "mean_during_gpu_model_vram_bytes": 0
+      }
+    }
+  }
+}

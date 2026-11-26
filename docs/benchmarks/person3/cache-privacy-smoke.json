@@ -1,0 +1,27 @@
+{
+  "source_artifact": "cache-privacy-smoke.json",
+  "source_sha256": "f591307b21d75ebd25568374df388467d16b58840c9e067c546d88c50a2f7c25",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-owned-ollama-private-cache-generation-smoke",
+    "model": "qwen3:0.6b",
+    "same_owner_sessions_have_separate_processes": true,
+    "private_backend_homes": true,
+    "cross_session_origin_reuse_denied": true,
+    "endpoint_alias_denied": true,
+    "unqualified_external_kv_engines_denied": true,
+    "agent_cache_scope_forgery_denied": true,
+    "authorization_change_requires_verified_process_reset": true,
+    "reset_uses_new_private_home_and_scope": true,
+    "cross_session_public_canary_absent": true,
+    "cloud_requests": 0,
+    "strict_policy_survives_missing_environment_flag": true,
+    "explicit_in_place_downgrade_rejected": true,
+    "limitations": [
+      "Supported mode trusts the owner-selected Ollama executable and native in-process cache implementation",
+      "Managed agents must use Guard native inference with host networking denied; observed/unisolated host processes are outside this boundary",
+      "No statistical timing-noninterference or arbitrary-engine safety claim",
+      "Separate private processes duplicate model residency; the default shared-trust-domain mode is less restrictive"
+    ]
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "source_artifact": "cross-harness-terminal-profile-accepted.json",
+  "source_sha256": "4c7eae63348b16830e8f20a2ddeefd13e6b39dace32dd2526a0e036473203f9e",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-local-cross-harness-delegation-experiment",
+    "model": "qwen2.5:3b",
+    "trials": [
+      {
+        "harness": "open_code",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": true,
+        "tool_events": 4,
+        "isolated_worktree": true
+      },
+      {
+        "harness": "hermes",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": false,
+        "tool_events": 2,
+        "isolated_worktree": true
+      }
+    ],
+    "both_harness_tasks_verified": false,
+    "parent_child_graph_verified": true,
+    "shared_inference_global_concurrency": 1,
+    "source_repository_unchanged": true,
+    "grants_and_processes_cleaned": true,
+    "routing": "explicit owner role-to-harness assignment; no autonomous capability expansion",
+    "hermes_call_hint": false,
+    "hermes_terminal_profile": true,
+    "network": "explicit host networking; no network-isolation claim",
+    "cloud_requests": 0,
+    "metrics": {
+      "failures": 0,
+      "p50_ms": 2758.8940190000003,
+      "p95_ms": 11410.875864000001,
+      "samples": [
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 6,
+            "queue_ms": 0.023696000000000002,
+            "request_ms": 7623.963831,
+            "tokens_per_second": null,
+            "ttft_ms": 7563.874255
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "89b27d6a-d74a-4078-a67a-781c271aa309"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 197,
+            "queue_ms": 7323.988559,
+            "request_ms": 4086.887305,
+            "tokens_per_second": null,
+            "ttft_ms": 2295.536607
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "919135c9-5702-4689-b9e2-8c025351376b"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 45,
+            "queue_ms": 0.017056,
+            "request_ms": 585.380149,
+            "tokens_per_second": null,
+            "ttft_ms": 562.914346
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "0e6b47aa-496e-4d01-9c81-0ec26b9e90e7"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 102,
+            "queue_ms": 20.201268000000002,
+            "request_ms": 2341.713666,
+            "tokens_per_second": null,
+            "ttft_ms": 2307.5465369999997
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "dfc261a2-876b-4f98-a994-46b936be90c2"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 132,
+            "queue_ms": 2216.071245,
+            "request_ms": 1905.4416899999999,
+            "tokens_per_second": null,
+            "ttft_ms": 137.808886
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "85729698-337f-4e76-bfff-4aee78cbd278"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 68,
+            "queue_ms": 1718.078442,
+            "request_ms": 1040.815577,
+            "tokens_per_second": null,
+            "ttft_ms": 180.608923
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "07dd9e74-547c-4ef6-be59-f1445f63a7b2"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 54,
+            "queue_ms": 1022.733968,
+            "request_ms": 802.712892,
+            "tokens_per_second": null,
+            "ttft_ms": 208.075179
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "5a4f94a3-82a7-4951-8ca0-55e72090d67d"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,425 @@
+{
+  "source_artifact": "shared-model-benchmark.json",
+  "source_sha256": "ec380c091924c9b19389c7c621cfdb19900299828d83ca1a3bff5d71cd851eea",
+  "selection": "Full numerical results; GPU UUID replaced with a stable anonymous device label. No prompt or credential data.",
+  "result": {
+    "kind": "single-host-synthetic-shared-vs-separate",
+    "model": "qwen3:0.6b",
+    "kernel": "7.2.9-arch1-1",
+    "ollama": "ollama version is 0.35.0",
+    "cloud_requests": 0,
+    "scenarios": [
+      {
+        "shared": true,
+        "parallelism_per_engine": 2,
+        "cold": [
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.051187,
+              "request_ms": 57208.506959,
+              "tokens_per_second": 8.356802019003368,
+              "ttft_ms": 49550.036453
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 57206432409
+          }
+        ],
+        "warmup": [
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.017803,
+              "request_ms": 215.853395,
+              "tokens_per_second": 337.49044216521213,
+              "ttft_ms": 26.328661
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 214901826
+          },
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.015534000000000001,
+              "request_ms": 206.385444,
+              "tokens_per_second": 326.3690928469074,
+              "ttft_ms": 10.348208
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 205540323
+          }
+        ],
+        "trials": [
+          {
+            "trial": 0,
+            "wall_seconds": 0.30549735100066755,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.013854,
+                  "request_ms": 296.42634899999996,
+                  "tokens_per_second": 226.28194022621122,
+                  "ttft_ms": 13.61861
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 295616336
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.021119,
+                  "request_ms": 297.060814,
+                  "tokens_per_second": 226.37318326677726,
+                  "ttft_ms": 14.099946000000001
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 296340254
+              }
+            ]
+          },
+          {
+            "trial": 1,
+            "wall_seconds": 0.26591832999838516,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.014419,
+                  "request_ms": 264.41916399999997,
+                  "tokens_per_second": 255.83933289893946,
+                  "ttft_ms": 13.973504
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 263679368
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.01482,
+                  "request_ms": 264.089737,
+                  "tokens_per_second": 255.91605953247333,
+                  "ttft_ms": 13.730058
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 263540224
+              }
+            ]
+          },
+          {
+            "trial": 2,
+            "wall_seconds": 0.24155256699305028,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.017563000000000002,
+                  "request_ms": 240.04631500000002,
+                  "tokens_per_second": 283.69800347530054,
+                  "ttft_ms": 14.578256
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 239482280
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.013888,
+                  "request_ms": 239.989788,
+                  "tokens_per_second": 283.8565459980662,
+                  "ttft_ms": 14.377614000000001
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 239456705
+              }
+            ]
+          }
+        ],
+        "loaded_models": {
+          "engine-0": {
+            "models": [
+              {
+                "context_length": 4096,
+                "details": {
+                  "families": [
+                    "qwen3"
+                  ],
+                  "family": "qwen3",
+                  "format": "gguf",
+                  "parameter_size": "751.63M",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+                "expires_at": "2026-11-10T13:49:34.543699325+05:30",
+                "model": "qwen3:0.6b",
+                "name": "qwen3:0.6b",
+                "size": 1431631298,
+                "size_vram": 1431631298
+              }
+            ]
+          }
+        },
+        "gpu_before": [
+          {
+            "total_mib": 8151,
+            "used_mib": 2778,
+            "device": "nvidia-0"
+          }
+        ],
+        "gpu_loaded": [
+          {
+            "total_mib": 8151,
+            "used_mib": 4309,
+            "device": "nvidia-0"
+          }
+        ],
+        "mean_pair_seconds": 0.27098941599736764
+      },
+      {
+        "shared": false,
+        "parallelism_per_engine": 1,
+        "cold": [
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.024290999999999997,
+              "request_ms": 2368.060634,
+              "tokens_per_second": 274.3401904092384,
+              "ttft_ms": 2135.191916
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 2367201532
+          },
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.01626,
+              "request_ms": 2229.245508,
+              "tokens_per_second": 287.3382599872494,
+              "ttft_ms": 2006.9413370000002
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 2228411523
+          }
+        ],
+        "warmup": [
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.014968,
+              "request_ms": 206.160407,
+              "tokens_per_second": 336.57107697485714,
+              "ttft_ms": 15.949100000000001
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 205534458
+          },
+          {
+            "metrics": {
+              "generated_tokens": 64,
+              "queue_ms": 0.017293,
+              "request_ms": 206.940596,
+              "tokens_per_second": 330.0976882846267,
+              "ttft_ms": 13.146833
+            },
+            "nonempty": true,
+            "prompt_tokens": 31,
+            "output_tokens": 64,
+            "engine_total_ns": 206313894
+          }
+        ],
+        "trials": [
+          {
+            "trial": 0,
+            "wall_seconds": 0.5211732630123151,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.020273,
+                  "request_ms": 520.054009,
+                  "tokens_per_second": 127.11855990561448,
+                  "ttft_ms": 16.794527
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 519449578
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.017461,
+                  "request_ms": 517.004025,
+                  "tokens_per_second": 127.83534807168368,
+                  "ttft_ms": 16.445663999999997
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 516425458
+              }
+            ]
+          },
+          {
+            "trial": 1,
+            "wall_seconds": 0.42069966600683983,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.011991,
+                  "request_ms": 416.038553,
+                  "tokens_per_second": 158.82903295454264,
+                  "ttft_ms": 13.025794
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 415596255
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.014443999999999999,
+                  "request_ms": 419.500526,
+                  "tokens_per_second": 158.74708860319924,
+                  "ttft_ms": 16.35255
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 418935790
+              }
+            ]
+          },
+          {
+            "trial": 2,
+            "wall_seconds": 0.49853238101059105,
+            "requests": [
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.02266,
+                  "request_ms": 494.108789,
+                  "tokens_per_second": 133.33416667187504,
+                  "ttft_ms": 13.945881
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 493464878
+              },
+              {
+                "metrics": {
+                  "generated_tokens": 64,
+                  "queue_ms": 0.01379,
+                  "request_ms": 497.337402,
+                  "tokens_per_second": 133.32500052080078,
+                  "ttft_ms": 17.007686
+                },
+                "nonempty": true,
+                "prompt_tokens": 31,
+                "output_tokens": 64,
+                "engine_total_ns": 496815492
+              }
+            ]
+          }
+        ],
+        "loaded_models": {
+          "engine-0": {
+            "models": [
+              {
+                "context_length": 4096,
+                "details": {
+                  "families": [
+                    "qwen3"
+                  ],
+                  "family": "qwen3",
+                  "format": "gguf",
+                  "parameter_size": "751.63M",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+                "expires_at": "2026-11-10T13:49:45.607871861+05:30",
+                "model": "qwen3:0.6b",
+                "name": "qwen3:0.6b",
+                "size": 930401484,
+                "size_vram": 930401484
+              }
+            ]
+          },
+          "engine-1": {
+            "models": [
+              {
+                "context_length": 4096,
+                "details": {
+                  "families": [
+                    "qwen3"
+                  ],
+                  "family": "qwen3",
+                  "format": "gguf",
+                  "parameter_size": "751.63M",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+                "expires_at": "2026-11-10T13:49:45.815708967+05:30",
+                "model": "qwen3:0.6b",
+                "name": "qwen3:0.6b",
+                "size": 930401484,
+                "size_vram": 930401484
+              }
+            ]
+          }
+        },
+        "gpu_before": [
+          {
+            "total_mib": 8151,
+            "used_mib": 2778,
+            "device": "nvidia-0"
+          }
+        ],
+        "gpu_loaded": [
+          {
+            "total_mib": 8151,
+            "used_mib": 4885,
+            "device": "nvidia-0"
+          }
+        ],
+        "mean_pair_seconds": 0.48013510334324866
+      }
+    ],
+    "limitations": [
+      "One GPU, one small model and fixed scenario order; no broad speedup claim",
+      "GPU usage includes desktop and other workloads; readings are snapshots, not isolated peaks",
+      "Cold load and warm request timings are separate; backend prompt reuse can affect results"
+    ]
+  }
+}

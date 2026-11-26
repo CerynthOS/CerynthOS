@@ -1,0 +1,117 @@
+{
+  "source_artifact": "release-qualification-current.json",
+  "source_sha256": "88ec4d9cde724fbd1049a40ce3178ae899e6ec2fb584c72065b705fa7c6ff8e2",
+  "selection": "Local return codes, version-selection names and log hashes only; no credentials or raw provider responses",
+  "result": {
+    "kind": "person3-release-qualification",
+    "runner_sha256": "76bee1d5dd2c6092f0cd580f36e2d84b50779e57ff88b86d1cd5c599bb2d1f75",
+    "explicit_harness_selection_names": [
+      "CERYNTH_CLAUDE_BINARY"
+    ],
+    "revision": "2ea71722bc4bf837f616b5aab8e968538bb11218",
+    "tracked_worktree_clean": false,
+    "local_checks_run": true,
+    "local_checks": [
+      {
+        "name": "format",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.465847631014185,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "workspace-check",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.3651555280084722,
+        "log_sha256": "dfc750891fa782e401dcff72478464cf906a4c868591e803c6e32009a5ab50b8"
+      },
+      {
+        "name": "workspace-tests",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 17.517530570010422,
+        "log_sha256": "709f8117dffaff8c962b9d2a2758df012f0c2661348e977dd983c976d92dc8e2"
+      },
+      {
+        "name": "strict-lint",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.2650255689804908,
+        "log_sha256": "9abb87633b155cf2f5320830d204541fa77e5a21d70e7fecdca78382e60356b6"
+      },
+      {
+        "name": "contracts",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.3152410589973442,
+        "log_sha256": "07e5ab79c8fa1879eab7a4dac853e3c336aa916eab2645f5cc152f5f3782eaae"
+      },
+      {
+        "name": "shellcheck",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.31507227997644804,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "version-pins",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": null,
+        "log_sha256": "3d2f25d075b34158d00e651361344458c63f9e0c46f9352df44138698a8e0085",
+        "rerun_after_inventory_override_alignment": true
+      },
+      {
+        "name": "cloud-consent-policy-tests",
+        "passed": true,
+        "return_code": 0,
+        "elapsed_seconds": 0.16466955101350322,
+        "log_sha256": "33e6738dd82aa416bee79ef369981e6120081137247b391783e83d084ba86687"
+      }
+    ],
+    "local_checks_passed": true,
+    "remaining_acceptance": [
+      {
+        "task": "P3-010",
+        "status": "Pending",
+        "acceptance": "Proposed handoffs documented; actual team review/approval has not happened."
+      },
+      {
+        "task": "P3-085",
+        "status": "Partial",
+        "acceptance": "Explicit consent enforced; authorized live cloud routing experiment not run."
+      },
+      {
+        "task": "P3-099",
+        "status": "Partial",
+        "acceptance": "Content-addressed candidate, atomic server-side pin checks, actual historical Rust round trips and a committed protocol manifest checked by CI. Coordinated compatibility review and stable-release acceptance remain open."
+      },
+      {
+        "task": "P3-105",
+        "status": "Pending",
+        "acceptance": "Local harnesses exercised separately; authenticated cloud/mixed workflow not validated."
+      },
+      {
+        "task": "P3-106",
+        "status": "Pending",
+        "acceptance": "Requires dedicated authorized cloud/harness configuration and the actual reference run. Shared managed-domain reservations are implemented; unregistered backend processes and bypassing workloads remain outside their coverage."
+      },
+      {
+        "task": "P3-107",
+        "status": "Partial",
+        "acceptance": "Reproducible offline inventory verifies all installed harness/backend/engine pins; local adapter/protocol regressions and evidence matrix exist. Full authenticated cloud feature compatibility remains unqualified until deferred cloud tests."
+      },
+      {
+        "task": "P3-112",
+        "status": "Pending",
+        "acceptance": "Automated/local checks completed; cross-track release review and alpha acceptance remain outstanding."
+      }
+    ],
+    "team_approval_claimed": false,
+    "cloud_requests": 0,
+    "release_qualified": false,
+    "automated_gate_passed": false,
+    "version_inventory_source_sha256": "9edf180db1d0cb13ad7d93402cb0da513a35d7561b8a9ea552fd2a5dfa5f5308"
+  }
+}

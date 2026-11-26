@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Cerynth Observer
+Comment=Inspect agent events, resource accounting and GPU admission
+Exec=cerynth-observer
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;

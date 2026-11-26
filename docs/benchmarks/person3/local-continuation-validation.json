@@ -1,0 +1,32 @@
+{
+  "kind": "person3-november12-local-validation",
+  "workspace_tests": {
+    "passed": 241,
+    "failed": 0,
+    "ignored": 3
+  },
+  "strict_clippy_all_eight_person3_packages": true,
+  "qt_build_warnings_as_errors": true,
+  "schemas_regenerated_and_drift_check_passed": true,
+  "source_log_sha256": {
+    "cerynth-p3-final-tests.log": "8ff2e1791d4e9b16988c4418bc3321726f444bea820bf5a95411444aa5685153",
+    "cerynth-p3-new-clippy.log": "10acfa3247b322a0ee878ce2e7f4275075ea53b2ab96e285170d3cc36038debb",
+    "cerynth-p3-observer-build.log": "55e3fa0bc3345d6ad5230a8c1b1338445111619ca0dc5080a20d4d8d99b268f7",
+    "cerynth-p3-schema-check.log": "57ab468ed76454e382736a60e7208dcef1e3b0a0f1b911eea37840ee8ab21420"
+  },
+  "original_partial_tasks_closed": 13,
+  "current_ledger": {
+    "implemented": 100,
+    "partial": 8,
+    "pending": 4
+  },
+  "weekly_plan_changed": false,
+  "cloud_model_requests": 0,
+  "shared_team_approval_claimed": false,
+  "limitations": [
+    "Three ignored tests are existing upstream/doc tests",
+    "Full physical desktop and cloud compatibility remain unqualified",
+    "Existing upstream warnings and MSRV mismatch are documented; no release-readiness claim"
+  ],
+  "owned_backend_loaded_runner_crash_cleanup_verified": true
+}

@@ -1,0 +1,106 @@
+{
+  "source_artifact": "cross-harness-terminal-profile-final.json",
+  "source_sha256": "8b87674c7c6867a244f9e552892d2f54659345d032d44b8968d1fefc3a3e72e2",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-local-cross-harness-delegation-experiment",
+    "model": "qwen2.5:3b",
+    "trials": [
+      {
+        "harness": "open_code",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": true,
+        "tool_events": 2,
+        "isolated_worktree": true
+      },
+      {
+        "harness": "hermes",
+        "state": "completed",
+        "boundary": "bubblewrap_systemd",
+        "exit_code": 0,
+        "fixture_verified": false,
+        "tool_events": 2,
+        "isolated_worktree": true
+      }
+    ],
+    "both_harness_tasks_verified": false,
+    "parent_child_graph_verified": true,
+    "shared_inference_global_concurrency": 1,
+    "source_repository_unchanged": true,
+    "grants_and_processes_cleaned": true,
+    "routing": "explicit owner role-to-harness assignment; no autonomous capability expansion",
+    "hermes_call_hint": false,
+    "hermes_terminal_profile": true,
+    "network": "explicit host networking; no network-isolation claim",
+    "cloud_requests": 0,
+    "metrics": {
+      "failures": 0,
+      "p50_ms": 2352.458344,
+      "p95_ms": 6812.878675,
+      "samples": [
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 10,
+            "queue_ms": 0.026026,
+            "request_ms": 4315.404065,
+            "tokens_per_second": null,
+            "ttft_ms": 4220.236524999999
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "2e6daf70-b30f-4218-a8c5-8459abee1fff"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 99,
+            "queue_ms": 4063.222765,
+            "request_ms": 2749.65591,
+            "tokens_per_second": null,
+            "ttft_ms": 2073.158719
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "e89de0f6-004f-4714-8ca0-cd001285bed6"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 40,
+            "queue_ms": 0.017077,
+            "request_ms": 579.872178,
+            "tokens_per_second": null,
+            "ttft_ms": 109.554273
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "f39a4325-aff1-4c48-b0bb-9242128d5666"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 103,
+            "queue_ms": 0.017883000000000003,
+            "request_ms": 2352.440461,
+            "tokens_per_second": null,
+            "ttft_ms": 2328.7459099999996
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "3628dea3-f83a-4513-9e88-a275834ebdd5"
+        },
+        {
+          "endpoint_id": "local",
+          "metrics": {
+            "generated_tokens": 138,
+            "queue_ms": 0.016458999999999998,
+            "request_ms": 1854.148777,
+            "tokens_per_second": null,
+            "ttft_ms": 81.896299
+          },
+          "model": "qwen2.5:3b",
+          "trace_id": "899eb134-9140-4f87-90c0-166ab8e222af"
+        }
+      ]
+    }
+  }
+}

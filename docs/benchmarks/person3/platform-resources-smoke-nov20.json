@@ -1,0 +1,28 @@
+{
+  "source_artifact": "platform-resources-smoke-nov20.json",
+  "source_sha256": "a8e23c90a9378678a9b029f9e7a0bef056d7ed62143d01cd7db01c5552453dbb",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-nested-systemd-resource-smoke",
+    "depth": 3,
+    "parent_includes_descendant_memory": true,
+    "kernel_memory_limits_verified": true,
+    "kernel_cpu_quotas": [
+      "100000 100000",
+      "50000 100000",
+      "25000 100000"
+    ],
+    "admission_accept_reduce_queue_reject": true,
+    "owner_minimum_preserved": true,
+    "sibling_cpu_reservations_bound_by_parent": true,
+    "leaf_first_cancellation_cleanup": true,
+    "crash_recovery_releases_kernel_and_reservation": true,
+    "scheduler_ipc_changed": false,
+    "person1_review_claimed": false,
+    "cloud_requests": 0,
+    "actual_person1_resource_api_revision": "648c149be39f5ea8df612b3266857472976238eb",
+    "person1_budget_validation_status_usage_and_descendant_pids": true,
+    "single_systemd_writer_preserved": true,
+    "platform_cgroup_psi_and_machine_pressure_forwarded_to_real_coordinator": true
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "source_artifact": "runtime-version-inventory.json",
+  "source_sha256": "d9756f20892e475f880e11f77547b48f9e02b8f83752b1d4cde25a184b3717ae",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "local-pinned-runtime-inventory",
+    "executables": [
+      {
+        "name": "opencode",
+        "expected": "1.19.5",
+        "observed_version": "1.19.5",
+        "pin_matches": true,
+        "sha256": "7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c",
+        "coverage": "managed local CLI/HTTP/ACP fixtures"
+      },
+      {
+        "name": "hermes",
+        "expected": "0.23.1",
+        "observed_version": "0.23.1",
+        "pin_matches": true,
+        "sha256": "00ad25ccfdf70989cd46bc0750c8dd7847a0898e2dd75146fb751cf16c6ecccd",
+        "coverage": "managed local CLI and direct terminal profile"
+      },
+      {
+        "name": "codex",
+        "expected": "0.167.0",
+        "observed_version": "0.167.0",
+        "pin_matches": true,
+        "sha256": "e14fc83739c13c1074b12bd1acce4010c893c7f6fbfc1593b4a31d74cabb57af",
+        "coverage": "local CLI transport; no live cloud test"
+      },
+      {
+        "name": "claude",
+        "expected": "2.1.312",
+        "observed_version": "2.1.312",
+        "pin_matches": true,
+        "sha256": "4f4178ce41d83e23341ebfbaecdbcf8ea6bf7baea0690025abe49eeec3a5d01d",
+        "coverage": "version/recipe only; cloud execution unvalidated"
+      },
+      {
+        "name": "ollama",
+        "expected": "0.35.0",
+        "observed_version": "0.35.0",
+        "pin_matches": true,
+        "sha256": "0b0650a962dda61ec0598141ea11e3b688d225e926c9c00bc2c299d0ed34c4f8",
+        "coverage": "owned local model inference and residency"
+      }
+    ],
+    "engine_environments": [
+      {
+        "package": "vllm",
+        "expected": "0.25.0",
+        "python": "3.12.14",
+        "version": "0.25.0",
+        "pin_matches": true,
+        "metadata_only": true,
+        "experiment_evidence": "docs/benchmarks/person3/engine-cache-comparison.json"
+      },
+      {
+        "package": "sglang",
+        "expected": "0.5.16",
+        "python": "3.12.14",
+        "version": "0.5.16",
+        "pin_matches": true,
+        "metadata_only": true,
+        "experiment_evidence": "docs/benchmarks/person3/engine-cache-comparison.json"
+      },
+      {
+        "package": "lmcache",
+        "expected": "0.5.6",
+        "python": "3.12.14",
+        "version": "0.5.6",
+        "pin_matches": true,
+        "metadata_only": true,
+        "experiment_evidence": "docs/benchmarks/person3/engine-cache-comparison.json"
+      }
+    ],
+    "protocol_pins": {
+      "agent_api": "1/v1alpha1 experimental",
+      "ACP": 1,
+      "MCP": "2025-11-25 initialization subset",
+      "A2A": "0.3.0 supervised HTTP subset"
+    },
+    "cargo_lock_sha256": "d6d95f8d4b748bf9c1b9b90bbb89d6ce60075aa4fe243f992b367929ae1b37dc",
+    "cloud_requests": 0,
+    "auth_commands_run": false,
+    "version_probe_network_namespace": "isolated user/net",
+    "all_local_pins_match": true,
+    "limitations": [
+      "Installed versions and recorded local experiments do not qualify untested provider subscriptions",
+      "Protocol subsets are documented; no full MCP/A2A conformance claim",
+      "Rust workspace MSRV 1.85 remains inconsistent with resolved upstream dependencies; host uses Rust 1.99"
+    ]
+  }
+}

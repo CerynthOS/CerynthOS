@@ -1,0 +1,111 @@
+{
+  "source_artifact": "model-registry-smoke.json",
+  "source_sha256": "641b7045184c1644ea7266cc39208a3ae74dbb6d8ebc8232c7e79111cebca7ac",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "discovery": {
+      "candidates": [
+        {
+          "backend": "ollama",
+          "model_count": null,
+          "reachable": false,
+          "url": "http://127.0.0.1:1"
+        },
+        {
+          "backend": "ollama",
+          "model_count": 4,
+          "reachable": true,
+          "url": "http://127.0.0.1:11434"
+        }
+      ],
+      "registered": false
+    },
+    "registry": {
+      "endpoint_id": "local",
+      "models": [
+        {
+          "allocated_memory_bytes": null,
+          "allocated_vram_bytes": null,
+          "architecture_context_limit": null,
+          "backend": "ollama",
+          "capabilities": [],
+          "configured_context_length": null,
+          "device": null,
+          "digest": "f72c60cabf6237b07f6e632b2c48d533cef25eda2efbd34bed21c5e9c01e6225",
+          "endpoint_id": "local",
+          "family": "qwen2",
+          "license_available": null,
+          "loaded": false,
+          "name": "qwen2.5-coder:3b",
+          "observed_at_ms": 1794323039978,
+          "parameter_size": "3.1B",
+          "quantization": "Q4_K_M",
+          "weight_bytes": 1929912626
+        },
+        {
+          "allocated_memory_bytes": null,
+          "allocated_vram_bytes": null,
+          "architecture_context_limit": null,
+          "backend": "ollama",
+          "capabilities": [],
+          "configured_context_length": null,
+          "device": null,
+          "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+          "endpoint_id": "local",
+          "family": "qwen2",
+          "license_available": null,
+          "loaded": false,
+          "name": "qwen2.5:3b",
+          "observed_at_ms": 1794323039978,
+          "parameter_size": "3.1B",
+          "quantization": "Q4_K_M",
+          "weight_bytes": 1929912432
+        },
+        {
+          "allocated_memory_bytes": null,
+          "allocated_vram_bytes": null,
+          "architecture_context_limit": 40960,
+          "backend": "ollama",
+          "capabilities": [
+            "completion",
+            "tools",
+            "thinking"
+          ],
+          "configured_context_length": null,
+          "device": null,
+          "digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+          "endpoint_id": "local",
+          "family": "qwen3",
+          "license_available": true,
+          "loaded": false,
+          "name": "qwen3:0.6b",
+          "observed_at_ms": 1794323039978,
+          "parameter_size": "751.63M",
+          "quantization": "Q4_K_M",
+          "weight_bytes": 522653767
+        },
+        {
+          "allocated_memory_bytes": null,
+          "allocated_vram_bytes": null,
+          "architecture_context_limit": null,
+          "backend": "ollama",
+          "capabilities": [],
+          "configured_context_length": null,
+          "device": null,
+          "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+          "endpoint_id": "local",
+          "family": "qwen3",
+          "license_available": null,
+          "loaded": false,
+          "name": "qwen3:4b",
+          "observed_at_ms": 1794323039978,
+          "parameter_size": "4.0B",
+          "quantization": "Q4_K_M",
+          "weight_bytes": 2497293931
+        }
+      ],
+      "source": "backend_observation"
+    },
+    "cloud_requests": 0
+  }
+}

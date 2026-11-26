@@ -1,0 +1,25 @@
+{
+  "source_artifact": "guard-runtime-smoke-nov19.json",
+  "source_sha256": "46fd9bb90435b2bbfbb7045bb3a649e00fc6c60fafdddaab560894c084534c98",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "p3-p2-real-guard-integration",
+    "guard_revision": "e592fa47797179ad24a99fc76143be48191a7649",
+    "boundary": "guard_systemd",
+    "checks": {
+      "host_file_hidden": true,
+      "network_denied": true,
+      "seccomp_filter": true,
+      "agent_cannot_approve": true,
+      "cwd": "/workspace"
+    },
+    "child_escalation_denied": true,
+    "child_before_parent_cleanup": true,
+    "unavailable_guard_no_fallback": true,
+    "authorization_cleanup_verified": true,
+    "cloud_requests": 0,
+    "limitations": [
+      "This fixture covers offline generic commands; tools/native_guard_runtime_smoke.py covers the opt-in native inference gateway"
+    ]
+  }
+}

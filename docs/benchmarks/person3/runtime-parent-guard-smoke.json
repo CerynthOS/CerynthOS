@@ -1,0 +1,26 @@
+{
+  "source_artifact": "runtime-parent-guard-smoke.json",
+  "source_sha256": "1cf0c9b67670cf66b811aa8364821436a0dbb7fc3012969c24f3e0d40a8daa95",
+  "selection": "Full numeric/boolean result; transient runtime session/PID/cgroup identity omitted where indicated. No prompt or credential data.",
+  "result": {
+    "kind": "real-host-smoke",
+    "state": "completed",
+    "boundary": "bubblewrap_systemd",
+    "checks": {
+      "host_file_hidden": true,
+      "network_denied": true
+    },
+    "systemd_properties": [
+      "CPUWeight=100",
+      "MemoryMax=2147483648",
+      "TasksMax=128"
+    ],
+    "cloud_requests": 0,
+    "managed_crash_recovery": {
+      "state": "failed",
+      "scope_empty": true,
+      "owned_processes_stopped": true,
+      "operation_status": "unknown"
+    }
+  }
+}

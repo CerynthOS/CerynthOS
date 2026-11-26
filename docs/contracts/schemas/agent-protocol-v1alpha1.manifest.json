@@ -1,0 +1,15 @@
+{
+  "contract_id": "42c4810f785d74c73dcdb272f87cf0d2ed2601983edaa9455e05e730b6de3617",
+  "features": {
+    "atomic_contract_pin": 1,
+    "global_resource_plan": 1,
+    "platform_resource_budget": 1,
+    "shared_resource_authority": 1,
+    "tool_effect_deduplication": 1
+  },
+  "fingerprint_algorithm": "sha256-canonical-schema-bundle",
+  "session_specification": "v1alpha1",
+  "status": "candidate_frozen_pending_team_review",
+  "team_approval_claimed": false,
+  "version": 1
+}

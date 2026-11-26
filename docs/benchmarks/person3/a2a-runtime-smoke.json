@@ -1,0 +1,21 @@
+{
+  "source_artifact": "a2a-runtime-smoke.json",
+  "source_sha256": "2fa4e4414f72d3053917c084f1429401a75b51f02f281b120d9ae2c054ada517",
+  "selection": "Public synthetic metrics/booleans; raw prompts/output, runtime identities and credentials excluded",
+  "result": {
+    "kind": "real-loopback-a2a-subset-smoke",
+    "protocol": "0.3.0",
+    "agent_card": true,
+    "sponsor_bound_authentication": true,
+    "duplicate_message_deduplicated": true,
+    "changed_message_rejected": true,
+    "out_of_scope_task_denied": true,
+    "sponsor_substitution_denied": true,
+    "unsupported_streaming_rejected": true,
+    "task_cancellation": true,
+    "credential_removed_on_shutdown": true,
+    "automatic_execution": false,
+    "full_a2a_conformance": false,
+    "cloud_requests": 0
+  }
+}
