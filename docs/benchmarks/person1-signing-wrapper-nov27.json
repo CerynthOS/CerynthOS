@@ -1,0 +1,10 @@
+{
+  "kind": "actual-signing-wrapper-roundtrip",
+  "passed": true,
+  "test_keys_only": true,
+  "signer_script_sha256": "a37a5443cbe47f6ea78defae1cc719de9bac286ac952c3017ef9656de2ed6367",
+  "verifier_script_sha256": "d9506ac736a140e44b1f48419506f255fae8cda104b1921550afbb2273119898",
+  "output_sha256": "7fbf0bfbc997c0581265be9f8e3d09d7d21ee7be65c6503ea9203a9b99d28934",
+  "diagnostics_sha256": "369c622ad2aa403e40393a851cfb00571a721324c8ac952fbed1ce4cd559fe13",
+  "existing_output_overwritten": false
+}

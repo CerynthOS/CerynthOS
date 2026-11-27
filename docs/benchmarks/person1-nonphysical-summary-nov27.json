@@ -1,0 +1,26 @@
+{
+  "kind": "nonphysical-software-qualification-summary",
+  "date": "2026-11-27",
+  "source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "rust_workspace_tests_passed": 389,
+  "python_acceptance_tests_passed": 65,
+  "local_release_checks_passed": 8,
+  "secure_boot_vm_cases_passed": 6,
+  "physical_acceptance_claimed": false,
+  "cloud_requests": 0,
+  "team_approval_claimed": false,
+  "public_release_qualified": false,
+  "retained_pressure_gating_failure": true,
+  "evidence_sha256": {
+    "person1-native-platform-nov27.json": "c3ec0c3c2896cf9c397c6a1ed694fa1d2c740d288476eda7d32497ca5b8f0407",
+    "person1-native-pressure-attempt-nov27.json": "54c4c334281a47af199ea02789616c15548d4dda66ada122de91fc8b8a6980b2",
+    "person1-secure-boot-matrix-nov27.json": "48826ff171fc166813a8430a93cfdf9c2d244423f56be1b22d9d7e88e9f93663",
+    "person1-secure-boot-toolchain-nov27.json": "cd84307dddffe6f0d726675524006cb371eeb44059e564a7183fa5d0eaa9aec5",
+    "person1-secure-boot-verification-nov27.json": "25b83ac29cb25becec54f48d580fa3a49732f8d8142e5bc1457bdef64c8aeffd",
+    "person1-signing-wrapper-nov27.json": "a396064830e22d9c1aac21c9a59e2162f2fd174f8b718dfca83be88f630f4221",
+    "person1-verified-root-nov27.json": "26903411546e5eb54dc918e7e415c79e290dd7494384dba3a1247274f1496502",
+    "person1-verified-root-build-nov27.json": "82b0a7285868d4faa779d8972051ba479ebb0124b081787089987f5d8267abfe",
+    "person3/version-inventory-nov27.json": "525910cadcf4ad489d134ed60d9616f2de9336dedabb91a54f587e76d3064a74",
+    "person3/release-qualification-nov27.json": "d60cf4c7d4ebc35d29c95cae7c01f88109ddf6d0950959d9c9fa8da5e0ffbc31"
+  }
+}

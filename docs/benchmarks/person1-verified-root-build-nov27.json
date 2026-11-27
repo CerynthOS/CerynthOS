@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "kind": "development-disk-build-provenance",
+  "source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "tracked_worktree_clean": true,
+  "builder_sha256": "61c5830b9cb0da7d502e2581b3db2856edc7636e9459858210c281a259cd88b4",
+  "configuration_sha256": {
+    "packaging/image/mkosi.conf": "94048a227bd9f4ee569fd5912625c20376ff6dfcbe7e1682824775875a62756d",
+    "packaging/image/mkosi.profiles/ab.conf": "62bea3a1e2dbd4539468bd8db4c48923c2ef51d869993727d1b181cb5937aa39",
+    "packaging/image/mkosi.profiles/desktop.conf": "894fa911e228efc9bc92867c4d25cd5e192544b79435695ac2d509c1ccf51543",
+    "packaging/image/mkosi.profiles/verified-root.conf": "ed3a0317766d7d98e7350ad1e7bf8d2cbd01a0bf189d87b07c36b989e4d9b69d",
+    "packaging/image/mkosi.repart-ab/00-esp.conf": "63ab173680f66df1cb6a905171da5e89dd1d23000afd570b0f162c97308af5eb",
+    "packaging/image/mkosi.repart-ab/10-root-a.conf": "43fa96a227deb9275f164807110eadcbbe2c0c05a6c9bf54ad8815b75ae477e4",
+    "packaging/image/mkosi.repart-ab/20-root-b.conf": "f5060eab6047c1da0833441a377306c180f859c1c1a27ec61d38ea87895f147b",
+    "packaging/image/mkosi.repart-ab/30-var.conf": "f47e0da010573cf25cda1a4b2a806df788e866ae04eb427b62ff65c283ed8005",
+    "packaging/image/mkosi.repart-ab/40-home.conf": "1f1981c24720baaa9ee73838adec8a961257b6bacc04126d1e37c11778a0e3f1",
+    "packaging/image/mkosi.repart-verified-root/00-esp.conf": "b0e8b6158f52acfaa93d2703a4215f949066ab859c8056f3554d296d1828627a",
+    "packaging/image/mkosi.repart-verified-root/10-root.conf": "f96368b69e18011780e8725ad1185a366da11f754f9e1cdf1923c685b27d6d5d",
+    "packaging/image/mkosi.repart-verified-root/20-root-verity.conf": "cc7f36d8184f4f1ada48983f58d0a656d561ff521a640c3704c45fb8c37c1bbb",
+    "packaging/image/mkosi.sandbox/etc/pacman.conf": "444ae07dd845fbf457a4757f556d3fab90e9524ed449af4d59add207ad1a0904"
+  },
+  "prepared_overlay_manifest_sha256": "4a5cf9aadf124bd188019788f0994a1fb89facf33925e8d12a7c45798eb02667",
+  "prepared_overlay_source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "image_sha256": "4b63cd75d36b77a52fa186d1e829b88ca9116ac1a06f647834a055dea3598b31",
+  "verified_root": true,
+  "secure_boot_signing_requested": true,
+  "physical_acceptance_claimed": false
+}

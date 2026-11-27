@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "kind": "real-native-platform-qualification",
+  "passed": true,
+  "results": {
+    "resources": {
+      "contained_oom_kills": 1,
+      "cpu_throttled_periods": 30,
+      "cpu_usage_usec": 307834,
+      "kernel_limits_applied": true,
+      "kind": "live-native-resource-owner-api",
+      "observed_memory_bytes": 12615680,
+      "observed_pids": [
+        2629929
+      ],
+      "owner_process_survived": true,
+      "systemd_delegated_fixture_only": true
+    },
+    "storage": {
+      "actual_fuse_mount": true,
+      "cleanup_complete": true,
+      "healthy_mount_preserved_across_owner_sigkill": true,
+      "helper_crash_recovery": true,
+      "kind": "live-native-volume-owner-api",
+      "sentinel_persisted": true,
+      "unicode_and_space_mount_path": true
+    },
+    "cross_agent": {
+      "schema_version": 1,
+      "kind": "real-bounded-workspace-agent-sessions",
+      "managed_child_hit_enospc": true,
+      "two_real_agent_processes_peer_workspace_access_denied_both_directions": true,
+      "backing_image_and_owner_journal_hidden_by_sandbox": true,
+      "kernel_mount_and_private_journal_attested": true,
+      "session_and_volume_ancestry_match": true,
+      "forged_workspace_metadata_rejected_before_process": true,
+      "child_workspace_volume": {
+        "filesystem_capacity_bytes": 31448064,
+        "maximum_image_bytes": 33554432,
+        "parent_volume_id": "674fefd2-5b9c-4bb1-aed7-72e283cd2484",
+        "subtree_maximum_bytes": 67108864,
+        "volume_id": "331db688-b5a1-41c5-8f3d-259eeb6b79f9"
+      },
+      "receipt": {
+        "enospc": true,
+        "bytes": 22020096,
+        "backing_image_hidden": true
+      },
+      "cloud_requests": 0
+    }
+  },
+  "example_sha256": "b81cbb7473ea80ab1e8bfbd4d71f67e80c334698c6d5f102b8a003093b6fc45e",
+  "runtime_sha256": "9dad49ec5e2c67412f40267a59c9ec2e95c235b8818237a3c0ae1baf3956ae63",
+  "example_source_sha256": "d585379984c72c5396fa91ebfab1ebb75c4a32651c5e219bd57084228f3e0fd2",
+  "cross_agent_fixture_sha256": "ad8f459de5c35cb81fc7f8de3dba04d5ce3272f0067c568d3f0b18d8df84f20d",
+  "source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "tracked_worktree_clean": true,
+  "existing_host_scheduler_or_user_manager_delegation_changed": false,
+  "physical_recovery_writes": false,
+  "cloud_requests": 0,
+  "limitations": [
+    "owner SDK is not a new authenticated daemon IPC surface",
+    "fixture cgroups are explicitly delegated to one disposable user service",
+    "same-UID agents are isolated by their actual execution sandboxes; file modes alone are insufficient"
+  ]
+}

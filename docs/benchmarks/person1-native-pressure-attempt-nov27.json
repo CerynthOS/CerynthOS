@@ -1,0 +1,10 @@
+{
+  "kind": "bounded-native-qualification-attempt",
+  "passed": false,
+  "source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "failure": "real kernel-pressure admission remained queued until the 90-second fixture deadline",
+  "concurrent_work": "signed image build and VM test overlapped this attempt",
+  "log_sha256": "8225c851b1c5cda70a6e63ee9f345fa258fb36d818a31bfc02c953a11251676c",
+  "pressure_policy_bypassed": false,
+  "later_serial_attempt_required": true
+}

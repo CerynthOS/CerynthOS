@@ -137,3 +137,27 @@ Production signing/acceptance identities and real license/release decisions
 remain unavailable. Physical acceptance remains excluded by the owner's request.
 No live cloud request, substituted account, production key or approval is created.
 The weekly plan and Person 3 acceptance ledger are unchanged.
+
+## Retained results
+
+Qualified source: `5b0ebed2d436032f962f8a5f6aadf3843d57c17b`. The prepared
+payload, signed image build and final native run record this revision with a clean
+tracked worktree. Evidence commits add these results without changing that payload.
+
+- [Summary and receipt hashes](../benchmarks/person1-nonphysical-summary-nov27.json):
+  389 Rust workspace tests, 65 Python tests and all eight local release checks pass.
+- [Native CPU/RAM, FUSE and cross-agent run](../benchmarks/person1-native-platform-nov27.json).
+- [Secure Boot matrix](../benchmarks/person1-secure-boot-matrix-nov27.json),
+  [toolchain provenance](../benchmarks/person1-secure-boot-toolchain-nov27.json),
+  [independent verification](../benchmarks/person1-secure-boot-verification-nov27.json)
+  and [signing-wrapper execution](../benchmarks/person1-signing-wrapper-nov27.json).
+- [Signed image build](../benchmarks/person1-verified-root-build-nov27.json) and
+  [actual boot/corruption rejection](../benchmarks/person1-verified-root-nov27.json).
+- [Matching version inventory](../benchmarks/person3/version-inventory-nov27.json)
+  and [release gate](../benchmarks/person3/release-qualification-nov27.json).
+
+One concurrent native attempt timed out waiting for pressure admission while the
+image build/VM work overlapped. That [failed attempt](../benchmarks/person1-native-pressure-attempt-nov27.json)
+is retained. The later serial run passed with the same pressure policy; no pressure
+threshold was relaxed. Release qualification remains false because the seven
+external acceptance IDs remain open, despite every local check passing.

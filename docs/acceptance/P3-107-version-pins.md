@@ -3,7 +3,7 @@
 **Status:** Partial  
 **Task:** Authenticated cloud feature/version qualification  
 **Branch:** `feat/person1-platform`  
-**Audit date:** 2026-11-26
+**Audit date:** 2026-11-27
 
 ## What is implemented locally
 
@@ -36,7 +36,6 @@ Offline version inventory and local protocol checks already exist. Version probe
 
 ## Next steps
 
-- Install pinned binaries at expected paths or set `CERYNTH_*_BINARY` overrides
 - Offline inventory passed on the native host; retain explicit matching launch selections
 - Obtain authenticated cloud accounts for provider/version qualification
 - Exercise pinned provider/harness versions against real accounts
