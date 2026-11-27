@@ -8,6 +8,10 @@ permissions:
 jobs:
   rust:
     runs-on: ubuntu-24.04
+    env:
+      # rust-toolchain.toml selects stable, which otherwise overrides the
+      # action's rustup default and can silently change the qualified compiler.
+      RUSTUP_TOOLCHAIN: '1.99.0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -20,6 +24,10 @@ jobs:
         with:
           toolchain: '1.99.0'
           components: rustfmt,clippy
+      - name: Verify qualified compiler
+        run: |
+          rustc --version
+          cargo --version
       - run: cargo fmt --all -- --check
       - run: cargo check --workspace --all-targets
       - run: cargo test --workspace
