@@ -1,0 +1,8 @@
+# Never commit private keys or generated key material.
+test/
+*.key
+*.pem
+*.p12
+*.pfx
+*.esl
+*.auth
