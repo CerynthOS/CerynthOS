@@ -468,7 +468,7 @@ fn fragmented_frames_work_and_incomplete_mutations_are_rejected() {
         stream.shutdown(std::net::Shutdown::Write).unwrap();
         let mut response = Vec::new();
         let _ = stream.read_to_end(&mut response);
-        assert!(response.is_empty());
+        assert_eq!(response, [] as [u8; 0]);
     }
     let profile = ctl(&socket, &["profile", "get"]);
     assert!(String::from_utf8_lossy(&profile.stdout).contains("Balanced"));

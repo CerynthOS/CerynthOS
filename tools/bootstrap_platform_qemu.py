@@ -50,7 +50,7 @@ def main():
     gpg_home = destination / "gnupg"
     gpg_home.mkdir(mode=0o700, exist_ok=True)
     requested = args.packages_only or ["qemu-system-x86", "qemu-img", *args.extra_package]
-    plan = run("pacman", "-Sp", *(["--nodeps"] if args.skip_dependency_resolution else []), "--print-format", "%n %s %l", *requested)
+    plan = run("pacman", "-Sp", *(["--nodeps", "--nodeps"] if args.skip_dependency_resolution else []), "--print-format", "%n %s %l", *requested)
 
     def prepare(line):
         name, size, url = line.split(maxsplit=2)

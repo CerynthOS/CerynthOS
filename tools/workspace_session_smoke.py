@@ -42,11 +42,26 @@ def main():
             def start(session,code):
                 assert admit_when_healthy(state,session['id'])['decision']=='accept'
                 return rpc(state,{'type':'start','id':session['id'],'operation_id':str(uuid.uuid4()),'launch':{'program':'/usr/bin/python3','args':['-I','-c',code],'initial_input':None,'pty':False}})
-            parent=create('volume-parent',workspaces[0],quota=128*1024**2);start(parent,'import time;print("ready",flush=True);time.sleep(50)')
+            parent=create('volume-parent',workspaces[0],quota=128*1024**2)
+            parent_code=f"""import time,pathlib,json
+pathlib.Path('owner-private').write_text('parent-private-data')
+print('ready',flush=True)
+while not pathlib.Path('probe-now').exists():time.sleep(.02)
+try: pathlib.Path({str(Path(workspaces[1])/'child-private')!r}).read_text()
+except (FileNotFoundError,PermissionError): pass
+else: raise AssertionError('peer workspace read succeeded')
+pathlib.Path('peer-denial.json').write_text(json.dumps({{'peer_workspace_hidden':True}}))
+time.sleep(40)
+"""
+            start(parent,parent_code)
             wait(lambda:'ready' in rpc(state,{'type':'output','id':parent['id'],'offset':0,'limit':4096})['text'])
             child=create('volume-child',workspaces[1],parent['id'])
             code=f'''import pathlib,json,errno
 assert not pathlib.Path({str(volumes/identities[1]/'workspace.ext4')!r}).exists()
+try: pathlib.Path({str(Path(workspaces[0])/'owner-private')!r}).read_text()
+except (FileNotFoundError,PermissionError): pass
+else: raise AssertionError('parent workspace read succeeded')
+pathlib.Path('child-private').write_text('child-private-data')
 total=0;full=False
 with open('agent-payload','wb',buffering=0) as output:
  for _ in range(64):
@@ -59,6 +74,11 @@ print(json.dumps({{'enospc':full,'bytes':total,'backing_image_hidden':True}}),fl
             start(child,code)
             wait(lambda:rpc(state,{'type':'status','id':child['id']})['state'] in ['completed','failed'])
             final=rpc(state,{'type':'status','id':child['id']});assert final['state']=='completed',final
+            assert (Path(workspaces[1])/'child-private').read_text()=='child-private-data'
+            assert (Path(workspaces[0])/'owner-private').read_text()=='parent-private-data'
+            (Path(workspaces[0])/'probe-now').write_text('owner-triggered-peer-probe')
+            wait(lambda:(Path(workspaces[0])/'peer-denial.json').exists())
+            assert json.loads((Path(workspaces[0])/'peer-denial.json').read_text())['peer_workspace_hidden']
             binding=final['execution']['workspace_volume'];assert binding['volume_id']==identities[1] and binding['parent_volume_id']==identities[0]
             output=rpc(state,{'type':'output','id':child['id'],'offset':0,'limit':4096})['text'];receipt=json.loads(output.strip().splitlines()[-1]);assert receipt['enospc'] and receipt['backing_image_hidden']
             forged=root/'forged';forged.mkdir();(forged/'.cerynth-volume.json').write_text(json.dumps({'capacity_bytes':32*1024**2}))
@@ -68,7 +88,7 @@ print(json.dumps({{'enospc':full,'bytes':total,'backing_image_hidden':True}}),fl
             except RuntimeError:denied=True
             assert denied and not (forged/'unauthorized').exists()
             rpc(state,{'type':'stop','id':parent['id']});wait(lambda:not rpc(state,{'type':'status','id':parent['id']})['execution']['resource_allocation']['active'])
-            report={'schema_version':1,'kind':'real-bounded-workspace-agent-sessions','managed_child_hit_enospc':True,
+            report={'schema_version':1,'kind':'real-bounded-workspace-agent-sessions','managed_child_hit_enospc':True,'two_real_agent_processes_peer_workspace_access_denied_both_directions':True,
                 'backing_image_and_owner_journal_hidden_by_sandbox':True,'kernel_mount_and_private_journal_attested':True,
                 'session_and_volume_ancestry_match':True,'forged_workspace_metadata_rejected_before_process':True,
                 'child_workspace_volume':binding,'receipt':receipt,'cloud_requests':0}

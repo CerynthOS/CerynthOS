@@ -64,6 +64,9 @@ impl OperationStateStore {
     ///
     /// An in-memory store (no path) is a no-op: there is nothing durable to
     /// write. This keeps recovery and executor logic uniform.
+    ///
+    /// # Errors
+    /// Returns an error for failed serialization, filesystem writes or invalid persisted records.
     pub fn save(&self) -> Result<()> {
         if let Some(path) = &self.path {
             save_to(path, &self.records)?;
@@ -72,11 +75,17 @@ impl OperationStateStore {
     }
 
     /// Persist to an explicit path atomically.
+    ///
+    /// # Errors
+    /// Returns an error for failed serialization, filesystem writes or invalid persisted records.
     pub fn save_to(path: &Path) -> Result<()> {
         save_to(path, &Self::new().records)
     }
 
     /// Load records from a file.
+    ///
+    /// # Errors
+    /// Returns an error for failed serialization, filesystem writes or invalid persisted records.
     pub fn load(path: PathBuf) -> Result<Self> {
         let data = std::fs::read(&path).with_context(|| format!("read {}", path.display()))?;
         let records: BTreeMap<Uuid, ExecutionRecord> =
@@ -96,13 +105,31 @@ impl OperationStateStore {
 }
 
 fn save_to(path: &Path, records: &BTreeMap<Uuid, ExecutionRecord>) -> Result<()> {
-    let data = serde_json::to_vec_pretty(records).with_context(|| "serialize operation records")?;
+    use std::io::Write;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+    let data = serde_json::to_vec_pretty(records)?;
     let parent = path.parent().context("path has no parent directory")?;
-    std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, &data).with_context(|| format!("write {}", tmp.display()))?;
-    std::fs::rename(&tmp, path).with_context(|| format!("commit {}", path.display()))?;
-    Ok(())
+    if !parent.exists() {
+        std::fs::create_dir_all(parent)?;
+        std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))?;
+    }
+    let tmp = parent.join(format!(".operations-{}.tmp", Uuid::new_v4()));
+    let result = (|| -> Result<()> {
+        let mut output = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&tmp)?;
+        output.write_all(&data)?;
+        output.sync_all()?;
+        std::fs::rename(&tmp, path)?;
+        std::fs::File::open(parent)?.sync_all()?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(tmp);
+    }
+    result
 }
 
 #[cfg(test)]

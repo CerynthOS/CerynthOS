@@ -458,14 +458,14 @@ fn local_auth_inventory(name: &str, success: bool, bytes: &[u8]) -> &'static str
     for line in text.lines() {
         let words: Vec<_> = line.split_whitespace().collect();
         for pair in words.windows(2) {
-            if pair[1].starts_with("credential") {
-                if let Ok(count) = pair[0].trim_start_matches('(').parse::<u32>() {
-                    if count > 0 {
-                        return "credentials_configured";
-                    }
-                    if name == "opencode" {
-                        return "no_saved_credentials";
-                    }
+            if pair[1].starts_with("credential")
+                && let Ok(count) = pair[0].trim_start_matches('(').parse::<u32>()
+            {
+                if count > 0 {
+                    return "credentials_configured";
+                }
+                if name == "opencode" {
+                    return "no_saved_credentials";
                 }
             }
         }

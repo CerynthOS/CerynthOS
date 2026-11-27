@@ -48,6 +48,9 @@ pub fn list_operations(registry: &OperationRegistry) -> DiscoveryResponse {
 }
 
 /// Describe a single operation by ID.
+///
+/// # Errors
+/// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
 pub fn describe_operation(
     registry: &OperationRegistry,
     id: &str,

@@ -124,6 +124,7 @@ impl WorktreeDiscovery {
     }
 
     /// Check whether a resolved path is within any permitted root.
+    #[must_use]
     pub fn is_permitted(&self, path: &Path) -> bool {
         self.permitted_roots
             .iter()
@@ -178,7 +179,7 @@ mod tests {
         assert!(result.is_ok());
         let wt = result.unwrap();
         assert_eq!(wt.resolved_path, temp_dir());
-        assert!(wt.permitted_root == temp_dir());
+        assert_eq!(wt.permitted_root, temp_dir());
     }
 
     #[test]

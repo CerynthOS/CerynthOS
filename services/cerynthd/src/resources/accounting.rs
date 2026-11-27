@@ -57,13 +57,24 @@ impl MachineUsage {
     /// Aggregate CPU usage across all agents.
     #[must_use]
     pub fn total_cpu_usec(&self) -> u64 {
-        self.agents.iter().map(|a| a.cpu_usage_usec).sum()
+        self.root_agents().map(|a| a.cpu_usage_usec).sum()
     }
 
     /// Aggregate current memory usage across all agents.
     #[must_use]
     pub fn total_memory_bytes(&self) -> u64 {
-        self.agents.iter().map(|a| a.memory_current_bytes).sum()
+        self.root_agents().map(|a| a.memory_current_bytes).sum()
+    }
+
+    fn root_agents(&self) -> impl Iterator<Item = &AgentUsage> {
+        self.agents.iter().filter(|agent| {
+            agent.kernel_backed
+                && !self.agents.iter().any(|parent| {
+                    parent.kernel_backed
+                        && parent.cgroup_path != agent.cgroup_path
+                        && agent.cgroup_path.starts_with(&parent.cgroup_path)
+                })
+        })
     }
 
     /// Number of agents with a live process.
@@ -93,6 +104,7 @@ impl AccountingService {
     }
 
     /// Create a service that persists registrations to a file.
+    #[must_use]
     pub fn with_persistence(registrations: RegistrationStore, state_path: PathBuf) -> Self {
         Self {
             registrations,
@@ -112,6 +124,9 @@ impl AccountingService {
     }
 
     /// Persist registrations if a state path is configured.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn persist(&self) -> Result<()> {
         if let Some(path) = &self.state_path {
             self.registrations.save(path)?;
@@ -120,6 +135,9 @@ impl AccountingService {
     }
 
     /// Collect a machine-wide accounting snapshot.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn snapshot(&self) -> Result<MachineUsage> {
         let now_ms = u64::try_from(
             std::time::SystemTime::now()
@@ -164,6 +182,9 @@ impl AccountingService {
     }
 
     /// Get the usage for one agent by ID.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn agent_usage(&self, agent_id: Uuid) -> Result<AgentUsage> {
         let registration = self
             .registrations
@@ -173,13 +194,22 @@ impl AccountingService {
     }
 
     /// Get process info for a registered agent's primary PID.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn process_info(&self, agent_id: Uuid) -> Result<Option<ProcessInfo>> {
         let registration = self
             .registrations
             .get(agent_id)
             .context("agent not registered")?;
         match registration.pid {
-            Some(pid) => ProcessInfo::read(pid),
+            Some(pid) => {
+                let usage = read_agent_usage(registration)?;
+                if !usage.pids.contains(&pid) {
+                    return Ok(None);
+                }
+                ProcessInfo::read(pid)
+            }
             None => Ok(None),
         }
     }
@@ -187,6 +217,7 @@ impl AccountingService {
 
 /// Read kernel accounting for one agent from its cgroup.
 fn read_agent_usage(registration: &AgentRegistration) -> Result<AgentUsage> {
+    super::registration::validate_kernel_boundary(registration)?;
     let session = SessionCgroup::open(registration.cgroup_path.clone(), registration.agent_id)?;
     let usage = session.usage()?;
 
@@ -244,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_reads_kernel_accounting() {
+    fn captured_text_is_not_labelled_kernel_accounting() {
         let cgroup = fixture_cgroup();
         let mut regs = RegistrationStore::new();
         let id = Uuid::new_v4();
@@ -257,14 +288,12 @@ mod tests {
         assert_eq!(snapshot.agents.len(), 1);
         let agent = &snapshot.agents[0];
         assert_eq!(agent.agent_id, id);
-        assert_eq!(agent.cpu_usage_usec, 12345);
-        assert_eq!(agent.cpu_throttled_periods, 2);
-        assert_eq!(agent.memory_current_bytes, 67890);
-        assert_eq!(agent.memory_limit_bytes, Some(104857600));
-        assert!(agent.kernel_backed);
-        assert_eq!(snapshot.total_cpu_usec(), 12345);
-        assert_eq!(snapshot.total_memory_bytes(), 67890);
-        assert_eq!(snapshot.running_agents(), 0); // populated=0 in fixture
+        assert_eq!(agent.cpu_usage_usec, 0);
+        assert!(!agent.kernel_backed);
+        assert_eq!(snapshot.read_errors.len(), 1);
+        assert_eq!(snapshot.total_cpu_usec(), 0);
+        assert_eq!(snapshot.total_memory_bytes(), 0);
+        assert_eq!(snapshot.running_agents(), 0);
 
         let _ = std::fs::remove_dir_all(&cgroup);
     }
@@ -283,13 +312,13 @@ mod tests {
         let service = AccountingService::new(regs);
         let snapshot = service.snapshot().unwrap();
         assert_eq!(snapshot.agents.len(), 2);
-        assert_eq!(snapshot.read_errors.len(), 1);
+        assert_eq!(snapshot.read_errors.len(), 2);
         let good_usage = snapshot
             .agents
             .iter()
             .find(|a| a.agent_id == good_id)
             .unwrap();
-        assert!(good_usage.kernel_backed);
+        assert!(!good_usage.kernel_backed);
         let bad_usage = snapshot
             .agents
             .iter()

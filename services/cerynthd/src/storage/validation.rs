@@ -4,14 +4,14 @@
 //! and unauthorized cross-agent volume access.
 
 use anyhow::{Context, Result, ensure};
-use nix::sys::stat::{self, Mode};
+use nix::sys::stat;
 use nix::unistd::Uid;
 use std::path::{Path, PathBuf};
 
 /// Protected mount points that must never be mounted over.
 const PROTECTED_PREFIXES: &[&str] = &[
-    "/proc", "/sys", "/dev", "/run", "/boot", "/etc", "/var", "/usr", "/bin", "/sbin", "/lib",
-    "/lib64",
+    "/proc", "/sys", "/dev", "/run", "/boot", "/etc", "/var/lib", "/var/run", "/var/log", "/usr",
+    "/bin", "/sbin", "/lib", "/lib64",
 ];
 
 /// A permitted root directory for worktree discovery.
@@ -31,6 +31,9 @@ pub struct WorktreeValidator {
 
 impl WorktreeValidator {
     /// Create a new validator with permitted roots owned by the given UID.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn new(roots: Vec<(PathBuf, u32)>) -> Result<Self> {
         ensure!(!roots.is_empty(), "at least one permitted root is required");
         let mut permitted_roots = Vec::new();
@@ -82,13 +85,24 @@ impl WorktreeValidator {
     }
 
     /// Check that a mount target path does not overlap with an existing volume mount.
-    pub fn check_mount_conflict(&self, _target: &Path, _existing_mounts: &[PathBuf]) -> Result<()> {
-        // Mount conflict checking is performed by the mount manager using
-        // /proc/self/mountinfo. This is a placeholder for future extension.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
+    pub fn check_mount_conflict(&self, target: &Path, existing_mounts: &[PathBuf]) -> Result<()> {
+        ensure!(target.is_absolute(), "mount target must be absolute");
+        for existing in existing_mounts {
+            ensure!(
+                !target.starts_with(existing) && !existing.starts_with(target),
+                "mount target overlaps an existing volume"
+            );
+        }
         Ok(())
     }
 
     /// Verify that the current UID owns the given path.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn check_ownership(&self, path: &Path) -> Result<()> {
         let metadata = nix::sys::stat::stat(path)
             .with_context(|| format!("cannot stat path: {}", path.display()))?;
@@ -102,24 +116,35 @@ impl WorktreeValidator {
     }
 
     /// Verify that a path has private permissions (owner-only access).
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn check_private_permissions(&self, path: &Path, is_directory: bool) -> Result<()> {
         let metadata =
             stat::lstat(path).with_context(|| format!("cannot lstat path: {}", path.display()))?;
-        let mode = Mode::from_bits_truncate(metadata.st_mode);
-
         let expected = if is_directory { 0o700 } else { 0o600 };
         ensure!(
-            mode.contains(Mode::from_bits_truncate(expected))
-                && !mode.intersects(
-                    !Mode::from_bits_truncate(0o777) | Mode::from_bits_truncate(expected)
-                ),
-            "path does not have required private permissions: {}",
-            path.display()
+            metadata.st_mode & 0o7777 == expected,
+            "path must have exact private permissions"
+        );
+        let kind = metadata.st_mode & libc::S_IFMT;
+        ensure!(
+            kind == if is_directory {
+                libc::S_IFDIR
+            } else {
+                libc::S_IFREG
+            },
+            "path has wrong type or is a symlink"
+        );
+        ensure!(
+            metadata.st_uid == Uid::current().as_raw(),
+            "path must belong to current owner"
         );
         Ok(())
     }
 
     /// List the permitted roots.
+    #[must_use]
     pub fn permitted_roots(&self) -> &[PermittedRoot] {
         &self.permitted_roots
     }
@@ -129,6 +154,25 @@ impl WorktreeValidator {
 mod tests {
     use super::*;
     use std::env::temp_dir;
+
+    #[test]
+    fn exact_private_mode_and_mount_overlap_are_enforced() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = temp_dir().join(format!("private-check-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let validator =
+            WorktreeValidator::new(vec![(root.clone(), Uid::current().as_raw())]).unwrap();
+        std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(validator.check_private_permissions(&root, true).is_ok());
+        std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(validator.check_private_permissions(&root, true).is_err());
+        assert!(
+            validator
+                .check_mount_conflict(&root.join("child"), std::slice::from_ref(&root))
+                .is_err()
+        );
+        std::fs::remove_dir(&root).unwrap();
+    }
 
     #[test]
     fn rejects_relative_path() {

@@ -4,7 +4,7 @@
 //! operations as interrupted, then prepares resumable ones for retry. Completed
 //! operations are never accidentally re-executed.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use uuid::Uuid;
 
 use crate::operations::lifecycle::{ExecutionRecord, OperationState};
@@ -22,6 +22,9 @@ pub struct RecoveryReport {
 }
 
 /// Recover operation state after a crash or daemon restart.
+///
+/// # Errors
+/// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
 pub fn recover(
     store: &mut OperationStateStore,
     registry: &crate::operations::registry::OperationRegistry,
@@ -34,15 +37,15 @@ pub fn recover(
 
     let ids: Vec<Uuid> = store.list().iter().map(|r| r.instance_id).collect();
     for id in ids {
-        let record = store.get_mut(id).expect("record was just listed");
+        let record = store
+            .get_mut(id)
+            .context("listed operation disappeared during recovery")?;
         if record.state.is_terminal() {
             report.terminal_preserved += 1;
             continue;
         }
         if record.state == OperationState::Running {
-            record
-                .transition(OperationState::Interrupted)
-                .expect("running -> interrupted is always valid");
+            record.transition(OperationState::Interrupted)?;
             report.interrupted.push(id);
         }
         if record.state.is_resumable() {
@@ -50,9 +53,7 @@ pub fn recover(
                 .get(&record.operation_id)
                 .is_some_and(|op| op.resumable);
             if can_resume {
-                record
-                    .mark_resumable()
-                    .expect("interrupted -> resumable is always valid");
+                record.mark_resumable()?;
                 report.resumable.push(id);
             }
         }
@@ -62,6 +63,9 @@ pub fn recover(
 }
 
 /// Prepare a specific record for resume on a fresh executor.
+///
+/// # Errors
+/// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
 pub fn prepare_resume(
     record: &mut ExecutionRecord,
 ) -> Result<(), crate::operations::lifecycle::LifecycleError> {
@@ -115,7 +119,7 @@ mod tests {
 
         let report = recover(&mut store, &registry).unwrap();
         assert_eq!(report.terminal_preserved, 1);
-        assert!(report.interrupted.is_empty());
+        assert_eq!(report.interrupted, [] as [uuid::Uuid; 0]);
         assert_eq!(store.get(id).unwrap().state, OperationState::Completed);
     }
 
@@ -129,7 +133,7 @@ mod tests {
 
         let report = recover(&mut store, &registry).unwrap();
         assert_eq!(report.interrupted, vec![id]);
-        assert!(report.resumable.is_empty());
+        assert_eq!(report.resumable, [] as [uuid::Uuid; 0]);
         assert_eq!(store.get(id).unwrap().state, OperationState::Interrupted);
     }
 }

@@ -34,6 +34,9 @@ impl OperationState {
     }
 
     /// Validate a transition. Returns an error if the transition is illegal.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn validate_transition(self, next: Self) -> Result<(), LifecycleError> {
         let valid = matches!(
             (self, next),
@@ -123,6 +126,9 @@ impl ExecutionRecord {
     }
 
     /// Transition to a new state, validating the transition.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn transition(&mut self, next: OperationState) -> Result<(), LifecycleError> {
         self.state.validate_transition(next)?;
         self.state = next;
@@ -131,11 +137,17 @@ impl ExecutionRecord {
     }
 
     /// Mark as interrupted (crash, daemon restart, etc.).
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn interrupt(&mut self) -> Result<(), LifecycleError> {
         self.transition(OperationState::Interrupted)
     }
 
     /// Mark as resumable after diagnostics confirm it is safe to resume.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn mark_resumable(&mut self) -> Result<(), LifecycleError> {
         if !self.state.is_resumable() {
             return Err(LifecycleError::NotResumable(self.state));
@@ -144,6 +156,9 @@ impl ExecutionRecord {
     }
 
     /// Prepare for a resumed attempt: increment attempts and mark running.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn begin_resume(&mut self) -> Result<(), LifecycleError> {
         if !self.state.is_resumable() {
             return Err(LifecycleError::NotResumable(self.state));
@@ -153,6 +168,9 @@ impl ExecutionRecord {
     }
 
     /// Mark as completed with output.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn complete(&mut self, output: serde_json::Value) -> Result<(), LifecycleError> {
         if self.state != OperationState::Running {
             return Err(LifecycleError::IllegalTransition(
@@ -166,6 +184,9 @@ impl ExecutionRecord {
     }
 
     /// Mark as failed with an error.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn fail(&mut self, error: impl Into<String>) -> Result<(), LifecycleError> {
         if self.state != OperationState::Running {
             return Err(LifecycleError::IllegalTransition(

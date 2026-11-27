@@ -23,11 +23,17 @@ pub struct MachineMemory {
 
 impl MachineMemory {
     /// Read memory information from `/proc/meminfo`.
+    ///
+    /// # Errors
+    /// Returns an error if the memory information cannot be read or parsed.
     pub fn read() -> Result<Self> {
         Self::read_from(Path::new("/proc/meminfo"))
     }
 
     /// Read from an explicit meminfo path (for tests/fixtures).
+    ///
+    /// # Errors
+    /// Returns an error if the memory information cannot be read or parsed.
     pub fn read_from(path: &Path) -> Result<Self> {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
@@ -70,9 +76,9 @@ mod tests {
         )
         .unwrap();
         let mem = MachineMemory::read_from(&path).unwrap();
-        assert_eq!(mem.total_bytes, Some(16384000 * 1024));
-        assert_eq!(mem.free_bytes, Some(8192000 * 1024));
-        assert_eq!(mem.available_bytes, Some(12288000 * 1024));
+        assert_eq!(mem.total_bytes, Some(16_384_000 * 1024));
+        assert_eq!(mem.free_bytes, Some(8_192_000 * 1024));
+        assert_eq!(mem.available_bytes, Some(12_288_000 * 1024));
         assert_eq!(mem.swap_total_bytes, Some(0));
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -236,10 +236,10 @@ impl AgentService {
         let mut runtime = self.runtime.lock().await;
         let source = runtime.registry.get(id)?;
         if let Some(allocation) = &source.execution.resource_allocation {
-            if let Some(client) = &self.shared_resources {
-                if source.spec.runtime.parent_id.is_none() {
-                    client.verify(&source)?;
-                }
+            if let Some(client) = &self.shared_resources
+                && source.spec.runtime.parent_id.is_none()
+            {
+                client.verify(&source)?;
             }
             ensure!(
                 allocation.active,
@@ -264,16 +264,17 @@ impl AgentService {
             "admit the parent before creating its children"
         );
         let mut decision = local_admission(hierarchy, &runtime.registry, &source, minimum)?;
-        if source.spec.runtime.parent_id.is_none() && self.shared_resources.is_some() {
-            if let Some(granted) = decision.granted() {
-                decision = self.reserve_shared(&source, granted, minimum).await?;
-                if let Some(granted) = decision.granted().cloned() {
-                    decision = if granted == source.spec.runtime.budget {
-                        admission::Decision::Accept { granted }
-                    } else {
-                        admission::Decision::Reduce { granted }
-                    };
-                }
+        if source.spec.runtime.parent_id.is_none()
+            && self.shared_resources.is_some()
+            && let Some(granted) = decision.granted()
+        {
+            decision = self.reserve_shared(&source, granted, minimum).await?;
+            if let Some(granted) = decision.granted().cloned() {
+                decision = if granted == source.spec.runtime.budget {
+                    admission::Decision::Accept { granted }
+                } else {
+                    admission::Decision::Reduce { granted }
+                };
             }
         }
         let mut response = serde_json::to_value(&decision)?;
@@ -503,11 +504,11 @@ impl AgentService {
             if let Some(unit) = &session.execution.resource_slice {
                 systemd::stop(unit).await?;
             }
-            if session.spec.runtime.parent_id.is_none() {
-                if let Some(client) = &self.shared_resources {
-                    self.revoke_shared_inference(session.id).await?;
-                    client.authority.release(&client.owner, session.id)?;
-                }
+            if session.spec.runtime.parent_id.is_none()
+                && let Some(client) = &self.shared_resources
+            {
+                self.revoke_shared_inference(session.id).await?;
+                client.authority.release(&client.owner, session.id)?;
             }
             self.runtime.lock().await.registry.update(session.id, |s| {
                 s.execution.resource_cleanup_pending = false;

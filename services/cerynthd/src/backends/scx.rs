@@ -141,7 +141,7 @@ impl ScxBackend {
             return false;
         };
 
-        let process_alive = unsafe { libc::kill(pid as i32, 0) == 0 };
+        let process_alive = signal_scheduler(pid, None).is_ok();
 
         if !process_alive {
             return false;
@@ -155,7 +155,7 @@ impl ScxBackend {
     }
 
     /// Verifies the heartbeat file contains the expected profile.
-    fn verify_profile_in_heartbeat(&self, expected_profile: Profile) -> Result<bool, String> {
+    fn verify_profile_in_heartbeat(expected_profile: Profile) -> Result<bool, String> {
         let contents = std::fs::read_to_string(heartbeat_path())
             .map_err(|e| format!("failed to read heartbeat file: {e}"))?;
 
@@ -216,7 +216,7 @@ impl ScxBackend {
 
             if self.scheduler_is_healthy() {
                 // Verify the profile matches
-                match self.verify_profile_in_heartbeat(expected_profile) {
+                match Self::verify_profile_in_heartbeat(expected_profile) {
                     Ok(true) => return Ok(()),
                     Ok(false) => {
                         // Profile doesn't match yet, continue waiting
@@ -282,10 +282,10 @@ impl ScxBackend {
 
 impl Drop for ScxBackend {
     fn drop(&mut self) {
-        if self.child.is_some() {
-            if let Err(error) = self.stop() {
-                eprintln!("cerynthd: owned scheduler cleanup failed: {error}");
-            }
+        if self.child.is_some()
+            && let Err(error) = self.stop()
+        {
+            eprintln!("cerynthd: owned scheduler cleanup failed: {error}");
         }
     }
 }
@@ -369,7 +369,7 @@ impl Backend for ScxBackend {
     fn verify_post_switch_health(&mut self, expected_profile: Profile) -> Result<(), String> {
         // Reuse the existing health check: process alive + sched_ext active + heartbeat fresh + profile matches
         if self.scheduler_is_healthy() {
-            match self.verify_profile_in_heartbeat(expected_profile) {
+            match Self::verify_profile_in_heartbeat(expected_profile) {
                 Ok(true) => Ok(()),
                 Ok(false) => Err(format!(
                     "profile mismatch: heartbeat reports different profile than expected {expected_profile:?}"
@@ -398,13 +398,13 @@ impl Backend for ScxBackend {
                 previous_good_profile,
             };
         }
-        if self.child.is_some() {
-            if let Err(e) = self.stop() {
-                return RollbackResult::Failed {
-                    error: format!("failed to stop scheduler during rollback: {e}"),
-                    previous_good_profile,
-                };
-            }
+        if self.child.is_some()
+            && let Err(e) = self.stop()
+        {
+            return RollbackResult::Failed {
+                error: format!("failed to stop scheduler during rollback: {e}"),
+                previous_good_profile,
+            };
         }
 
         // Step 2: Attempt to start the previous good profile
@@ -451,12 +451,10 @@ impl Backend for ScxBackend {
             .ok_or_else(|| "no scheduler is currently running".to_string())?;
 
         // First attempt graceful termination.
-        if unsafe { libc::kill(pid as i32, libc::SIGTERM) } != 0 {
-            let error = std::io::Error::last_os_error();
-
+        if let Err(error) = signal_scheduler(pid, Some(nix::sys::signal::Signal::SIGTERM)) {
             // If the process disappeared between reap_child() and kill(),
             // treat it as already stopped.
-            if error.raw_os_error() == Some(libc::ESRCH) {
+            if error == nix::errno::Errno::ESRCH {
                 self.child = None;
                 self.pid = None;
                 return Ok(());
@@ -475,15 +473,14 @@ impl Backend for ScxBackend {
 
                 Ok(None) => {
                     if Instant::now() >= deadline {
-                        if unsafe { libc::kill(pid as i32, libc::SIGKILL) } != 0 {
-                            let error = std::io::Error::last_os_error();
-
-                            if error.raw_os_error() != Some(libc::ESRCH) {
-                                return Err(format!(
-                                    "failed to send SIGKILL to scheduler \
+                        if let Err(error) =
+                            signal_scheduler(pid, Some(nix::sys::signal::Signal::SIGKILL))
+                            && error != nix::errno::Errno::ESRCH
+                        {
+                            return Err(format!(
+                                "failed to send SIGKILL to scheduler \
                                      (pid {pid}): {error}"
-                                ));
-                            }
+                            ));
                         }
 
                         child
@@ -517,6 +514,17 @@ impl Backend for ScxBackend {
 
         self.start()
     }
+}
+
+fn signal_scheduler(
+    pid: u32,
+    signal: Option<nix::sys::signal::Signal>,
+) -> Result<(), nix::errno::Errno> {
+    let pid = i32::try_from(pid).map_err(|_| nix::errno::Errno::EINVAL)?;
+    if pid <= 0 {
+        return Err(nix::errno::Errno::EINVAL);
+    }
+    nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), signal)
 }
 
 #[cfg(test)]

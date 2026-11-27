@@ -862,13 +862,12 @@ pub async fn serve_with_http(
         let _ = grant.revoked.send(true);
     }
     let _ = http_stop.send(());
-    if let Some(mut http) = http {
-        if tokio::time::timeout(Duration::from_secs(5), &mut http)
+    if let Some(mut http) = http
+        && tokio::time::timeout(Duration::from_secs(5), &mut http)
             .await
             .is_err()
-        {
-            http.abort();
-        }
+    {
+        http.abort();
     }
     tasks.abort_all();
     while tasks.join_next().await.is_some() {}

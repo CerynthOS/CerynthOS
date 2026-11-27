@@ -50,7 +50,7 @@ remains historical evidence for the baseline and its 123 kernel/SCX checks.
 | Workspace capacity | Actual fixed filesystem capacity and ENOSPC; sandbox hides backing image/journal | Other filesystems depend on the sandbox; external-metadata Git worktree seeds are rejected |
 | GPU | Existing shared cooperative accounting integration | No new hardware VRAM partitioning guarantee |
 | Desktop | Wayland/Observer and measured VM D-Bus replies under load | No physical input-to-photon, display/GPU-driver or energy claim |
-| Images/signatures | Booted UEFI disk images and authenticated development artifacts | Secure Boot and public release trust are separate |
+| Images/signatures | Booted UEFI images; real Secure Boot matrix and optional signed dm-verity image with corruption rejection | Disposable VM keys; physical enrollment, public trust and persistent verified-root A/B remain separate |
 
 The production resource hierarchy continues refusing SCX CPU control. The
 experimental slice policy did not demonstrate a useful CPU-share improvement;
@@ -79,3 +79,12 @@ The software and VM evidence cannot complete these actions by itself:
 
 These gates remain explicit. The development images and passing tests do not
 certify that every Person 1 public-alpha requirement is complete.
+
+## November 27 native follow-up
+
+The [nonphysical qualification](nonphysical-qualification.md) resolves the earlier
+WSL-only execution gaps on the native Linux development host: local version pins,
+real cgroup throttling/OOM, actual FUSE owner/helper crash recovery, bidirectional
+sandboxed workspace-read denial, independent signing verification, OVMF Secure
+Boot acceptance/rejection and signed verified-root corruption detection. It adds
+no new privileged daemon IPC surface and supplies no human release approval.

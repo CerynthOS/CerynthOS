@@ -199,10 +199,10 @@ pub fn recover_agent(session: &Session) -> Result<()> {
         return Ok(());
     }
     // Blocking, bounded startup cleanup before accepting any new client.
-    if let Some(process) = &session.execution.process {
-        if matching(process) || !group_members(process).is_empty() {
-            signal_group(process, Signal::SIGKILL);
-        }
+    if let Some(process) = &session.execution.process
+        && (matching(process) || !group_members(process).is_empty())
+    {
+        signal_group(process, Signal::SIGKILL);
     }
     if let Some(unit) = &session.execution.cgroup_unit {
         ensure!(

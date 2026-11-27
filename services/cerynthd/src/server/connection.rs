@@ -50,7 +50,7 @@ pub async fn handle_connection(stream: UnixStream, backend: SharedBackend) -> st
     let response = {
         let mut backend = backend.lock().await;
 
-        let response = handle_request(&mut **backend, request);
+        let response = handle_request(&mut **backend, &request);
 
         // Persist runtime state derived from the backend's own status so
         // profile/adaptation changes survive a daemon restart.

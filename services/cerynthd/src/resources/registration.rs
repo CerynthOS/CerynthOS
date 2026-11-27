@@ -7,6 +7,8 @@
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -104,6 +106,9 @@ impl AgentRegistration {
     }
 
     /// Validate internal consistency.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn validate(&self) -> Result<()> {
         ensure!(
             self.cgroup_path.is_absolute(),
@@ -127,6 +132,22 @@ impl AgentRegistration {
     }
 }
 
+/// Reject text fixtures and redirected paths before claiming kernel enforcement.
+pub(crate) fn validate_kernel_boundary(registration: &AgentRegistration) -> Result<()> {
+    registration.validate()?;
+    let path = &registration.cgroup_path;
+    ensure!(
+        path.canonicalize()? == *path,
+        "cgroup boundary must not contain symlinks"
+    );
+    let filesystem = nix::sys::statfs::statfs(path)?;
+    ensure!(
+        filesystem.filesystem_type() == nix::sys::statfs::FsType(0x6367_7270),
+        "boundary is not on the kernel cgroup v2 filesystem"
+    );
+    Ok(())
+}
+
 /// An in-memory store of registered agents.
 #[derive(Debug, Default)]
 pub struct RegistrationStore {
@@ -142,6 +163,9 @@ impl RegistrationStore {
     }
 
     /// Register an agent. Returns an error if the ID or cgroup path is already in use.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn register(&mut self, registration: AgentRegistration) -> Result<(), RegistrationError> {
         registration.validate().map_err(|_| {
             RegistrationError::InvalidState(registration.agent_id, registration.state)
@@ -188,6 +212,9 @@ impl RegistrationStore {
     }
 
     /// Update the execution state of an agent.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn set_state(
         &mut self,
         agent_id: Uuid,
@@ -202,6 +229,9 @@ impl RegistrationStore {
     }
 
     /// Update the process identity of an agent.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn set_process(
         &mut self,
         agent_id: Uuid,
@@ -218,6 +248,9 @@ impl RegistrationStore {
     }
 
     /// Remove a registration.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn unregister(&mut self, agent_id: Uuid) -> Result<AgentRegistration, RegistrationError> {
         let registration = self
             .agents
@@ -228,6 +261,9 @@ impl RegistrationStore {
     }
 
     /// Persist registrations to a JSON file atomically.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn save(&self, path: &Path) -> Result<()> {
         let data = serde_json::to_vec_pretty(&self.agents)
             .with_context(|| "failed to serialize registrations")?;
@@ -236,15 +272,30 @@ impl RegistrationStore {
             .context("registration path has no parent directory")?;
         std::fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
-        let tmp = path.with_extension("tmp");
-        std::fs::write(&tmp, &data)
-            .with_context(|| format!("failed to write {}", tmp.display()))?;
-        std::fs::rename(&tmp, path)
-            .with_context(|| format!("failed to commit {}", path.display()))?;
+        let tmp = parent.join(format!(".registrations-{}.tmp", Uuid::new_v4()));
+        let result = (|| -> Result<()> {
+            let mut output = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&tmp)?;
+            output.write_all(&data)?;
+            output.sync_all()?;
+            std::fs::rename(&tmp, path)?;
+            std::fs::File::open(parent)?.sync_all()?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        result?;
         Ok(())
     }
 
     /// Load registrations from a JSON file.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn load(path: &Path) -> Result<Self> {
         let data =
             std::fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;

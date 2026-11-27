@@ -105,14 +105,14 @@ pub async fn inventory() -> Result<HardwareInventory> {
     {
         for line in csv.lines() {
             let fields: Vec<_> = line.split(',').map(str::trim).collect();
-            if fields.len() == 3 {
-                if let Ok(pid) = fields[1].parse() {
-                    gpu_processes.push(GpuProcess {
-                        device_id: fields[0].into(),
-                        pid,
-                        used_bytes: mib(fields[2]),
-                    });
-                }
+            if fields.len() == 3
+                && let Ok(pid) = fields[1].parse()
+            {
+                gpu_processes.push(GpuProcess {
+                    device_id: fields[0].into(),
+                    pid,
+                    used_bytes: mib(fields[2]),
+                });
             }
         }
     }
@@ -333,11 +333,11 @@ impl GpuBroker {
                 .saturating_sub(used)
                 .saturating_sub(self.desktop_reserve_bytes)
                 .saturating_sub(reserved);
-            if job.request.memory_bytes <= available {
-                if let Some(job) = self.jobs.get_mut(&id) {
-                    job.state = JobState::Admitted;
-                    job.admitted_at_ms = Some(now_ms);
-                }
+            if job.request.memory_bytes <= available
+                && let Some(job) = self.jobs.get_mut(&id)
+            {
+                job.state = JobState::Admitted;
+                job.admitted_at_ms = Some(now_ms);
             }
         }
     }

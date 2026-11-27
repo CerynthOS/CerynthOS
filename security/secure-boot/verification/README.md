@@ -38,5 +38,9 @@ from performing the verification.
 4. Kernel signed by a revoked key -> firmware rejects.
 5. Failed update leaves prior kernel bootable.
 
-Each case needs a live OVMF variable store and QEMU. No results are claimed
-here.
+Each case needs a live OVMF variable store and QEMU. The executed six-case
+matrix and its limits are documented in
+[nonphysical qualification](../../../docs/platform/nonphysical-qualification.md).
+These VM results do not qualify physical firmware or production keys.
+
+Signature listing uses explicit `--list`; certificate verification requires `--cert`. A listing is not reported as trust verification.

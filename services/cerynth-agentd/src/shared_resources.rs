@@ -226,14 +226,14 @@ impl AgentService {
         let mut free = BTreeMap::new();
         if requested.gpu_memory_bytes > 0 {
             for gpu in cerynth_resources::inventory().await?.gpus {
-                if let (Some(total), Some(used)) = (gpu.total_bytes, gpu.used_bytes) {
-                    if let Some(policy) = policy.accelerators.get(&gpu.id) {
-                        ensure!(
-                            policy.total_bytes <= total,
-                            "authority GPU capacity exceeds discovered hardware"
-                        );
-                        free.insert(gpu.id, total.saturating_sub(used));
-                    }
+                if let (Some(total), Some(used)) = (gpu.total_bytes, gpu.used_bytes)
+                    && let Some(policy) = policy.accelerators.get(&gpu.id)
+                {
+                    ensure!(
+                        policy.total_bytes <= total,
+                        "authority GPU capacity exceeds discovered hardware"
+                    );
+                    free.insert(gpu.id, total.saturating_sub(used));
                 }
             }
         }

@@ -3,6 +3,7 @@
 # Private keys are written to security/secure-boot/keys/test/ and are gitignored.
 # NEVER enroll these keys on physical hardware.
 set -euo pipefail
+umask 077
 
 ROOT="$(git rev-parse --show-toplevel)"
 KEYDIR="$ROOT/security/secure-boot/keys/test"

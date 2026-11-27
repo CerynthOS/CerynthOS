@@ -26,10 +26,13 @@ impl CpuTopology {
     /// # Errors
     /// Returns an error only if the sysfs root cannot be read at all.
     pub fn discover() -> Result<Self> {
-        Self::discover_from(Path::new("/sys/devices/system/cpu"))
+        Self::discover_from(Path::new("/sys/devices/system"))
     }
 
     /// Discover topology from an explicit sysfs root (for tests/fixtures).
+    ///
+    /// # Errors
+    /// Returns an error if the sysfs CPU directory cannot be read.
     pub fn discover_from(root: &Path) -> Result<Self> {
         let cpu_root = root.join("cpu");
         let mut logical_cpus = Vec::new();
@@ -37,10 +40,18 @@ impl CpuTopology {
         let mut node_ids = Vec::new();
         let mut thread_siblings = Vec::new();
 
-        let entries =
-            std::fs::read_dir(&cpu_root).with_context(|| format!("read {}", cpu_root.display()))?;
+        let mut entries = std::fs::read_dir(&cpu_root)
+            .with_context(|| format!("read {}", cpu_root.display()))?
+            .collect::<std::io::Result<Vec<_>>>()?;
+        entries.sort_by_key(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .strip_prefix("cpu")
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(u32::MAX)
+        });
         for entry in entries {
-            let entry = entry?;
             let name = entry.file_name();
             let Some(name) = name.to_str() else { continue };
             let Some(index) = name.strip_prefix("cpu").and_then(|s| s.parse::<u32>().ok()) else {
@@ -51,12 +62,11 @@ impl CpuTopology {
             }
             logical_cpus.push(index);
             core_ids.push(read_u32(&entry.path().join("topology/core_id")));
-            node_ids.push(read_host_node(&entry.path().join("node")));
+            node_ids.push(read_host_node(&entry.path()));
             thread_siblings.push(
                 read_list(&entry.path().join("topology/thread_siblings_list")).unwrap_or_default(),
             );
         }
-        logical_cpus.sort_unstable();
 
         Ok(Self {
             logical_cpus,
@@ -84,12 +94,17 @@ fn read_u32(path: &Path) -> Option<u32> {
 }
 
 fn read_host_node(path: &Path) -> Option<u32> {
-    if !path.is_dir() {
-        return None;
-    }
-    let target = std::fs::read_link(path).ok()?;
-    let name = target.file_name()?.to_str()?;
-    name.strip_prefix("node")?.parse().ok()
+    std::fs::read_dir(path)
+        .ok()?
+        .filter_map(Result::ok)
+        .find_map(|entry| {
+            entry
+                .file_name()
+                .to_str()?
+                .strip_prefix("node")?
+                .parse()
+                .ok()
+        })
 }
 
 fn read_list(path: &Path) -> Option<Vec<u32>> {

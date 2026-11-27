@@ -1,4 +1,3 @@
-use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::sync::Arc;
 
@@ -36,15 +35,12 @@ pub async fn start_server(backend: SharedBackend, auto_start: bool) -> std::io::
         .mode(0o600)
         .custom_flags(libc::O_NOFOLLOW)
         .open(lock_path)?;
-    // SAFETY: geteuid takes no arguments and has no memory preconditions.
-    let owner = unsafe { libc::geteuid() };
+    let owner = nix::unistd::Uid::effective().as_raw();
     if lock.metadata()?.uid() != owner {
         return Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
     }
-    // SAFETY: lock is a live file descriptor, held until this function returns.
-    if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-        return Err(std::io::Error::last_os_error());
-    }
+    let _endpoint_lock = nix::fcntl::Flock::lock(lock, nix::fcntl::FlockArg::LockExclusiveNonblock)
+        .map_err(|(_, error)| std::io::Error::from_raw_os_error(error as i32))?;
     match std::fs::symlink_metadata(socket) {
         Ok(metadata) => {
             if !metadata.file_type().is_socket() || metadata.uid() != owner {
@@ -71,7 +67,7 @@ pub async fn start_server(backend: SharedBackend, auto_start: bool) -> std::io::
                         std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
                     ) =>
                 {
-                    std::fs::remove_file(socket)?
+                    std::fs::remove_file(socket)?;
                 }
                 Ok(Err(e)) => return Err(e),
             }
@@ -119,8 +115,10 @@ pub async fn start_server(backend: SharedBackend, auto_start: bool) -> std::io::
             _ = &mut shutdown => {
                 println!("Shutting down daemon...");
                 let mut backend = backend.lock().await;
-                if backend.status().is_ok_and(|status| status.running) {
-                    if let Err(error) = backend.stop() { eprintln!("Scheduler shutdown failed: {error}"); }
+                if backend.status().is_ok_and(|status| status.running)
+                    && let Err(error) = backend.stop()
+                {
+                    eprintln!("Scheduler shutdown failed: {error}");
                 }
 
                 if socket.exists() {

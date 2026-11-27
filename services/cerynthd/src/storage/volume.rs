@@ -66,12 +66,13 @@ pub struct VolumeRecord {
 }
 
 /// Manages volume creation, metadata, and lifecycle state.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct VolumeManager {
     /// Root directory where all volume state is stored.
     root: PathBuf,
     /// Total capacity available for all volumes.
     capacity_bytes: u64,
+    _lock: nix::fcntl::Flock<std::fs::File>,
 }
 
 impl VolumeManager {
@@ -103,6 +104,11 @@ impl VolumeManager {
         std::fs::set_permissions(root, Permissions::from_mode(0o700))
             .with_context(|| format!("failed to set permissions on {}", root.display()))?;
 
+        let lock = lock_authority(root)?;
+        ensure!(
+            !journal_path.exists(),
+            "volume authority already initialized"
+        );
         let journal = VolumeJournal {
             version: 1,
             capacity_bytes,
@@ -113,6 +119,7 @@ impl VolumeManager {
         Ok(Self {
             root: root.to_path_buf(),
             capacity_bytes,
+            _lock: lock,
         })
     }
 
@@ -121,6 +128,7 @@ impl VolumeManager {
     /// # Errors
     /// Returns an error if the journal is missing or invalid.
     pub fn load(root: &Path) -> Result<Self> {
+        let lock = lock_authority(root)?;
         let journal_path = root.join("volumes.json");
         ensure!(
             journal_path.exists(),
@@ -138,6 +146,7 @@ impl VolumeManager {
         Ok(Self {
             root: root.to_path_buf(),
             capacity_bytes: journal.capacity_bytes,
+            _lock: lock,
         })
     }
 
@@ -167,11 +176,11 @@ impl VolumeManager {
             "subtree max exceeds volume authority capacity"
         );
         ensure!(
-            image_bytes % 4096 == 0,
+            image_bytes.is_multiple_of(4096),
             "image bytes must be aligned to 4 KiB"
         );
         ensure!(
-            subtree_bytes_max % 4096 == 0,
+            subtree_bytes_max.is_multiple_of(4096),
             "subtree max must be aligned to 4 KiB"
         );
 
@@ -183,17 +192,7 @@ impl VolumeManager {
         );
 
         // Check capacity against existing root volumes.
-        let existing_root_usage: u64 = journal
-            .volumes
-            .values()
-            .filter(|v| v.status != VolumeStatus::Removing)
-            .filter(|v| {
-                v.worktree_path.parent().is_some_and(|p| {
-                    p == worktree.permitted_root || p.starts_with(&worktree.permitted_root)
-                })
-            })
-            .map(|v| v.subtree_bytes_max)
-            .sum();
+        let existing_root_usage: u64 = journal.volumes.values().map(|v| v.subtree_bytes_max).sum();
         ensure!(
             existing_root_usage
                 .checked_add(subtree_bytes_max)
@@ -207,7 +206,7 @@ impl VolumeManager {
         let image_path = volume_dir.join("workspace.ext4");
 
         // Create the volume directory with private permissions.
-        std::fs::create_dir_all(&volume_dir).with_context(|| {
+        std::fs::create_dir(&volume_dir).with_context(|| {
             format!(
                 "failed to create volume directory: {}",
                 volume_dir.display()
@@ -225,9 +224,8 @@ impl VolumeManager {
 
         // Create the backing image file (sparse, will be formatted on mount).
         let image_file = std::fs::OpenOptions::new()
-            .create(true)
+            .create_new(true)
             .write(true)
-            .truncate(true)
             .open(&image_path)
             .with_context(|| format!("failed to create volume image: {}", image_path.display()))?;
         image_file
@@ -382,7 +380,7 @@ impl VolumeManager {
             !journal
                 .volumes
                 .values()
-                .any(|v| v.worktree_path.starts_with(&entry.worktree_path)),
+                .any(|v| v.id != volume_id && v.worktree_path.starts_with(&entry.worktree_path)),
             "volume {volume_id} has dependent worktrees; remove them first"
         );
 
@@ -393,6 +391,10 @@ impl VolumeManager {
         let image_path = volume_dir.join("workspace.ext4");
         let mount_path = volume_dir.join("mount");
 
+        ensure!(
+            !crate::storage::mount::MountManager::is_mounted(&mount_path),
+            "kernel mount still active; unmount before removal"
+        );
         // Remove backing image.
         if image_path.exists() {
             std::fs::remove_file(&image_path).with_context(|| {
@@ -401,11 +403,11 @@ impl VolumeManager {
         }
         // Remove mount directory.
         if mount_path.exists() {
-            std::fs::remove_dir(&mount_path).ok();
+            std::fs::remove_dir(&mount_path)?;
         }
         // Remove volume directory.
         if volume_dir.exists() {
-            std::fs::remove_dir(&volume_dir).ok();
+            std::fs::remove_dir(&volume_dir)?;
         }
 
         journal.volumes.remove(&volume_id);
@@ -440,6 +442,9 @@ impl VolumeManager {
     }
 
     /// List all volumes.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn list_volumes(&self) -> Result<Vec<VolumeRecord>> {
         let journal = self.read_journal()?;
         let mut records = Vec::new();
@@ -450,6 +455,9 @@ impl VolumeManager {
     }
 
     /// Find a volume by its worktree path.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn find_by_worktree(&self, worktree_path: &Path) -> Result<Option<VolumeRecord>> {
         let journal = self.read_journal()?;
         for (id, entry) in &journal.volumes {
@@ -462,6 +470,9 @@ impl VolumeManager {
     }
 
     /// Check whether a volume exists and is mounted.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn is_mounted(&self, volume_id: Uuid) -> Result<bool> {
         let journal = self.read_journal()?;
         let entry = journal
@@ -474,11 +485,23 @@ impl VolumeManager {
     /// Recover stale mounts after a crash: reset any Mounted volumes to Ready.
     ///
     /// Returns the list of volume IDs that were recovered.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn recover_stale_mounts(&mut self) -> Result<Vec<Uuid>> {
         let mut journal = self.read_journal()?;
         let mut recovered = Vec::new();
         for entry in journal.volumes.values_mut() {
             if entry.status == VolumeStatus::Mounted {
+                let mount = self.root.join(entry.id.to_string()).join("mount");
+                let mounted = crate::storage::mount::MountManager::is_mounted(&mount);
+                if mounted && std::fs::read_dir(&mount).is_ok() {
+                    continue;
+                }
+                if mounted {
+                    crate::storage::mount::MountManager::new(&self.root)
+                        .unmount_volume(&entry.id)?;
+                }
                 entry.status = VolumeStatus::Ready;
                 entry.last_mounted_at_ms = None;
                 recovered.push(entry.id);
@@ -491,11 +514,13 @@ impl VolumeManager {
     }
 
     /// Get the volume authority root.
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
 
     /// Get the total capacity.
+    #[must_use]
     pub fn capacity_bytes(&self) -> u64 {
         self.capacity_bytes
     }
@@ -527,22 +552,51 @@ impl VolumeManager {
     }
 }
 
+fn lock_authority(root: &Path) -> Result<nix::fcntl::Flock<std::fs::File>> {
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+    let meta = std::fs::symlink_metadata(root)?;
+    ensure!(
+        root.is_absolute()
+            && root.canonicalize()? == root
+            && meta.is_dir()
+            && meta.uid() == nix::unistd::Uid::current().as_raw()
+            && meta.permissions().mode() & 0o7777 == 0o700,
+        "volume authority must be absolute, private, owned and non-symlink"
+    );
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(root.join("volumes.lock"))?;
+    nix::fcntl::Flock::lock(file, nix::fcntl::FlockArg::LockExclusiveNonblock)
+        .map_err(|(_, error)| anyhow::anyhow!("volume authority already owned: {error}"))
+}
+
 fn store_journal_file(root: &Path, journal: &VolumeJournal) -> Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
     let journal_path = root.join("volumes.json");
-    let tmp_path = root.join("volumes.json.tmp");
-    let data =
-        serde_json::to_vec_pretty(journal).with_context(|| "failed to serialize volume journal")?;
-    std::fs::write(&tmp_path, &data)
-        .with_context(|| format!("failed to write temporary journal: {}", tmp_path.display()))?;
-    std::fs::set_permissions(&tmp_path, Permissions::from_mode(0o600))
-        .with_context(|| format!("failed to set permissions on {}", tmp_path.display()))?;
-    std::fs::rename(&tmp_path, &journal_path).with_context(|| {
-        format!(
-            "failed to commit volume journal: {}",
-            journal_path.display()
-        )
-    })?;
-    Ok(())
+    let tmp_path = root.join(format!("volumes-{}.tmp", Uuid::new_v4()));
+    let data = serde_json::to_vec_pretty(journal)?;
+    let result = (|| -> Result<()> {
+        let mut output = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&tmp_path)?;
+        output.write_all(&data)?;
+        output.sync_all()?;
+        std::fs::rename(&tmp_path, &journal_path)?;
+        std::fs::File::open(root)?.sync_all()?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(tmp_path);
+    }
+    result
 }
 
 #[cfg(test)]
@@ -564,9 +618,14 @@ mod tests {
     fn init_and_load_volume_manager() {
         let root = temp_dir().join(format!("vol-test-{}", Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&root);
-        let mut mgr = VolumeManager::init(&root, 1024 * 1024 * 1024).unwrap();
+        let mgr = VolumeManager::init(&root, 1024 * 1024 * 1024).unwrap();
         assert_eq!(mgr.capacity_bytes(), 1024 * 1024 * 1024);
 
+        assert!(
+            VolumeManager::load(&root).is_err(),
+            "second live authority must be denied"
+        );
+        drop(mgr);
         let loaded = VolumeManager::load(&root).unwrap();
         assert_eq!(loaded.capacity_bytes(), 1024 * 1024 * 1024);
 

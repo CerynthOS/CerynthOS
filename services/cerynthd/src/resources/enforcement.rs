@@ -4,7 +4,7 @@
 //! existing `cerynth-platform-resources` enforcement layer. Reads back what
 //! the kernel actually accepted; never claims enforcement without read-back.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use cerynth_platform_resources::{CpuMax, Enforcement, ResourceLimits, SessionCgroup};
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,20 @@ impl EnforcementResult {
 /// Opens the cgroup at the registered path (does not create it) so an
 /// unprivileged caller can use a delegated systemd scope. Creation is a
 /// separate, privileged operation.
+///
+/// # Errors
+/// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
 pub fn apply_limits(registration: &AgentRegistration) -> Result<EnforcementResult> {
-    registration.validate().context("invalid registration")?;
+    super::registration::validate_kernel_boundary(registration)
+        .context("invalid kernel registration")?;
+    ensure!(
+        registration.cpu_quota_us.is_none()
+            || std::fs::read_to_string("/sys/kernel/sched_ext/state")
+                .unwrap_or_default()
+                .trim()
+                != "enabled",
+        "native CPU bandwidth is unqualified under an active sched_ext scheduler"
+    );
 
     let session = SessionCgroup::open(registration.cgroup_path.clone(), registration.agent_id)?;
 
@@ -83,7 +95,12 @@ pub fn apply_limits(registration: &AgentRegistration) -> Result<EnforcementResul
 }
 
 /// Attach the registered PID to its cgroup.
+///
+/// # Errors
+/// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
 pub fn attach_process(registration: &AgentRegistration, pid: i32) -> Result<()> {
+    super::registration::validate_kernel_boundary(registration)?;
+    ensure!(pid > 0, "attach requires a positive process ID");
     let session = SessionCgroup::open(registration.cgroup_path.clone(), registration.agent_id)?;
     session.attach(pid)
 }

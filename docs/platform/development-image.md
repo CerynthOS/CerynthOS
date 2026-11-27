@@ -1,7 +1,9 @@
 # Development images and recovery
 
 These are x86-64 development artifacts. They do not assert physical hardware
-qualification, Secure Boot, a trusted public release identity, or team approval.
+qualification, production Secure Boot trust, a trusted public release identity,
+or team approval. The optional verified-root profile has separate Secure Boot
+VM evidence linked below.
 The kernel test appliance and full distribution images serve different purposes.
 
 ## Build
@@ -136,3 +138,13 @@ system/user journals. Missing FUSE helpers, cpuset/I/O delegation, PE-parser or
 FAT population tools are actionable failures. Do not enable SCX as a workaround
 for a resource controller failure. Keep the previous boot slot and known-good
 kernel available while diagnosing an update.
+
+## Optional signed verified-root development profile
+
+See [nonphysical qualification](nonphysical-qualification.md) for the executed
+Secure Boot/dm-verity profile, commands and limits. It uses an authenticated
+read-only base with ephemeral writable root overlay, a 4 GiB root ceiling and
+64 MiB hash partition. It is separate from desktop/A-B and disables automatic
+firmware enrollment. A trusted production signing identity is not inferred from
+a successful disposable-key VM test. The builder records external build
+provenance and the prepared overlay identity alongside each new disk.

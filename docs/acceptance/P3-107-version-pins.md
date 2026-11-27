@@ -16,7 +16,13 @@
 
 ## Local check results
 
-`tools/runtime_version_inventory.py` could not complete fully because pinned external binaries (OpenCode, Hermes, Ollama, etc.) are not installed at the expected paths under `artifacts/person3/tools/`. This is expected — these binaries must be installed separately by the owner. The inventory reports `all_local_pins_match` only when all binaries are present.
+The earlier November 26 WSL audit lacked the pinned binaries. On November 27,
+the native development checkout passed the complete offline inventory. Codex
+0.167.0 was provisioned separately from system Codex 0.172.0; Claude 2.1.312 is
+selected from the dedicated pinned executable. All five CLI and three engine
+versions match. This closes the local provisioning/check failure, not the live
+cloud qualification requirement. See the
+[nonphysical report](../platform/nonphysical-qualification.md).
 
 ## What remains to close this task
 
@@ -31,7 +37,7 @@ Offline version inventory and local protocol checks already exist. Version probe
 ## Next steps
 
 - Install pinned binaries at expected paths or set `CERYNTH_*_BINARY` overrides
-- Complete offline version inventory run
+- Offline inventory passed on the native host; retain explicit matching launch selections
 - Obtain authenticated cloud accounts for provider/version qualification
 - Exercise pinned provider/harness versions against real accounts
 - Publish supported operations, failures and unsupported features

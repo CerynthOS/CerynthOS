@@ -14,9 +14,15 @@ pub trait ExecutionHandler: Send + Sync {
     /// Execute the operation with the given input.
     ///
     /// Returns the output on success or an error message on failure.
+    ///
+    /// # Errors
+    /// Returns the handler's error without claiming successful execution.
     fn execute(&self, input: &serde_json::Value) -> Result<serde_json::Value, String>;
 
     /// Resume an interrupted operation with prior partial output.
+    ///
+    /// # Errors
+    /// Returns an error when resumption is unsupported or fails.
     fn resume(
         &self,
         _input: &serde_json::Value,
@@ -30,13 +36,18 @@ pub trait ExecutionHandler: Send + Sync {
 pub struct Executor {
     registry: OperationRegistry,
     store: OperationStateStore,
+    persistence_healthy: bool,
 }
 
 impl Executor {
     /// Create an executor with the given registry and state store.
     #[must_use]
     pub fn new(registry: OperationRegistry, store: OperationStateStore) -> Self {
-        Self { registry, store }
+        Self {
+            registry,
+            store,
+            persistence_healthy: true,
+        }
     }
 
     /// Access the registry.
@@ -60,6 +71,9 @@ impl Executor {
     ///
     /// Checks authorization, validates the operation exists, and transitions
     /// the record to RUNNING. Persistence is attempted after every transition.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn start(
         &mut self,
         operation_id: &str,
@@ -72,18 +86,25 @@ impl Executor {
             .authorize(operation_id, is_root)
             .map_err(|e| ExecutorError::Authorization(e.to_string()))?;
 
-        // Idempotency: if a record with the same key exists and is terminal,
-        // return its instance ID rather than repeating a destructive action.
+        if !self.persistence_healthy {
+            return Err(ExecutorError::Persistence(
+                "state persistence previously failed; restart/reconcile before execution".into(),
+            ));
+        }
         if let Some(key) = &idempotency_key {
+            if key.is_empty() || key.len() > 256 {
+                return Err(ExecutorError::IdempotencyConflict);
+            }
             if let Some(existing) = self
                 .store
                 .list()
                 .into_iter()
                 .find(|r| r.idempotency_key.as_ref() == Some(key))
             {
-                if existing.state.is_terminal() || existing.state.is_resumable() {
-                    return Ok(existing.instance_id);
+                if existing.operation_id != operation.id || existing.input != input {
+                    return Err(ExecutorError::IdempotencyConflict);
                 }
+                return Ok(existing.instance_id);
             }
         }
 
@@ -93,11 +114,14 @@ impl Executor {
             .map_err(ExecutorError::Lifecycle)?;
         let id = record.instance_id;
         self.store.put(record);
-        let _ = self.store.save();
+        self.persist()?;
         Ok(id)
     }
 
     /// Execute a started operation with a handler.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn execute(
         &mut self,
         instance_id: Uuid,
@@ -105,7 +129,7 @@ impl Executor {
     ) -> Result<serde_json::Value, ExecutorError> {
         let record = self
             .store
-            .get_mut(instance_id)
+            .get(instance_id)
             .ok_or(ExecutorError::NotFound(instance_id))?;
         if record.state != OperationState::Running {
             return Err(ExecutorError::Lifecycle(LifecycleError::IllegalTransition(
@@ -114,36 +138,60 @@ impl Executor {
             )));
         }
         let input = record.input.clone();
-        match handler.execute(&input) {
-            Ok(output) => {
-                record
-                    .complete(output.clone())
-                    .map_err(ExecutorError::Lifecycle)?;
-                let _ = self.store.save();
-                Ok(output)
-            }
-            Err(error) => {
-                record
-                    .fail(error.clone())
-                    .map_err(ExecutorError::Lifecycle)?;
-                let _ = self.store.save();
-                Err(ExecutorError::ExecutionFailed(error))
-            }
+        self.persist()?;
+        let outcome = handler.execute(&input);
+        self.finish(instance_id, outcome)
+    }
+
+    fn persist(&mut self) -> Result<(), ExecutorError> {
+        if !self.persistence_healthy {
+            return Err(ExecutorError::Persistence(
+                "state durability unavailable".into(),
+            ));
         }
+        if let Err(error) = self.store.save() {
+            self.persistence_healthy = false;
+            return Err(ExecutorError::Persistence(error.to_string()));
+        }
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+        id: Uuid,
+        outcome: Result<serde_json::Value, String>,
+    ) -> Result<serde_json::Value, ExecutorError> {
+        let record = self.store.get_mut(id).ok_or(ExecutorError::NotFound(id))?;
+        match &outcome {
+            Ok(output) => record
+                .complete(output.clone())
+                .map_err(ExecutorError::Lifecycle)?,
+            Err(error) => record
+                .fail(error.clone())
+                .map_err(ExecutorError::Lifecycle)?,
+        }
+        self.persist()?;
+        outcome.map_err(ExecutorError::ExecutionFailed)
     }
 
     /// Mark a running operation as interrupted (e.g. daemon shutdown).
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn interrupt(&mut self, instance_id: Uuid) -> Result<(), ExecutorError> {
         let record = self
             .store
             .get_mut(instance_id)
             .ok_or(ExecutorError::NotFound(instance_id))?;
         record.interrupt().map_err(ExecutorError::Lifecycle)?;
-        let _ = self.store.save();
+        self.persist()?;
         Ok(())
     }
 
     /// Resume an interrupted operation with a handler.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn resume(
         &mut self,
         instance_id: Uuid,
@@ -172,35 +220,9 @@ impl Executor {
 
         let input = record.input.clone();
         let prior_output = record.output.clone();
-        match handler.resume(&input, prior_output.as_ref()) {
-            Ok(output) => {
-                record
-                    .complete(output.clone())
-                    .map_err(ExecutorError::Lifecycle)?;
-                let _ = self.store.save();
-                Ok(output)
-            }
-            Err(error) => {
-                record
-                    .fail(error.clone())
-                    .map_err(ExecutorError::Lifecycle)?;
-                let _ = self.store.save();
-                Err(ExecutorError::ExecutionFailed(error))
-            }
-        }
-    }
-
-    /// Cancel a pending or running operation.
-    pub fn cancel(&mut self, instance_id: Uuid) -> Result<(), ExecutorError> {
-        let record = self
-            .store
-            .get_mut(instance_id)
-            .ok_or(ExecutorError::NotFound(instance_id))?;
-        record
-            .transition(OperationState::Cancelled)
-            .map_err(ExecutorError::Lifecycle)?;
-        let _ = self.store.save();
-        Ok(())
+        self.persist()?;
+        let outcome = handler.resume(&input, prior_output.as_ref());
+        self.finish(instance_id, outcome)
     }
 }
 
@@ -210,6 +232,8 @@ pub enum ExecutorError {
     Authorization(String),
     Lifecycle(LifecycleError),
     NotFound(Uuid),
+    Persistence(String),
+    IdempotencyConflict,
     ExecutionFailed(String),
     NotResumableOperation(String),
 }
@@ -217,6 +241,10 @@ pub enum ExecutorError {
 impl std::fmt::Display for ExecutorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Persistence(error) => write!(f, "operation state persistence failed: {error}"),
+            Self::IdempotencyConflict => {
+                write!(f, "idempotency key must bind identical operation details")
+            }
             Self::Authorization(msg) => write!(f, "authorization failed: {msg}"),
             Self::Lifecycle(err) => write!(f, "lifecycle error: {err}"),
             Self::NotFound(id) => write!(f, "execution {id} not found"),
@@ -267,6 +295,61 @@ mod tests {
             ))
             .unwrap();
         Executor::new(registry, OperationStateStore::new())
+    }
+
+    #[test]
+    fn running_idempotency_key_is_bound_to_exact_input() {
+        let mut executor = setup();
+        let input = serde_json::json!({"target":"first"});
+        let first = executor
+            .start("test.op", input.clone(), false, Some("one".into()))
+            .unwrap();
+        assert_eq!(
+            executor
+                .start("test.op", input, false, Some("one".into()))
+                .unwrap(),
+            first
+        );
+        assert!(matches!(
+            executor.start(
+                "test.op",
+                serde_json::json!({"target":"other"}),
+                false,
+                Some("one".into())
+            ),
+            Err(ExecutorError::IdempotencyConflict)
+        ));
+        assert_eq!(executor.store().list().len(), 1);
+    }
+
+    #[test]
+    fn failed_durable_start_cannot_execute_a_handler() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        struct Counter(AtomicUsize);
+        impl ExecutionHandler for Counter {
+            fn execute(&self, _: &serde_json::Value) -> Result<serde_json::Value, String> {
+                self.0.fetch_add(1, Ordering::SeqCst);
+                Ok(serde_json::json!({}))
+            }
+        }
+        let root = std::env::temp_dir().join(format!("durable-start-{}", Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let blocked = root.join("not-directory");
+        std::fs::write(&blocked, b"existing file").unwrap();
+        let mut executor = setup();
+        executor.store = OperationStateStore::with_path(blocked.join("state.json"));
+        assert!(matches!(
+            executor.start("test.op", serde_json::json!({}), false, None),
+            Err(ExecutorError::Persistence(_))
+        ));
+        let id = executor.store().list()[0].instance_id;
+        let counter = Counter(AtomicUsize::new(0));
+        assert!(matches!(
+            executor.execute(id, &counter),
+            Err(ExecutorError::Persistence(_))
+        ));
+        assert_eq!(counter.0.load(Ordering::SeqCst), 0);
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

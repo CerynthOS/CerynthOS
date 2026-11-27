@@ -56,6 +56,9 @@ impl Operation {
     }
 
     /// Validate the definition.
+    ///
+    /// # Errors
+    /// Returns an error for invalid, duplicate, unknown or unauthorized operation definitions.
     pub fn validate(&self) -> Result<()> {
         ensure!(!self.id.is_empty(), "operation ID must not be empty");
         ensure!(
@@ -108,6 +111,9 @@ impl OperationRegistry {
     }
 
     /// Register an operation.
+    ///
+    /// # Errors
+    /// Returns an error for invalid, duplicate, unknown or unauthorized operation definitions.
     pub fn register(&mut self, operation: Operation) -> Result<(), RegistrationError> {
         operation
             .validate()
@@ -132,6 +138,9 @@ impl OperationRegistry {
     }
 
     /// Check whether an operation can be executed with the given privilege level.
+    ///
+    /// # Errors
+    /// Returns an error for invalid, duplicate, unknown or unauthorized operation definitions.
     pub fn authorize(&self, id: &str, is_root: bool) -> Result<&Operation, RegistrationError> {
         let operation = self
             .operations

@@ -51,11 +51,11 @@ fn unescape(text: &str) -> PathBuf {
     while let Some(byte) = bytes.next() {
         if byte == b'\\' {
             let octal = bytes.by_ref().take(3).collect::<Vec<_>>();
-            if let Ok(text) = std::str::from_utf8(&octal) {
-                if let Ok(value) = u8::from_str_radix(text, 8) {
-                    result.push(value);
-                    continue;
-                }
+            if let Ok(text) = std::str::from_utf8(&octal)
+                && let Ok(value) = u8::from_str_radix(text, 8)
+            {
+                result.push(value);
+                continue;
             }
             return PathBuf::new();
         }

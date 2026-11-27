@@ -40,3 +40,13 @@ bootloader EFI binary. The generic `sbsign` invocation is the same.
 Use `scripts/generate-test-keys.sh` to produce a throwaway hierarchy, then
 pass the generated db key/cert to `scripts/sign-kernel.sh`. These signatures
 are only accepted by firmware enrolled with the corresponding test keys.
+
+## Verified workspace-local execution
+
+Use `python3 tools/bootstrap_secure_boot_tools.py` and prepend its
+`artifacts/person1/qemu-local/root/usr/bin` directory to PATH when invoking the
+shell wrappers. Signing requires a new output path, refuses protected-input
+aliases, verifies against the selected certificate, then publishes atomically.
+The [qualification report](../../../docs/platform/nonphysical-qualification.md)
+records actual disposable-key signing, verification and OVMF decisions. No
+production key is selected by these development commands.

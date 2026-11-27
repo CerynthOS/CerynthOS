@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ImageVM:
-    def __init__(self, tools, image, key, work, desktop=False):
+    def __init__(self, tools, image, key, work, desktop=False, secure_boot_vars=None):
         self.tools, self.image, self.key, self.work = map(lambda p: Path(p).resolve(), (tools, image, key, work))
         self.env = os.environ | {'LD_LIBRARY_PATH': str(self.tools / 'usr/lib'),
                                  'QEMU_MODULE_DIR': str(self.tools / 'usr/lib/qemu')}
@@ -27,6 +27,7 @@ class ImageVM:
         self.process = None
         self.log = None
         self.desktop = desktop
+        self.secure_boot_vars = Path(secure_boot_vars).resolve() if secure_boot_vars else None
 
     def ssh(self, command, check=True, timeout=120):
         result = subprocess.run(['ssh', '-i', str(self.key), '-p', str(self.port),
@@ -65,7 +66,7 @@ class ImageVM:
                         break
             return response['return']
 
-    def start(self):
+    def start(self, wait_for_ssh=True):
         self.work.mkdir(parents=True, exist_ok=True)
         disk = self.work / 'guest.qcow2'
         if not disk.exists():
@@ -73,19 +74,24 @@ class ImageVM:
                             '-F', 'raw', '-b', str(self.image), str(disk)], check=True, env=self.env)
         variables = self.work / 'OVMF_VARS.fd'
         if not variables.exists():
-            shutil.copyfile(self.tools / 'usr/share/edk2/x64/OVMF_VARS.4m.fd', variables)
+            shutil.copyfile(self.secure_boot_vars or self.tools / 'usr/share/edk2/x64/OVMF_VARS.4m.fd', variables)
         self.log = (self.work / 'serial.log').open('a')
+        firmware = 'OVMF_CODE.secboot.4m.fd' if self.secure_boot_vars else 'OVMF_CODE.4m.fd'
+        secure_options = ['-global', 'driver=cfi.pflash01,property=secure,value=on', '-global', 'ICH9-LPC.disable_s3=1'] if self.secure_boot_vars else []
         self.process = subprocess.Popen([str(self.tools / 'usr/bin/qemu-system-x86_64'),
-            '-L', str(self.tools / 'usr/share/qemu'), '-enable-kvm', '-machine', 'q35',
+            '-L', str(self.tools / 'usr/share/qemu'), '-enable-kvm', '-machine', 'q35,smm=on' if self.secure_boot_vars else 'q35',
             '-cpu', 'host', '-m', '3072' if self.desktop else '2048', '-smp', '2', '-display', 'none',
             '-vga', 'std',
-            '-drive', 'if=pflash,format=raw,readonly=on,file=' + str(self.tools / 'usr/share/edk2/x64/OVMF_CODE.4m.fd'),
+            *secure_options,
+            '-drive', 'if=pflash,format=raw,readonly=on,file=' + str(self.tools / 'usr/share/edk2/x64' / firmware),
             '-drive', 'if=pflash,format=raw,file=' + str(variables),
             '-drive', 'if=virtio,format=qcow2,discard=unmap,detect-zeroes=unmap,file=' + str(disk),
             '-device', 'virtio-rng-pci', '-netdev', f'user,id=net,restrict=on,hostfwd=tcp:127.0.0.1:{self.port}-:22',
             '-device', 'virtio-net-pci,netdev=net', '-serial', 'stdio', '-monitor', 'none',
             '-qmp', 'unix:' + str(self.work / 'qmp.sock') + ',server=on,wait=off'],
             stdout=self.log, stderr=subprocess.STDOUT, env=self.env)
+        if not wait_for_ssh:
+            return
         deadline = time.monotonic() + 150
         while time.monotonic() < deadline:
             if self.process.poll() is not None:

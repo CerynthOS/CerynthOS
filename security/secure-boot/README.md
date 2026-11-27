@@ -1,8 +1,8 @@
 # Secure Boot chain design
 
 This directory defines CerynthOS's authorized boot-chain signing and enrollment
-design. It contains **design and tooling only** — no private keys are stored in
-this repository, and no key enrollment into firmware is performed here.
+design. It contains **design, tooling and disposable-VM qualification** — no private keys are stored in
+this repository, and no key enrollment into physical firmware is performed here.
 
 ## Trust chain
 
@@ -56,15 +56,22 @@ security/secure-boot/
 - Detailed enrollment, update, and verification procedures.
 - Idempotent update design that preserves the previous working kernel.
 
-## What requires external support
+## Executed nonphysical qualification
 
-- Enrolling PK/KEK/db/dbx into physical firmware (needs authorized operator).
-- Obtaining production signing keys from an HSM/KMS.
-- Installing `sbsigntool` (`sbsign`, `sbverify`) on the build host.
-- Running QEMU with OVMF Secure Boot enabled to test accept/reject cases.
-- dm-verity or similar verified-root design for root filesystem integrity
-  (Secure Boot alone does not authenticate userspace files).
+The [November 27 report](../../docs/platform/nonphysical-qualification.md) records
+real signed/unsigned/unauthorized/tampered/revoked/fallback OVMF cases, independent
+certificate verification and a signed development image with dm-verity corruption
+rejection. The runners use private disposable variable stores and test keys.
 
-No successful enrollment, signing, or Secure Boot validation is claimed by this
-design documentation. Running the scripts with real keys and firmware is a
-separate, externally supported operation.
+- `tools/bootstrap_secure_boot_tools.py` provisions private build/verification tools.
+- `tools/secure_boot_vm.py` executes the firmware matrix.
+- `tools/verified_root_vm.py` boots and corrupts only a disposable verified-root overlay.
+
+## Remaining external acceptance
+
+Physical PK/KEK/db/dbx enrollment still needs the authorized operator. Production
+signing identities, HSM/KMS access, trust distribution, license and release decisions
+remain external. A test-key VM success does not supply those decisions. The optional
+verified-root profile has ephemeral writes and does not qualify persistent A/B
+verified-root upgrades. Existing default images are not retroactively Secure Boot
+qualified by this report.

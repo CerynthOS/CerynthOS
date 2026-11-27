@@ -22,11 +22,17 @@ pub struct ProcessInfo {
 
 impl ProcessInfo {
     /// Read information for a PID from `/proc`.
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn read(pid: i32) -> Result<Option<Self>> {
         Self::read_from(Path::new("/proc"), pid)
     }
 
     /// Read from an explicit proc root (for tests/fixtures).
+    ///
+    /// # Errors
+    /// Returns an error when validation, state lookup or underlying I/O prevents the requested operation.
     pub fn read_from(proc_root: &Path, pid: i32) -> Result<Option<Self>> {
         let dir = proc_root.join(pid.to_string());
         if !dir.exists() {
@@ -55,14 +61,14 @@ impl ProcessInfo {
 
         // /proc/<pid>/stat: pid (comm) state ppid pgrp session ...
         // comm can contain spaces and parentheses, so find the last ')'.
-        if let Ok(stat) = std::fs::read_to_string(dir.join("stat")) {
-            if let Some(close) = stat.rfind(')') {
-                let fields: Vec<&str> = stat[close + 1..].split_whitespace().collect();
-                // After ')' the fields are: state(3), ppid(4), pgrp(5), session(6).
-                if fields.len() > 3 {
-                    process_group = fields[2].parse().ok();
-                    session_id = fields[3].parse().ok();
-                }
+        if let Ok(stat) = std::fs::read_to_string(dir.join("stat"))
+            && let Some(close) = stat.rfind(')')
+        {
+            let fields: Vec<&str> = stat[close + 1..].split_whitespace().collect();
+            // After ')' the fields are: state(3), ppid(4), pgrp(5), session(6).
+            if fields.len() > 3 {
+                process_group = fields[2].parse().ok();
+                session_id = fields[3].parse().ok();
             }
         }
 
