@@ -30,7 +30,20 @@ struct Snapshot {
 pub struct Registry {
     path: PathBuf,
     snapshot: Snapshot,
-    _lock: File,
+    _lock: RegistryLock,
+}
+
+/// Release authority when this owner closes, even if a concurrent subprocess
+/// briefly inherited a duplicate descriptor before exec closed it. Closing only
+/// our descriptor can otherwise leave flock held until that child reaches exec.
+struct RegistryLock(File);
+
+impl Drop for RegistryLock {
+    fn drop(&mut self) {
+        if let Err(error) = FileExt::unlock(&self.0) {
+            eprintln!("failed to explicitly release registry ownership: {error}");
+        }
+    }
 }
 
 pub fn now_ms() -> u64 {
@@ -112,6 +125,7 @@ impl Registry {
             .open(directory.join("registry.lock"))?;
         lock.try_lock_exclusive()
             .context("another agent daemon owns this registry")?;
+        let lock = RegistryLock(lock);
         let checked = preflight()?;
         let path = directory.join("sessions.json");
         let snapshot = if path.exists() {
@@ -667,6 +681,24 @@ mod tests {
             },
             runtime: cerynth_agent_api::RuntimeSpec::default(),
         }
+    }
+
+    #[test]
+    #[allow(clippy::used_underscore_binding)] // Deliberately duplicate the private lifetime guard.
+    fn owner_drop_releases_lock_despite_an_inherited_descriptor() -> Result<()> {
+        let dir = private_tempdir()?;
+        let registry = Registry::open(dir.path())?;
+        let inherited = registry._lock.0.try_clone()?;
+        assert!(Registry::open(dir.path()).is_err());
+        drop(registry);
+        let next_owner = Registry::open(dir.path())?;
+        // Closing a delayed descriptor from the prior owner must not release
+        // the new owner's independently opened file description.
+        drop(inherited);
+        assert!(Registry::open(dir.path()).is_err());
+        drop(next_owner);
+        Registry::open(dir.path())?;
+        Ok(())
     }
 
     #[test]
