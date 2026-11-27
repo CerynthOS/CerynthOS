@@ -16,6 +16,9 @@ namespace; unavailable pins produce a failed structured report even with Python
 optimization enabled. They do not silently pass or substitute installed versions.
 The workspace requires the compiler actually used for qualification, Rust 1.99,
 rather than retaining the unqualified 1.85 workspace requirement.
+The main Rust CI selects 1.99.0 explicitly. A rolling-stable run moved to 1.100
+and introduced a new lint after workspace tests passed; the CI pin aligns that
+gate with the compiler used for the retained local qualification.
 
 ```sh
 python3 tools/provision_pinned_cli.py --install codex opencode
