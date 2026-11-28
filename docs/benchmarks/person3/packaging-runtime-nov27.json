@@ -1,0 +1,33 @@
+{
+  "kind": "staged-user-service-startup-and-restart",
+  "staged_sha256": {
+    "usr/bin/cerynth-observer": "18b456c55fed6468b218830833da56bbf638d79869ebd52cb772dca83b9f66f4",
+    "usr/share/applications/io.cerynth.Observer.desktop": "8fe1b836e0a8b24f18854b0d143f64dac90587b3f1fbcce23dee8a9064ef84a7",
+    "usr/share/doc/cerynth/agent-runtime.md": "4eb2f704e9227b0b5a2431fd2cdcdde887dc20218daa072518823aa73a4eaf14",
+    "usr/lib/cerynth/cerynth-agentd": "9a58bae92baf439666a0b2cd96b2b46858a9b74e812391a170a320dcf75f213e",
+    "usr/lib/cerynth/cerynth-inferenced": "d95d495e936e046d8daa5ab57e25f00073bd2c418137ab99a06c3d894e5d3491",
+    "usr/lib/cerynth/cerynth-harness-bridge": "2b06e800b73ea0eea9294af6b151a098778bb180f2b7ec99c2ac4e8d48ee8d19",
+    "usr/lib/cerynth/cerynth-hardware": "bd1bdc27ccc9cb96f948ddcc625f5eb268d299b5e5d66cdb64deb618fd4af311",
+    "usr/lib/cerynth/cerynth-volume": "4602eff8f5b1af10889144e339b1d706109c4756fca0c4384f0179238d1eb53b",
+    "usr/lib/cerynth/cerynth-resource-authority": "e307b1ce69dc9745b627e0fe733cf13856d6b8b5b3006896b67296c08b0761ec",
+    "usr/lib/cerynth/cerynth-worktree-checkout": "962d0a5ad16873f4c57372684495a6abfbca7053bced2b82b6d9d98f03068694",
+    "usr/lib/systemd/user/cerynth-inferenced.service": "bc253d619d31778114150ff2e459aed710316d88bc48a6d1902ba6a2a90b1432",
+    "usr/lib/systemd/user/cerynth-agentd.service": "8a976302704d5d82d06d1e9a8d921160a39a54b2b8228954f68183023b45758a"
+  },
+  "staged_native_observer": true,
+  "staged_resource_authority_init_status_verified": true,
+  "exact_expected_payload_and_binary_hashes": true,
+  "actual_unit_hardening_preserved": true,
+  "isolated_state_and_dynamic_port": true,
+  "restart_on_failure_verified": true,
+  "managed_scope_and_nested_slice_recovered": true,
+  "unknown_prior_effects_preserved": true,
+  "inference_dependency_started": true,
+  "production_units_enabled": false,
+  "booted_iso": false,
+  "cloud_requests": 0,
+  "limitations": [
+    "Runtime-linked copies use staged executable paths and unique unit/state names",
+    "This staged-service test does not boot an image; use os_image_vm.py and ab_update_smoke.py for separate image qualification"
+  ]
+}

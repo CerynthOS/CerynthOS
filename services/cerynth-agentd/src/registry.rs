@@ -30,7 +30,20 @@ struct Snapshot {
 pub struct Registry {
     path: PathBuf,
     snapshot: Snapshot,
-    _lock: File,
+    _lock: RegistryLock,
+}
+
+/// Release authority when this owner closes, even if a concurrent subprocess
+/// briefly inherited a duplicate descriptor before exec closed it. Closing only
+/// our descriptor can otherwise leave flock held until that child reaches exec.
+struct RegistryLock(File);
+
+impl Drop for RegistryLock {
+    fn drop(&mut self) {
+        if let Err(error) = FileExt::unlock(&self.0) {
+            eprintln!("failed to explicitly release registry ownership: {error}");
+        }
+    }
 }
 
 pub fn now_ms() -> u64 {
@@ -62,6 +75,34 @@ pub fn private_directory(path: &Path) -> Result<()> {
 }
 
 impl Registry {
+    pub(crate) fn phase_demands(&self) -> Vec<cerynth_resources::phase::Demand> {
+        self.snapshot
+            .sessions
+            .values()
+            .filter(|session| {
+                session
+                    .execution
+                    .resource_allocation
+                    .as_ref()
+                    .is_some_and(|allocation| allocation.active && allocation.kernel_enforced)
+            })
+            .filter_map(|session| {
+                session.execution.resource_slice.as_ref().map(|unit| {
+                    cerynth_resources::phase::Demand {
+                        id: session.id,
+                        parent: session.spec.runtime.parent_id,
+                        unit: unit.clone(),
+                        phase: if session.state.is_terminal() {
+                            cerynth_agent_api::WorkloadPhase::Cleanup
+                        } else {
+                            session.execution.phase
+                        },
+                        ceiling: session.spec.runtime.budget.cpu_weight,
+                    }
+                })
+            })
+            .collect()
+    }
     #[cfg(test)]
     pub fn open(directory: &Path) -> Result<Self> {
         Self::open_checked(directory, || Ok(())).map(|(registry, ())| registry)
@@ -84,6 +125,7 @@ impl Registry {
             .open(directory.join("registry.lock"))?;
         lock.try_lock_exclusive()
             .context("another agent daemon owns this registry")?;
+        let lock = RegistryLock(lock);
         let checked = preflight()?;
         let path = directory.join("sessions.json");
         let snapshot = if path.exists() {
@@ -274,6 +316,18 @@ impl Registry {
             if spec.runtime.budget.cpu_quota_micros_per_second.is_none() {
                 spec.runtime.budget.cpu_quota_micros_per_second =
                     parent.spec.runtime.budget.cpu_quota_micros_per_second;
+            }
+            if let Some(limits) = &parent.spec.runtime.budget.platform {
+                spec.runtime
+                    .budget
+                    .platform
+                    .get_or_insert_with(Default::default)
+                    .inherit_from(limits);
+                spec.runtime.budget.validate().map_err(anyhow::Error::msg)?;
+            }
+            if spec.runtime.budget.workspace_max_bytes.is_none() {
+                spec.runtime.budget.workspace_max_bytes =
+                    parent.spec.runtime.budget.workspace_max_bytes;
             }
             ensure!(!parent.state.is_terminal(), "parent session is terminal");
             ensure!(
@@ -627,6 +681,24 @@ mod tests {
             },
             runtime: cerynth_agent_api::RuntimeSpec::default(),
         }
+    }
+
+    #[test]
+    #[allow(clippy::used_underscore_binding)] // Deliberately duplicate the private lifetime guard.
+    fn owner_drop_releases_lock_despite_an_inherited_descriptor() -> Result<()> {
+        let dir = private_tempdir()?;
+        let registry = Registry::open(dir.path())?;
+        let inherited = registry._lock.0.try_clone()?;
+        assert!(Registry::open(dir.path()).is_err());
+        drop(registry);
+        let next_owner = Registry::open(dir.path())?;
+        // Closing a delayed descriptor from the prior owner must not release
+        // the new owner's independently opened file description.
+        drop(inherited);
+        assert!(Registry::open(dir.path()).is_err());
+        drop(next_owner);
+        Registry::open(dir.path())?;
+        Ok(())
     }
 
     #[test]

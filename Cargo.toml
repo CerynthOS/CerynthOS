@@ -18,13 +18,14 @@ members = [
     "services/cerynth-inferenced",
     "services/cerynthd",
     "schedulers/cerynth-scx",
+    "schedulers/cerynth-scx-phase",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-rust-version = "1.85"
+rust-version = "1.99"
 authors = ["The CerynthOS Contributors"]
 
 [workspace.dependencies]

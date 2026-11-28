@@ -31,6 +31,9 @@ pub struct SystemSnapshot {
     pub total_tasks: u64,
     pub context_switches: u64,
     pub context_switch_rate: f64,
+    /// Fork/clone creations per second from /proc/stat; distinct from observed exits.
+    #[serde(default)]
+    pub process_creation_rate: f64,
     pub short_lived_process_rate: f64,
     pub interrupts: u64,
     pub memory_used_bytes: u64,
@@ -274,7 +277,7 @@ impl TelemetrySource for ProcTelemetrySource {
 
         self.prev_context_switches = Some(context_switches);
 
-        let _process_creation_rate = match self.prev_processes {
+        let process_creation_rate = match self.prev_processes {
             Some(prev) if elapsed_secs > 0.0 => {
                 processes_created.saturating_sub(prev) as f64 / elapsed_secs
             }
@@ -379,6 +382,7 @@ impl TelemetrySource for ProcTelemetrySource {
             total_tasks,
             context_switches,
             context_switch_rate,
+            process_creation_rate,
             short_lived_process_rate,
             interrupts,
             memory_used_bytes,
@@ -389,5 +393,24 @@ impl TelemetrySource for ProcTelemetrySource {
             scheduler_profile: read_scheduler_profile(),
             sched_ext_state,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_snapshots_without_creation_rate_remain_readable() {
+        let mut source = ProcTelemetrySource::default();
+        let sample = source.collect().unwrap();
+        assert!(sample.process_creation_rate.is_finite() && sample.process_creation_rate >= 0.0);
+        let mut record = serde_json::to_value(sample).unwrap();
+        record
+            .as_object_mut()
+            .unwrap()
+            .remove("process_creation_rate");
+        let legacy: SystemSnapshot = serde_json::from_value(record).unwrap();
+        assert_eq!(legacy.process_creation_rate, 0.0);
     }
 }

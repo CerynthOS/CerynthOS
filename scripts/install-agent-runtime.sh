@@ -39,6 +39,7 @@ for binary in cerynth-agentd cerynth-worktree-checkout cerynth-harness-bridge ce
     fi
     install -D -m 0755 "$source_binary" "$staging_root/usr/lib/cerynth/$binary"
 done
+install -D -m 0755 "$repo_root/tools/cerynth-volume" "$staging_root/usr/lib/cerynth/cerynth-volume"
 for service in cerynth-agentd cerynth-inferenced; do
     install -D -m 0644 "$repo_root/packaging/systemd/user/$service.service" \
         "$staging_root/usr/lib/systemd/user/$service.service"

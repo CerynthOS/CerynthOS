@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "pinned-upstream-bandwidth-candidate-build",
+  "upstream_revision": "67be0435c454dc8984a11064dc8b9c6476c46b6d",
+  "upstream_source_unchanged": true,
+  "copied_workspace_members_reduced": true,
+  "profile": "release-fast",
+  "resolved_lock_sha256": "4a4580cd3ba5546b2be776d83e9110120d2743a0f1dc7d7c1ff93d737df967af",
+  "binary_sha256": "573f0ffd25819c804c745d5a3c8f6fbc62742ef3bd7627c79ada95f3793bfb83",
+  "scheduler_source_sha256": "49842331a6996a74633312a55b6cf7e5a461905983c5d217f2dc656c9e393f28",
+  "production_baseline_modified": false,
+  "rustc_version": "rustc 1.99.0 (b940084d7 2026-09-28)"
+}

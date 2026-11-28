@@ -1,0 +1,12 @@
+[Unit]
+Description=Accept a healthy Cerynth development trial boot
+After=cerynthd.service user@1000.service
+ConditionPathExists=/var/lib/cerynth/updates/pending.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/cerynth/cerynth-slot-update health
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

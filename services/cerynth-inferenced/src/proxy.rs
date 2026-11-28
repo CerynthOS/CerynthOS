@@ -368,10 +368,10 @@ impl ForwardState {
         if self.streaming {
             while let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
                 let line: Vec<_> = self.pending.drain(..=end).collect();
-                if let Some(data) = line.strip_prefix(b"data: ") {
-                    if let Ok(value) = serde_json::from_slice::<Value>(data) {
-                        self.observe_event(&value);
-                    }
+                if let Some(data) = line.strip_prefix(b"data: ")
+                    && let Ok(value) = serde_json::from_slice::<Value>(data)
+                {
+                    self.observe_event(&value);
                 }
             }
         }
@@ -394,12 +394,12 @@ impl ForwardState {
     }
 
     async fn finish_metrics(&mut self) {
-        if !self.streaming {
-            if let Ok(value) = serde_json::from_slice::<Value>(&self.pending) {
-                self.generated_tokens = value["usage"]["completion_tokens"]
-                    .as_u64()
-                    .or_else(|| value["usage"]["output_tokens"].as_u64());
-            }
+        if !self.streaming
+            && let Ok(value) = serde_json::from_slice::<Value>(&self.pending)
+        {
+            self.generated_tokens = value["usage"]["completion_tokens"]
+                .as_u64()
+                .or_else(|| value["usage"]["output_tokens"].as_u64());
         }
         let metrics = InferenceMetrics {
             queue_ms: self.queue_ms,

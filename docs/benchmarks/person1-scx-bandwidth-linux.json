@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "kind": "isolated-upstream-scx-bandwidth-experiment",
+  "passed": true,
+  "policy": "linux-default",
+  "upstream_revision": "67be0435c454dc8984a11064dc8b9c6476c46b6d",
+  "build_provenance": {
+    "schema_version": 1,
+    "kind": "pinned-upstream-bandwidth-candidate-build",
+    "upstream_revision": "67be0435c454dc8984a11064dc8b9c6476c46b6d",
+    "upstream_source_unchanged": true,
+    "copied_workspace_members_reduced": true,
+    "profile": "release-fast",
+    "resolved_lock_sha256": "4a4580cd3ba5546b2be776d83e9110120d2743a0f1dc7d7c1ff93d737df967af",
+    "binary_sha256": "573f0ffd25819c804c745d5a3c8f6fbc62742ef3bd7627c79ada95f3793bfb83",
+    "scheduler_source_sha256": "49842331a6996a74633312a55b6cf7e5a461905983c5d217f2dc656c9e393f28",
+    "production_baseline_modified": false,
+    "rustc_version": "rustc 1.99.0 (b940084d7 2026-09-28)"
+  },
+  "samples": [
+    {
+      "condition": "parent-20-percent",
+      "trial": 0,
+      "wall_seconds": 3.003942,
+      "parent_cpu_seconds": 0.600316,
+      "a_cpu_usec": 313997,
+      "b_cpu_usec": 286320
+    },
+    {
+      "condition": "parent-60-percent",
+      "trial": 0,
+      "wall_seconds": 3.003955,
+      "parent_cpu_seconds": 1.798375,
+      "a_cpu_usec": 903470,
+      "b_cpu_usec": 894904
+    },
+    {
+      "condition": "child-10-plus-20-percent",
+      "trial": 0,
+      "wall_seconds": 3.00396,
+      "parent_cpu_seconds": 0.904462,
+      "a_cpu_usec": 301641,
+      "b_cpu_usec": 602821
+    },
+    {
+      "condition": "parent-20-percent",
+      "trial": 1,
+      "wall_seconds": 3.003948,
+      "parent_cpu_seconds": 0.597083,
+      "a_cpu_usec": 318256,
+      "b_cpu_usec": 278826
+    },
+    {
+      "condition": "parent-60-percent",
+      "trial": 1,
+      "wall_seconds": 3.003889,
+      "parent_cpu_seconds": 1.800606,
+      "a_cpu_usec": 913811,
+      "b_cpu_usec": 886795
+    },
+    {
+      "condition": "child-10-plus-20-percent",
+      "trial": 1,
+      "wall_seconds": 3.003945,
+      "parent_cpu_seconds": 0.897101,
+      "a_cpu_usec": 299390,
+      "b_cpu_usec": 597710
+    },
+    {
+      "condition": "parent-20-percent",
+      "trial": 2,
+      "wall_seconds": 3.003871,
+      "parent_cpu_seconds": 0.601277,
+      "a_cpu_usec": 290414,
+      "b_cpu_usec": 310864
+    },
+    {
+      "condition": "parent-60-percent",
+      "trial": 2,
+      "wall_seconds": 3.003958,
+      "parent_cpu_seconds": 1.800982,
+      "a_cpu_usec": 898172,
+      "b_cpu_usec": 902810
+    },
+    {
+      "condition": "child-10-plus-20-percent",
+      "trial": 2,
+      "wall_seconds": 3.003996,
+      "parent_cpu_seconds": 0.896759,
+      "a_cpu_usec": 298951,
+      "b_cpu_usec": 597807
+    }
+  ],
+  "summary": {
+    "child-10-plus-20-percent": {
+      "parent_cpu_fraction_mean": 0.29941762793346516,
+      "sample_stdev": 0.0014494455618421726,
+      "trials": 3
+    },
+    "parent-20-percent": {
+      "parent_cpu_fraction_mean": 0.19959207149446986,
+      "sample_stdev": 0.0007335065793650694,
+      "trials": 3
+    },
+    "parent-60-percent": {
+      "parent_cpu_fraction_mean": 0.5992101261434082,
+      "sample_stdev": 0.000471851922842195,
+      "trials": 3
+    }
+  },
+  "checks": [
+    {
+      "name": "cpu_controller",
+      "passed": true
+    },
+    {
+      "name": "cgroup.subtree_control",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "linux_control_scheduler",
+      "passed": true
+    },
+    {
+      "name": "worker_created",
+      "passed": true
+    },
+    {
+      "name": "worker_created",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "individual_child_bandwidth_caps",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "individual_child_bandwidth_caps",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "both_children_progress",
+      "passed": true
+    },
+    {
+      "name": "sustained_hierarchical_bandwidth_cap",
+      "passed": true
+    },
+    {
+      "name": "individual_child_bandwidth_caps",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    },
+    {
+      "name": "cpu.max",
+      "passed": true
+    }
+  ],
+  "kernel_sha256": "867ea6b1d919e2264033b480133410d421ef168224ea08e6f90defc0d3cbef5b",
+  "kernel_config_sha256": "6df0b77a2b2a51da235f548eeffbde51a814bb70d988552aef509fc8a6650a14",
+  "fixture_sha256": "f3532bef9993069e93712ab75564eee1ac541d7d81964f56013da0f52159726c",
+  "binary_sha256": {
+    "scx_lavd": "573f0ffd25819c804c745d5a3c8f6fbc62742ef3bd7627c79ada95f3793bfb83"
+  },
+  "host_scheduler_modified": false,
+  "production_resource_gate_changed": false,
+  "limitations": [
+    "upstream LAVD explicitly labels cpu.max support highly experimental",
+    "VM sustained bandwidth observation; not per-period latency or hard real-time assurance",
+    "does not qualify cpu.weight semantics or the frozen Cerynth scheduler",
+    "production resource API continues refusing sched_ext"
+  ]
+}

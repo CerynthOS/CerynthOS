@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "kind": "independent-full-disk-rebuild-comparison",
+  "variant": "base",
+  "trials": [
+    {
+      "independent_build": 1,
+      "seconds": 45.04266619798727,
+      "image": "/home/naveen/CerynthOS/artifacts/person1/image-reproducibility/build-1/cerynthos.raw"
+    },
+    {
+      "independent_build": 2,
+      "seconds": 50.869917980977334,
+      "image": "/home/naveen/CerynthOS/artifacts/person1/image-reproducibility/build-2/cerynthos.raw"
+    }
+  ],
+  "comparison": {
+    "byte_identical": false,
+    "left_bytes": 2216534528,
+    "right_bytes": 2216534528,
+    "left_sha256": "4e3474ef1f69de7086288e16b69799170f0c72591488101412452d274ee9d035",
+    "right_sha256": "14e85056aa3ec3b2ef4b064ccf34a25a926a9e2de654e52d2206eb7f4c992496",
+    "mismatched_bytes": 5218,
+    "first_mismatching_blocks": [
+      {
+        "block_offset": 1685061632,
+        "first_difference": 1685803040
+      }
+    ]
+  },
+  "input_lock_sha256": "0ba067b0a89c16aed97f4aeee81cb80af20de9bc4065474d7d6d4aecb6d158a4",
+  "inputs_unchanged": true,
+  "fresh_build_roots": true,
+  "shared_authenticated_package_cache": true,
+  "host_disk_modified": false,
+  "limitations": [
+    "same host and toolchain; not cross-machine reproducibility",
+    "prepared payload frozen; not an independent rebuild of every upstream package or Rust binary"
+  ]
+}

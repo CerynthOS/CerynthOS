@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "source_revision": "71c8f6bacfdb74d0a57d586473b05b79d49721a1",
+  "purpose": "Preserve the scheduler algorithm while platform supervision and resource integration evolve. This manifest is not a new performance qualification.",
+  "scheduler_files": {
+    "schedulers/cerynth-scx/Cargo.toml": "a2071cb27f6a47919b39d148463164122a1c606c59eb8844d8087842f2e42660",
+    "schedulers/cerynth-scx/README.md": "18e714a792a82b9a98ab61269e41bcb99790559a7426e20f98e103517c1717d5",
+    "schedulers/cerynth-scx/build.rs": "a970835f813306215ecaedf03a1a0c0b7a5d1fe07e62dfaac18ba5997f2a0e5e",
+    "schedulers/cerynth-scx/dispatch.h": "783c73fe876a6f9ee293f9542fa10aa283367fa373e22e9123c04b01ce193419",
+    "schedulers/cerynth-scx/intf.h": "c30c920ce2a98a3ea1beb50f21456f93cb99923f57cf017a00705bd5fce14886",
+    "schedulers/cerynth-scx/main.bpf.c": "e1ed05f368462f2624edf8f357617ebf65aaa06e105a6fd57ee18c33977ed433",
+    "schedulers/cerynth-scx/src/bpf.rs": "35b1cf3d7118337131ef48842ce8c27e58467ed10454e3af303290a5e457794d",
+    "schedulers/cerynth-scx/src/bpf_intf.rs": "75faf246dcc180862100fab3cbf16028d3b3add0a873d2debb06d673cf6c8a9b",
+    "schedulers/cerynth-scx/src/bpf_skel.rs": "9c3eb66983057d44a164a9515e06ace27241ff0a26b6112483b350e6f891c12d",
+    "schedulers/cerynth-scx/src/error.rs": "aaf6c48b2865e4e50edc6884633c8628af766cb10a22121e4fd44f88ca0efd51",
+    "schedulers/cerynth-scx/src/initialization.rs": "ff628d727fb575d4cbceba36ebf8d03773afbb3f78de6ef23c3b95bbcb045ad5",
+    "schedulers/cerynth-scx/src/main.rs": "a6391d91f09696a94cda1da028b1200fd53faafb8fd80a97dfc1e00613d55a2e",
+    "schedulers/cerynth-scx/src/policy.rs": "7bd0d90faf7ae0caeda4a69652693b3d731507866af4708241371e7732589605",
+    "schedulers/cerynth-scx/src/process.rs": "3375885f51f8f41f2af098b23eb155240008ca60338c15985f64075c75d98975",
+    "schedulers/cerynth-scx/src/profile.rs": "aa2f611d0c84712aaf1189c2a1ed84d5b676454aad3cb161825d2df1e75de8d7",
+    "schedulers/cerynth-scx/src/reporter.rs": "142f3dac921daaa3853608ed0fdaf0c19ffc71bcbba9ed25bfb3ed8129d1e236",
+    "schedulers/cerynth-scx/src/stats.rs": "b8cd968d9daddc46a36643ac8ff315ba80149330b338a0811a96039e9511e231",
+    "schedulers/cerynth-scx/src/status.rs": "ecea8f5cc83706a4cb942ab02d92a03d8b0038111417554535ec2dbaa8c817ca",
+    "schedulers/cerynth-scx/tests/dispatch-progress.c": "77c6f7000309a69a55af48e17e539ae4e4c5aa62cc2fa49c4491953517ce3c6d"
+  },
+  "dependency_pins": {
+    "kernel/COMMIT": "8cd9520d35a6c38db6567e97dd93b1f11f185dc6",
+    "kernel/VERSION": "v7.1",
+    "schedulers/SCX_COMMIT": "67be0435c454dc8984a11064dc8b9c6476c46b6d",
+    "third_party/scx.revision": "67be0435c454dc8984a11064dc8b9c6476c46b6d"
+  },
+  "historical_validation": "docs/benchmarks/validated-candidate.md",
+  "changes_require": "Keep the pinned baseline available; qualify experiments separately."
+}

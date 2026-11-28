@@ -1,5 +1,5 @@
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
 };
 
@@ -11,19 +11,28 @@ use crate::{backend::SharedBackend, handlers::handle_request, paths::state_path}
 
 use super::codec::{decode_request, encode_response};
 
-pub async fn handle_connection(
-    mut stream: UnixStream,
-    backend: SharedBackend,
-) -> std::io::Result<()> {
-    let mut buffer = vec![0u8; MAX_MESSAGE_SIZE];
-
-    let n = stream.read(&mut buffer).await?;
-
-    if n == 0 {
+pub async fn handle_connection(stream: UnixStream, backend: SharedBackend) -> std::io::Result<()> {
+    // Unix stream reads may split a JSON frame anywhere. Bound the complete
+    // frame and its total read time, including clients sending one byte slowly.
+    let mut reader = BufReader::new(stream).take((MAX_MESSAGE_SIZE + 1) as u64);
+    let mut buffer = Vec::new();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        reader.read_until(b'\n', &mut buffer),
+    )
+    .await
+    .map_err(|_| std::io::Error::from(std::io::ErrorKind::TimedOut))??;
+    if buffer.is_empty() {
         return Ok(());
     }
-
-    let envelope = match decode_request(&buffer[..n]) {
+    if buffer.len() > MAX_MESSAGE_SIZE || buffer.last() != Some(&b'\n') {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "oversized or incomplete request",
+        ));
+    }
+    let mut stream = reader.into_inner().into_inner();
+    let envelope = match decode_request(&buffer) {
         Ok(req) => req,
         Err(err) => {
             eprintln!("Failed to parse request: {err}");
@@ -41,7 +50,7 @@ pub async fn handle_connection(
     let response = {
         let mut backend = backend.lock().await;
 
-        let response = handle_request(&mut **backend, request);
+        let response = handle_request(&mut **backend, &request);
 
         // Persist runtime state derived from the backend's own status so
         // profile/adaptation changes survive a daemon restart.
@@ -63,9 +72,10 @@ pub async fn handle_connection(
 
     let response = ResponseEnvelope::for_request(&envelope, socket_response);
 
-    let bytes = encode_response(&response).unwrap();
-
-    stream.write_all(&bytes).await?;
+    let bytes = encode_response(&response).map_err(std::io::Error::other)?;
+    tokio::time::timeout(std::time::Duration::from_secs(5), stream.write_all(&bytes))
+        .await
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::TimedOut))??;
 
     Ok(())
 }

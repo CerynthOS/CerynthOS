@@ -27,7 +27,21 @@ async fn main() -> std::io::Result<()> {
     let config = Config::load(config_path);
 
     // Load persisted runtime state.
-    let runtime_state = RuntimeState::load(state_path);
+    let mut runtime_state = RuntimeState::try_load(state_path).unwrap_or_else(|error| {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            eprintln!("Warning: cannot restore runtime state: {error}; adaptation paused");
+        }
+        RuntimeState {
+            profile: config.default_profile,
+            adaptation_enabled: error.kind() == std::io::ErrorKind::NotFound
+                && config.adaptation_enabled,
+            adaptation_mode: config.adaptation_mode,
+            scheduler_backend: config.scheduler_backend,
+        }
+    });
+    // Configuration selects the implementation; saved profile state cannot
+    // relabel a mock backend as a kernel scheduler after a configuration edit.
+    runtime_state.scheduler_backend = config.scheduler_backend;
 
     let daemon_state: DaemonState = runtime_state.into();
 
@@ -65,22 +79,7 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    if config.auto_start {
-        match backend.lock().await.start() {
-            Ok(()) => println!("✓ Scheduler auto-started"),
-
-            Err(e) => {
-                eprintln!("Warning: failed to auto-start scheduler: {e}");
-            }
-        }
-    } else {
-        println!(
-            "Scheduler auto-start disabled; \
-             waiting for an explicit start"
-        );
-    }
-
     println!();
 
-    server::start_server(backend).await
+    server::start_server(backend, config.auto_start).await
 }

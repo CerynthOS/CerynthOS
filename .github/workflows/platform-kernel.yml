@@ -1,0 +1,59 @@
+name: Platform kernel qualification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-kernel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: torvalds/linux
+          path: third_party/linux
+          ref: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+      - uses: actions/checkout@v4
+        with:
+          repository: sched-ext/scx
+          path: third_party/scx
+          ref: 67be0435c454dc8984a11064dc8b9c6476c46b6d
+      - name: Build and VM prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make bc flex bison libelf-dev libssl-dev clang llvm pkg-config pahole qemu-system-x86 libseccomp-dev zlib1g-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Pinned source and unchanged scheduler baseline
+        run: python3 tools/platform_inventory.py
+      - name: Build isolated test kernel
+        run: JOBS=2 scripts/vm/build-platform-kernel.sh
+      - name: Build frozen scheduler and platform services
+        run: |
+          cargo fetch --locked
+          cargo build --locked --release -p cerynth-scx -p cerynthd -p cerynthctl -p cerynth-policy
+      - name: Supervisor and recovery regressions
+        run: cargo test --locked -p cerynthd -p cerynthctl -p cerynth-config -p cerynth-telemetry
+      - name: Reproducible package and staged recovery
+        run: |
+          python3 tools/package_platform_runtime.py
+          python3 tools/platform_runtime_smoke.py
+      - name: Real kernel resource and scheduler fault checks
+        run: >-
+          python3 tools/platform_vm_smoke.py
+          --kernel kernel/build-platform-vm/arch/x86/boot/bzImage
+          --scheduler target/release/cerynth-scx --accel tcg --timeout 240
+      - name: Preserve evidence including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-kernel-evidence
+          path: |
+            artifacts/person1/platform-inventory.json
+            artifacts/person1/kernel-vm/console.log
+            artifacts/person1/kernel-vm/result.json
+            artifacts/person1/runtime-package/manifest.json
+            artifacts/person1/runtime-package/dependency-inventory.json
+            artifacts/person1/runtime-package/SHA256SUMS
+            artifacts/person1/runtime-smoke.json
+            kernel/build-platform-vm/cerynth-build.json

@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod contract;
+mod platform_limits;
 mod runtime;
+pub use platform_limits::{DeviceIoLimit, PlatformLimits};
 pub use runtime::*;
 
 pub const API_VERSION: u32 = 1;

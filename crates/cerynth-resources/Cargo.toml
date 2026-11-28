@@ -10,7 +10,7 @@ cerynth-platform-resources = { path = "../cerynth-platform-resources" }
 anyhow.workspace = true
 clap.workspace = true
 fs2 = "0.4"
-nix.workspace = true
+nix = { workspace = true, features = ["fs"] }
 tempfile = "3"
 cerynth-agent-api = { path = "../cerynth-agent-api" }
 sha2 = "0.10"

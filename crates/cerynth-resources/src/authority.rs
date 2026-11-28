@@ -135,7 +135,10 @@ impl Config {
             self.version == 1
                 && self.capacity.memory_bytes > 0
                 && self.capacity.cpu_quota_micros_per_second >= 10_000
-                && self.capacity.cpu_quota_micros_per_second % 10_000 == 0
+                && self
+                    .capacity
+                    .cpu_quota_micros_per_second
+                    .is_multiple_of(10_000)
                 && self.inference_limit <= 1024
                 && self.accelerators.len() <= 16,
             "invalid authority capacity policy"

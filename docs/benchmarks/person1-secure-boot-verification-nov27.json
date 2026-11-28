@@ -1,0 +1,40 @@
+{
+  "kind": "independent-sbverify-certificate-checks",
+  "passed": true,
+  "test_keys_only": true,
+  "verifier_sha256": "591462fa860de5107e0aa9af97f05ca54f1a233f537edfad33dd8d780d4a5a89",
+  "checks": [
+    {
+      "image": "trusted",
+      "return_code": 0,
+      "expected_trusted": true,
+      "passed": true,
+      "image_sha256": "7b4ea78b0a1fd81739bfc319aa6bc591c70b27a97d66b763724045ea5867d74a",
+      "diagnostics_sha256": "c1ec2e60eaaa335d2d46a87af9c64a2072426ed74d48cc088e4ad7173ce6bd7e"
+    },
+    {
+      "image": "unsigned",
+      "return_code": 1,
+      "expected_trusted": false,
+      "passed": true,
+      "image_sha256": "1d8965fb37c1bd3e9259493186fca78f1fbc4c4e5f0ececd3e83b39b86d44f85",
+      "diagnostics_sha256": "4154e8d571acf1dc81c48dfa03e35c4c5e5b57bcf3ea4d4fedc86df917c5b4d3"
+    },
+    {
+      "image": "unauthorized",
+      "return_code": 1,
+      "expected_trusted": false,
+      "passed": true,
+      "image_sha256": "74ddb0289e378a48327dd7ffeab6de70f40c19f348f703908a395aab81f3786e",
+      "diagnostics_sha256": "75460fc100dcb4d3b452f79405f1c8692fbb105863ef0b3726fa464c4b196e16"
+    },
+    {
+      "image": "tampered",
+      "return_code": 1,
+      "expected_trusted": false,
+      "passed": true,
+      "image_sha256": "99f60ee28e6764ebb2e17bd57d311343577f490eb7a15d6f138fec129396d611",
+      "diagnostics_sha256": "1fd718e53cdadb87ee7a331e7138a8c9664cbaf936b00c1586b5314fe39753b5"
+    }
+  ]
+}

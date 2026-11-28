@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "kind": "real-active-swap-uefi-vm",
+  "fixture": {
+    "schema_version": 1,
+    "kind": "managed-active-swap-and-no-swap-control",
+    "allowed_swap_limit_bytes": 100663296,
+    "observed_swap_bytes": 44900352,
+    "resident_limit_bytes": 67108864,
+    "observed_resident_bytes": 67067904,
+    "payload_bytes": 104857600,
+    "allowed_workload_reached_ready": true,
+    "no_swap_control_failed_before_ready": true,
+    "no_swap_resource_slice": "cerynth-r938385746f79865a-p37a8eec1ce19687d-s7e2371c133dd4d6188a028ca78fc2f03.slice",
+    "no_swap_failure_reason": "process_exited",
+    "cleanup_complete": true,
+    "swap_configuration_modified_by_fixture": false
+  },
+  "swapout_pages_delta": 10741,
+  "no_swap_cgroup_oom_evidence": [
+    "oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=user@1000.service,mems_allowed=0,oom_memcg=/user.slice/user-1000.slice/user@1000.service/cerynth.slice/cerynth-r938385746f79865a.slice/cerynth-r938385746f79865a-p37a8eec1ce19687d.slice/cerynth-r938385746f79865a-p37a8eec1ce19687d-s7e2371c133dd4d6188a028ca78fc2f03.slice,task_memcg=/user.slice/user-1000.slice/user@1000.service/cerynth.slice/cerynth-r938385746f79865a.slice/cerynth-r938385746f79865a-p37a8eec1ce19687d.slice/cerynth-r938385746f79865a-p37a8eec1ce19687d-s7e2371c133dd4d6188a028ca78fc2f03.slice/cerynth-agent-7e2371c1-33dd-4d61-88a0-28ca78fc2f03.scope,task=python3.14,pid=581,uid=1000"
+  ],
+  "core_services_survived": true,
+  "guest_swap_removed": true,
+  "host_swap_modified": false,
+  "physical_hardware_qualified": false,
+  "image_sha256": "a33b1ca35b07b0c08f6e427ea0ea715a160a4af3e47f370ae1fa47c9b7a25570",
+  "fixture_sha256": "89bf3cb8b2084ef2ea14b83ce4295e181be91d9d766616c9a587016e473a3362"
+}

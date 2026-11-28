@@ -1,0 +1,17 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-11-27T17:11:58Z",
+  "headSha": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
+  "status": "completed",
+  "updatedAt": "2026-11-27T17:16:40Z",
+  "url": "https://github.com/CerynthOS/CerynthOS/actions/runs/46039903197",
+  "kind": "qualified-source-github-ci",
+  "compiler_version_output": [
+    "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "cargo 1.99.0 (5f94df478 2026-08-27)"
+  ],
+  "workflow_log_sha256": "02e3f31ec90fbeaea583f2acf70995d62bb081b64b1348ecbed920e282e959e3",
+  "workspace_test_cases_passed": 390,
+  "physical_acceptance_claimed": false,
+  "cloud_requests": 0
+}

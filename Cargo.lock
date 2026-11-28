@@ -631,6 +631,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "cerynth-scx-phase"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cerynth-agent-api",
+ "cerynth-resources",
+ "clap",
+ "ctrlc",
+ "libbpf-rs",
+ "libc",
+ "plain",
+ "procfs",
+ "scx_cargo",
+ "scx_rustland_core",
+ "scx_utils",
+ "serde",
+ "serde_json",
+ "sha2",
+ "uuid",
+]
+
+[[package]]
 name = "cerynth-telemetry"
 version = "0.1.0"
 dependencies = [
@@ -653,12 +675,16 @@ dependencies = [
 name = "cerynthd"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cerynth-config",
  "cerynth-ipc",
+ "cerynth-platform-resources",
  "libc",
+ "nix 0.30.1",
  "serde",
  "serde_json",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

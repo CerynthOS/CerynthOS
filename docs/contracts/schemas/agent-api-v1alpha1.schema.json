@@ -33,6 +33,58 @@
         "task_result"
       ]
     },
+    "DeviceIoLimit": {
+      "type": "object",
+      "required": [
+        "major",
+        "minor"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "minor": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "read_bytes_per_second": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "read_iops": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "write_bytes_per_second": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "write_iops": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "GuardCapability": {
       "type": "object",
       "required": [
@@ -1272,6 +1324,46 @@
         }
       ]
     },
+    "PlatformLimits": {
+      "type": "object",
+      "properties": {
+        "allowed_cpus": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "uniqueItems": true
+        },
+        "io_devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DeviceIoLimit"
+          }
+        },
+        "io_weight": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "memory_swap_max_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "ResourceBudget": {
       "type": "object",
       "properties": {
@@ -1321,6 +1413,17 @@
           "format": "uint64",
           "minimum": 0.0
         },
+        "platform": {
+          "description": "Optional owner-selected platform constraints, enforced before execution.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PlatformLimits"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "tasks_max": {
           "default": 128,
           "type": "integer",
@@ -1330,6 +1433,15 @@
         "timeout_seconds": {
           "default": 300,
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "workspace_max_bytes": {
+          "description": "Capacity ceiling for the bounded workspace and its managed child volumes.",
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0.0
         }

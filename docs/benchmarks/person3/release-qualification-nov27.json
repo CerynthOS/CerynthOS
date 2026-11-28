@@ -1,0 +1,113 @@
+{
+  "kind": "person3-release-qualification",
+  "runner_sha256": "d46d8a6bf010d9dde8e2d2fab2c37f192630fdbe18b1658512f0fcca0175cb9f",
+  "explicit_harness_selection_names": [
+    "CERYNTH_CLAUDE_BINARY",
+    "CERYNTH_CODEX_BINARY",
+    "CERYNTH_HERMES_BINARY",
+    "CERYNTH_OPENCODE_BINARY"
+  ],
+  "revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
+  "tracked_worktree_clean": true,
+  "local_checks_run": true,
+  "local_checks": [
+    {
+      "name": "format",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 0.41516513901297003,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "workspace-check",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 1.9195508289849386,
+      "log_sha256": "2104a8b241d16fedf648bc809c1e37d128f86b18f6dd09863864017b280ff2e0"
+    },
+    {
+      "name": "workspace-tests",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 29.00735240796348,
+      "log_sha256": "ad079d710cca0b247cdf50e0f1f8acd114993505b764c69b0103d27eea50d75b"
+    },
+    {
+      "name": "strict-lint",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 0.2149084929842502,
+      "log_sha256": "c0128ab8de374f3c93af0a7e5bae4e74c562bcdf630aad7c0856b71398d3637a"
+    },
+    {
+      "name": "contracts",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 0.31574188004015014,
+      "log_sha256": "07e5ab79c8fa1879eab7a4dac853e3c336aa916eab2645f5cc152f5f3782eaae"
+    },
+    {
+      "name": "shellcheck",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 0.3154142079874873,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "version-pins",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 4.523487586004194,
+      "log_sha256": "525910cadcf4ad489d134ed60d9616f2de9336dedabb91a54f587e76d3064a74"
+    },
+    {
+      "name": "cloud-consent-policy-tests",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 0.11416334001114592,
+      "log_sha256": "59c3d9f0e3f8c1c4cd1a068cad0ddba33945f098eeb2620b49fbb0d8c7c14ee0"
+    }
+  ],
+  "local_checks_passed": true,
+  "remaining_acceptance": [
+    {
+      "task": "P3-010",
+      "status": "Pending",
+      "acceptance": "Proposed handoffs documented; actual team review/approval has not happened."
+    },
+    {
+      "task": "P3-085",
+      "status": "Partial",
+      "acceptance": "Explicit consent enforced; authorized live cloud routing experiment not run."
+    },
+    {
+      "task": "P3-099",
+      "status": "Partial",
+      "acceptance": "Content-addressed candidate, atomic server-side pin checks, actual historical Rust round trips and a committed protocol manifest checked by CI. Coordinated compatibility review and stable-release acceptance remain open."
+    },
+    {
+      "task": "P3-105",
+      "status": "Pending",
+      "acceptance": "Local harnesses exercised separately; authenticated cloud/mixed workflow not validated."
+    },
+    {
+      "task": "P3-106",
+      "status": "Pending",
+      "acceptance": "Requires dedicated authorized cloud/harness configuration and the actual reference run. Shared managed-domain reservations are implemented; unregistered backend processes and bypassing workloads remain outside their coverage."
+    },
+    {
+      "task": "P3-107",
+      "status": "Partial",
+      "acceptance": "Reproducible offline inventory verifies all installed harness/backend/engine pins; local adapter/protocol regressions and evidence matrix exist. Full authenticated cloud feature compatibility remains unqualified until deferred cloud tests."
+    },
+    {
+      "task": "P3-112",
+      "status": "Pending",
+      "acceptance": "Automated/local checks completed; cross-track release review and alpha acceptance remain outstanding."
+    }
+  ],
+  "team_approval_claimed": false,
+  "cloud_requests": 0,
+  "release_qualified": false,
+  "automated_gate_passed": false
+}

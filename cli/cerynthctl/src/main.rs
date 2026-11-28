@@ -25,16 +25,26 @@ fn main() {
         println!("  cerynthctl adaptation resume");
         println!("  cerynthctl adaptation mode get");
         println!("  cerynthctl adaptation mode set <off|shadow|canary>");
-        return;
+        std::process::exit(2);
     };
 
-    let envelope = if let Ok(response) = client::execute(request) {
-        response
-    } else {
-        eprintln!("Error: Could not connect to cerynthd.");
-        eprintln!("Is the daemon running?");
-        std::process::exit(1);
+    let envelope = match client::execute(request) {
+        Ok(response) => response,
+        Err(error) => {
+            eprintln!("Error: request failed: {error}");
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+            ) {
+                eprintln!("The operation may have been accepted; inspect status before retrying.");
+            }
+            std::process::exit(1);
+        }
     };
 
+    let failed = matches!(envelope.response, cerynth_ipc::SocketResponse::Error { .. });
     print_response(envelope);
+    if failed {
+        std::process::exit(1);
+    }
 }

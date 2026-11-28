@@ -10,6 +10,7 @@ target/
 
 # Kernel outputs
 /kernel/build/
+/kernel/build-platform-vm/
 /kernel/dist/
 *.ko
 *.o

@@ -1,0 +1,24 @@
+{
+  "kind": "workspace-local-secure-boot-tools",
+  "source_url": "https://git.kernel.org/pub/scm/linux/kernel/git/jejb/sbsigntools.git",
+  "source_revision": "db731f0c4dd75e112e2abdfbe9443065742e58c3",
+  "ccan_revision": "b1f28e17227f2320d07fe052a8a48942fe17caa5",
+  "diagnostic_counter_only_patch": true,
+  "image_source_sha256": "f4bb4cb47bc60578921e2c21ac6d7f16d3e37afcf8b08fd2ca6b2dd5cdf0c26f",
+  "binaries": [
+    {
+      "name": "sbsign",
+      "sha256": "4029685f0556c4705ec4026b3caee51fc458ac6c2e15b298307c28beb75ccb06"
+    },
+    {
+      "name": "sbverify",
+      "sha256": "591462fa860de5107e0aa9af97f05ca54f1a233f537edfad33dd8d780d4a5a89"
+    },
+    {
+      "name": "sbattach",
+      "sha256": "f96cc31a52a35730961a90939a97cb1d32ef5126c35c1dd27051da3b20ac8043"
+    }
+  ],
+  "host_packages_installed": false,
+  "physical_firmware_modified": false
+}

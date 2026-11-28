@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "kind": "real-signed-verified-root-uefi-vm",
+  "passed": true,
+  "image_sha256": "e405520d9a35d36baba66174b743de24594e057ebac2a039eaca75bae5100703",
+  "firmware_secure_boot_enabled": true,
+  "signed_uki_roothash_cmdline": "roothash=1e651f42b53afb95c40fc5c71c7bd4a18c19d33eea1958047e27d5e4eda62780 ro systemd.volatile=overlay panic=5 console=uart,io,0x3f8 console=tty0",
+  "device_mapper_table": "root: 0 3279568 verity 1 254:2 254:3 4096 4096 409946 1 sha256 1e651f42b53afb95c40fc5c71c7bd4a18c19d33eea1958047e27d5e4eda62780 f5110c7ffa921a978cb7b2191b1b8e8f34188181ad46c1220f89e8700dcc6817",
+  "device_mapper_status": "root: 0 3279568 verity V -",
+  "mounts": "overlay overlay rw,relatime,lowerdir=/sysroot,upperdir=/run/systemd/overlay-sysroot/upper,workdir=/run/systemd/overlay-sysroot/work,uuid=on",
+  "verity_device": "root",
+  "verity_device_read_only": true,
+  "read_only_authenticated_lower_root": true,
+  "writable_overlay_ephemeral": true,
+  "corruption_in_disposable_overlay_rejected": true,
+  "corruption_evidence": [
+    "[    1.740971] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.741213] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.742510] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.753898] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.754301] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.754894] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.763487] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.764747] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.766914] device-mapper: verity: 254:2: data block 0 is corrupted",
+    "[    1.777442] device-mapper: verity: 254:2: data block 0 is corrupted"
+  ],
+  "backing_image_unchanged": true,
+  "host_block_devices_or_firmware_modified": false,
+  "test_keys_only": true,
+  "physical_acceptance_claimed": false,
+  "build_provenance_sha256": "e388e219aea888bec3ae79611e9dbc83932c564b8141fb0c7a8e19635a4086ca",
+  "payload_source_revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
+  "guest_payload_manifest_matches_prepared_overlay": true,
+  "runner_sha256": "bec8be45ec266d80818d3e1f30aefd6dbf06e5437b04b7c6c940573ca214bdfc",
+  "firmware_sha256": "cc150d941d4f1d39e596dedc545384a66ccfb3c9ba5cf9bc3a54d8d427d4d88f",
+  "limitations": [
+    "development profile with ephemeral root writes; no persistent verified-root A/B migration claim",
+    "test-key signed development payload; not public release acceptance"
+  ]
+}

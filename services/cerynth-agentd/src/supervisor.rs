@@ -461,14 +461,13 @@ impl AgentService {
                 Registry::record_event(s, reason);
                 Ok(())
             });
-            if let Ok(s) = runtime.registry.get(id) {
-                if !s.state.is_terminal() {
+            if let Ok(s) = runtime.registry.get(id)
+                && !s.state.is_terminal() {
                     if exit_code == Some(0) && cleaned {
                         let _ = runtime.registry.transition(id, SessionState::Completing, "process_completing");
                         let _ = runtime.registry.transition(id, SessionState::Completed, "process_completed");
                     } else { let _ = runtime.registry.transition(id, SessionState::Failed, reason); }
                 }
-            }
             // Children belong to the parent's lifetime even when its process
             // exits normally or reaches its deadline without an explicit stop.
             let _ = crate::orchestration::cancel_tree(&mut runtime, id, false, "parent_exited");

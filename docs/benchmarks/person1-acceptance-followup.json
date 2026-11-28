@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-24T14:52:54.113111+00:00",
+  "base_revision": "e8a28e5991eaed9e58636ad472eb9bd1be7ea106",
+  "automated_acceptance_tools_passed": true,
+  "python_tests_passed": 52,
+  "new_acceptance_regressions": 15,
+  "test_records_are_synthetic": true,
+  "actual_public_approval_created": false,
+  "test_log_sha256": "23f1f71ffb1297792d3e2c4ea421fc3a2884425b78728a0613f69b9e139ea75d",
+  "source_sha256": {
+    "tools/platform_hardware_probe.py": "a211d3fc64956e5cabdf7c0239bab090d3e5b7e71c3223f0040e63a0ee251f1a",
+    "tools/platform_physical_recovery.py": "f4aa8f84a861130c89853bdc8e06d47762424985d6f449ddd8c84b116d7a472e",
+    "tools/platform_release_acceptance.py": "7b3bcc085c731ce6418e7c7b28e9670af8663be175dffbaa096dde383b17d6bd",
+    "tools/test_platform_release_acceptance.py": "2b3689a6b69c5f4071898ebd528f73b07d375899513cef3af84b26b715d79d0c",
+    "tools/release_os_image.py": "3ec5f438d071b4301fa48824c250320922c93b97dee450826c42dd8557fb1dac",
+    "tools/cerynth-slot-update": "523a3aaab716111a8d8b98ce40ad317593b3906e8fa556eff81939529990dbf1",
+    "tools/prepare_os_image.py": "677eaadb0f7cbd6db782ea405a26eed54f5b846ec1892100997c48416549eeeb",
+    ".github/workflows/platform-acceptance.yml": "274da5e57808f4829cbf63689a20fdb8d76e6e7de506caf3aeaa53ecc19c56c5"
+  },
+  "hardware_observation_sha256": "6b1061b9ee93922f27ff1edb754b698a37a063b1da8ff97ad6d54bb3921bcbbb",
+  "physical_image_install_or_reboot_executed": false,
+  "actual_signed_team_acceptance_supplied": false,
+  "public_release_identity_selected": false,
+  "public_release_qualified": false,
+  "checks": [
+    "Exact source, contract, image, payload, version, sequence and publisher binding",
+    "Externally trusted approval signature required for public signing and verification",
+    "Publisher signature alone cannot counterfeit a separately keyed approval",
+    "Required public mode rejects development-channel downgrade",
+    "VM, wrong deployment, repeated boot and changed marker/evidence rejected",
+    "Pending and missing team/license approvals rejected",
+    "Wrong deployment rejected before checkpoint filesystem writes",
+    "Existing development signature/substitution tests pass"
+  ],
+  "external_inputs_required": [
+    "Authorized disposable physical target and access/power procedure",
+    "Actual team/interface, license and release decisions",
+    "Selected release publisher and acceptance authority public identities"
+  ],
+  "limits": [
+    "Checkpoint positive paths use fixtures until the selected physical image is booted",
+    "Power-cut classification is an explicit operator attestation, not a remotely provable event",
+    "Physical rendering/driver/workload review is distinct from marker persistence"
+  ],
+  "github_actions": {
+    "run_id": 45419077513,
+    "url": "https://github.com/CerynthOS/CerynthOS/actions/runs/45419077513",
+    "source_commit": "02fb6dd25b8ac7a98a2e810e179248e109fc195a",
+    "job_id": 138533293971,
+    "job": "acceptance-regressions",
+    "conclusion": "success",
+    "verified_steps": [
+      "Python and public-release acceptance regressions",
+      "Development-signing compatibility and substitution checks"
+    ],
+    "physical_or_team_approval_supplied": false
+  },
+  "pull_request": {
+    "number": 12,
+    "url": "https://github.com/CerynthOS/CerynthOS/pull/12",
+    "draft": true,
+    "base": "feat/person3-agent-runtime",
+    "review_approval_claimed": false
+  },
+  "full_ci_verification": {
+    "source_commit": "1c374cc809756dfb8b8ae29fba21659ee4a44d1f",
+    "run_id": 45809557902,
+    "url": "https://github.com/CerynthOS/CerynthOS/actions/runs/45809557902",
+    "rust": "success",
+    "shell": "success",
+    "strict_lint": "success",
+    "contract_drift": "success",
+    "acceptance_run_id": 45809558157,
+    "acceptance": "success"
+  },
+  "external_acceptance_state": "deferred_by_owner_2026-11-26_inputs_unavailable"
+}

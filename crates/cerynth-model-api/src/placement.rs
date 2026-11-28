@@ -297,8 +297,16 @@ mod tests {
         let result = plan(&request, std::slice::from_ref(&target), &samples, 10)?;
         assert_eq!(result.selected.as_deref(), Some("gpu"));
         let cost = result.assessments[0].switch_estimate.as_ref().unwrap();
-        assert_eq!(cost.median_ms, 30.0);
-        assert_eq!(cost.maximum_ms, 1000.0);
+        assert!(
+            (cost.median_ms - 30.0).abs() < 1e-9,
+            "median_ms = {}",
+            cost.median_ms
+        );
+        assert!(
+            (cost.maximum_ms - 1000.0).abs() < 1e-9,
+            "maximum_ms = {}",
+            cost.maximum_ms
+        );
         let mut denied = target;
         denied.trust_domain = "owner-b".into();
         assert!(plan(&request, &[denied], &samples, 10)?.selected.is_none());

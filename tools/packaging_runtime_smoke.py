@@ -26,7 +26,7 @@ def main():
         executables=['cerynth-agentd','cerynth-inferenced','cerynth-harness-bridge','cerynth-hardware',
             'cerynth-resource-authority','cerynth-worktree-checkout']
         expected={f'usr/lib/cerynth/{name}' for name in executables}|{
-            'usr/bin/cerynth-observer','usr/share/applications/io.cerynth.Observer.desktop',
+            'usr/bin/cerynth-observer','usr/lib/cerynth/cerynth-volume','usr/share/applications/io.cerynth.Observer.desktop',
             'usr/share/doc/cerynth/agent-runtime.md','usr/lib/systemd/user/cerynth-agentd.service',
             'usr/lib/systemd/user/cerynth-inferenced.service'}
         assert set(manifest)==expected,manifest
@@ -80,7 +80,7 @@ def main():
                 'managed_scope_and_nested_slice_recovered':True,'unknown_prior_effects_preserved':True,'inference_dependency_started':True,
                 'production_units_enabled':False,'booted_iso':False,'cloud_requests':0,
                 'limitations':['Runtime-linked copies use staged executable paths and unique unit/state names',
-                    'No distribution image definition exists in upstream checkout; no boot/upgrade/signing qualification']}
+                    'This staged-service test does not boot an image; use os_image_vm.py and ab_update_smoke.py for separate image qualification']}
             destination=Path(args.output);destination.parent.mkdir(parents=True,exist_ok=True);destination.write_text(json.dumps(report,indent=2)+'\n')
             print(json.dumps({k:v for k,v in report.items() if k!='staged_sha256'},indent=2))
         finally:
