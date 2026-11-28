@@ -1,0 +1,9 @@
+{
+  "kind": "regenerable-dev-cache-reclamation",
+  "command": "cargo clean --profile dev -p cerynth-agentd",
+  "removed_files": 2897,
+  "reported_removed_gib": 4.9,
+  "prepared_release_binary_sha256": "19425e1e7dc06ddd7cd917edf2149f2ef10f950a6bce716bce471b2293f55942",
+  "prepared_overlay_unchanged": true,
+  "source_files_removed": false
+}

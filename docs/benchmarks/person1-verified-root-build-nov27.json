@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "development-disk-build-provenance",
-  "source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "source_revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
   "tracked_worktree_clean": true,
   "builder_sha256": "61c5830b9cb0da7d502e2581b3db2856edc7636e9459858210c281a259cd88b4",
   "configuration_sha256": {
@@ -19,9 +19,9 @@
     "packaging/image/mkosi.repart-verified-root/20-root-verity.conf": "cc7f36d8184f4f1ada48983f58d0a656d561ff521a640c3704c45fb8c37c1bbb",
     "packaging/image/mkosi.sandbox/etc/pacman.conf": "444ae07dd845fbf457a4757f556d3fab90e9524ed449af4d59add207ad1a0904"
   },
-  "prepared_overlay_manifest_sha256": "4a5cf9aadf124bd188019788f0994a1fb89facf33925e8d12a7c45798eb02667",
-  "prepared_overlay_source_revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
-  "image_sha256": "4b63cd75d36b77a52fa186d1e829b88ca9116ac1a06f647834a055dea3598b31",
+  "prepared_overlay_manifest_sha256": "bf092c2dc49d9c008db37e2413d21d0f6b9bb1221e08cb28bb307f6195064e2a",
+  "prepared_overlay_source_revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
+  "image_sha256": "e405520d9a35d36baba66174b743de24594e057ebac2a039eaca75bae5100703",
   "verified_root": true,
   "secure_boot_signing_requested": true,
   "physical_acceptance_claimed": false

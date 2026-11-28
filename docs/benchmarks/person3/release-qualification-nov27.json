@@ -7,7 +7,7 @@
     "CERYNTH_HERMES_BINARY",
     "CERYNTH_OPENCODE_BINARY"
   ],
-  "revision": "5b0ebed2d436032f962f8a5f6aadf3843d57c17b",
+  "revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
   "tracked_worktree_clean": true,
   "local_checks_run": true,
   "local_checks": [
@@ -15,57 +15,57 @@
       "name": "format",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 0.5159738899674267,
+      "elapsed_seconds": 0.41516513901297003,
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "name": "workspace-check",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 0.7159795479965396,
-      "log_sha256": "34f8e0eae369d143eb7957c3366d271f3e8443f81074b12dbd1975a731af1c9b"
+      "elapsed_seconds": 1.9195508289849386,
+      "log_sha256": "2104a8b241d16fedf648bc809c1e37d128f86b18f6dd09863864017b280ff2e0"
     },
     {
       "name": "workspace-tests",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 33.75343022699235,
-      "log_sha256": "d8b596bf68abb705ef2215552a2ec9e9d14e07a6c332fc9d68ada7a248e55f76"
+      "elapsed_seconds": 29.00735240796348,
+      "log_sha256": "ad079d710cca0b247cdf50e0f1f8acd114993505b764c69b0103d27eea50d75b"
     },
     {
       "name": "strict-lint",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 1.7692589450161904,
-      "log_sha256": "ba5b275082e53429e90ddbea5043e48dbd2d91e00c4213120fc1e4ab7eebbf82"
+      "elapsed_seconds": 0.2149084929842502,
+      "log_sha256": "c0128ab8de374f3c93af0a7e5bae4e74c562bcdf630aad7c0856b71398d3637a"
     },
     {
       "name": "contracts",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 1.3672318170429207,
+      "elapsed_seconds": 0.31574188004015014,
       "log_sha256": "07e5ab79c8fa1879eab7a4dac853e3c336aa916eab2645f5cc152f5f3782eaae"
     },
     {
       "name": "shellcheck",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 1.423965594964102,
+      "elapsed_seconds": 0.3154142079874873,
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "name": "version-pins",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 13.847788598039187,
+      "elapsed_seconds": 4.523487586004194,
       "log_sha256": "525910cadcf4ad489d134ed60d9616f2de9336dedabb91a54f587e76d3064a74"
     },
     {
       "name": "cloud-consent-policy-tests",
       "passed": true,
       "return_code": 0,
-      "elapsed_seconds": 0.5213213100214489,
-      "log_sha256": "ac726209b21e3ddbcce12bf42554a877bd78c79840ff16ed121c7a7bba8b504b"
+      "elapsed_seconds": 0.11416334001114592,
+      "log_sha256": "59c3d9f0e3f8c1c4cd1a068cad0ddba33945f098eeb2620b49fbb0d8c7c14ee0"
     }
   ],
   "local_checks_passed": true,

@@ -59,7 +59,9 @@ user-unit garbage-collection race, permission mask, stale-mount handling,
 self-dependent volume removal, journal durability/locking, CPU discovery path
 and topology-order alignment. Operation execution now binds idempotency keys to
 immutable details and refuses handler execution after a failed durable state
-write. This is not a universal exactly-once external-effect guarantee.
+write. Registry ownership also explicitly releases its flock before a delayed
+inherited descriptor closes; a deterministic duplicate-descriptor test covers
+restart handoff. This is not a universal exactly-once external-effect guarantee.
 
 ```sh
 cargo build --locked -p cerynthd --example platform_qualification
@@ -145,12 +147,12 @@ The weekly plan and Person 3 acceptance ledger are unchanged.
 
 ## Retained results
 
-Qualified source: `5b0ebed2d436032f962f8a5f6aadf3843d57c17b`. The prepared
+Qualified source: `5c88dbe00954c3192a6ade5bfe3c824d9010c3eb`. The prepared
 payload, signed image build and final native run record this revision with a clean
 tracked worktree. Evidence commits add these results without changing that payload.
 
 - [Summary and receipt hashes](../benchmarks/person1-nonphysical-summary-nov27.json):
-  389 Rust workspace tests, 65 Python tests and all eight local release checks pass.
+  390 Rust workspace tests, 65 Python tests and all eight local release checks pass.
 - [Native CPU/RAM, FUSE and cross-agent run](../benchmarks/person1-native-platform-nov27.json).
 - [Secure Boot matrix](../benchmarks/person1-secure-boot-matrix-nov27.json),
   [toolchain provenance](../benchmarks/person1-secure-boot-toolchain-nov27.json),
@@ -158,6 +160,8 @@ tracked worktree. Evidence commits add these results without changing that paylo
   and [signing-wrapper execution](../benchmarks/person1-signing-wrapper-nov27.json).
 - [Signed image build](../benchmarks/person1-verified-root-build-nov27.json) and
   [actual boot/corruption rejection](../benchmarks/person1-verified-root-nov27.json).
+- [Actual packaged-service startup, SIGKILL restart and cleanup](../benchmarks/person3/packaging-runtime-nov27.json).
+- [Qualified-source GitHub CI](../benchmarks/person1-ci-qualified-source-nov27.json) records Rust 1.99.0 and all 390 workspace tests.
 - [Matching version inventory](../benchmarks/person3/version-inventory-nov27.json)
   and [release gate](../benchmarks/person3/release-qualification-nov27.json).
 
@@ -166,3 +170,10 @@ image build/VM work overlapped. That [failed attempt](../benchmarks/person1-nati
 is retained. The later serial run passed with the same pressure policy; no pressure
 threshold was relaxed. Release qualification remains false because the seven
 external acceptance IDs remain open, despite every local check passing.
+
+A subsequent signed-image build returned an I/O error during verity generation.
+Its [failed receipt](../benchmarks/person1-verified-root-build-failure-nov27.json)
+is retained; the cause was not independently established. After
+[reclaiming 4.9 GiB of regenerable development cache](../benchmarks/person1-dev-cache-reclamation-nov27.json),
+the same image profile built and passed boot/corruption qualification. The
+prepared release payload was preserved throughout that cleanup.

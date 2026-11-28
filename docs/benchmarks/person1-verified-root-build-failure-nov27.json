@@ -1,0 +1,11 @@
+{
+  "kind": "verified-root-build-attempt",
+  "passed": false,
+  "source_revision": "5c88dbe00954c3192a6ade5bfe3c824d9010c3eb",
+  "failure": "systemd-repart reported I/O error while creating the verity hash area",
+  "root_data_size": "1.5 GiB",
+  "configured_hash_partition_bytes": 67108864,
+  "log_sha256": "149dfc859c8ed48b52fe46982ce5d20d472167f49587ab19e847aaa767735b13",
+  "retry_after_regenerable_cache_cleanup_required": true,
+  "failure_cause_proven": false
+}
